@@ -15,8 +15,8 @@
     "electron-build": "ng build --prod && electron .",
     "spell-check": "cspell \"src/**/*.ts\" \"src/**/*.html\"",
     "circular-check": "npx madge --circular --extensions ts ./",
-    "deploy-mac": "electron-builder --mac",
-    "deploy-win": "electron-builder --win"
+    "deploy-mac": "ng build && electron-builder --mac",
+    "deploy-win": "ng build && electron-builder --win"
   },
   "private": true,
   "dependencies": {
@@ -87,13 +87,13 @@
       "target": [
         "dmg"
       ],
-      "icon": "resources/icons/mac/icon.icns"
+      "icon": "resources/icons/mac/easy-sankey-512-3d.icns"
     },
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "resources/icons/win/icon.ico"
+      "icon": "resources/icons/win/easy-sankey-512-3d.ico"
     }
   }
 }
