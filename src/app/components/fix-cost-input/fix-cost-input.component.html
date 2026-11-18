@@ -41,7 +41,7 @@
     @for (linkGroup of linkArray.controls; track linkGroup; let i = $index) {
       <div [formGroupName]="i" class="link-row">
         <!-- Target -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
           <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
           @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
@@ -66,7 +66,7 @@
           }
         </mat-form-field>
         <!-- Type (Income, Expense, Tax) -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-select formControlName="type" placeholder="Type" (selectionChange)="checkTaxNodeExists()">
             @for (type of linkTypes; track type) {
               <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
@@ -74,7 +74,7 @@
           </mat-select>
         </mat-form-field>
         <!-- Value -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
           <input matInput formControlName="value" type="number" placeholder="Value" (blur)="updateInput()" />
           @if (linkGroup.get('value')?.hasError('min')) {

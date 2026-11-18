@@ -128,7 +128,7 @@
             <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
           }
         </section>
-        <!-- <mat-divider></mat-divider> -->
+        <mat-divider></mat-divider>
       }
       @if (draftEntries.length) {
         <div class="entry-category-drafts">
@@ -181,7 +181,7 @@
     @for (linkGroup of rows; track linkGroup; let index = $index) {
       <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="rows.length < 2">
         <button mat-icon-button type="button" class="entry-reorder-handle" cdkDragHandle
-          matTooltip="Drag to reorder" [disabled]="rows.length < 2"
+          [disabled]="rows.length < 2"
           [attr.aria-label]="'Reorder ' + (linkGroup.get('target')?.value || 'new entry')"
           aria-description="Use Up and Down arrow keys to move this entry"
           (keydown.arrowup)="moveEntryWithKeyboard($event, rows, index, index - 1)"
@@ -189,7 +189,7 @@
           <mat-icon fontSet="material-symbols-outlined">drag_indicator</mat-icon>
         </button>
         <!-- Target -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
           @if (groupByCategory && linkGroup.get('isFixCost')?.value) {
             <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Fixed cost" aria-label="Fixed cost">event_repeat</mat-icon>
@@ -217,7 +217,7 @@
           }
         </mat-form-field>
         <!-- Type (Income, Expense, Tax) -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-select formControlName="type" placeholder="Type" (selectionChange)="checkTaxNodeExists()">
             @for (type of linkTypes; track type) {
               <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
@@ -225,7 +225,7 @@
           </mat-select>
         </mat-form-field>
         <!-- Value -->
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
           <input matInput class="!w-max" formControlName="value" type="text" placeholder="Value" (keypress)="validateKeyPress($event)" (paste)="validatePaste($event)" (keydown.enter)="updateInput(linkGroup)" (blur)="updateInput(linkGroup)" />
           @if (!linkGroup.get('isFixCost')?.value) {

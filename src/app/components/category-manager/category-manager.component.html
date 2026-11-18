@@ -13,7 +13,7 @@
     @for (category of categories(); track category.value; let index = $index) {
       <li class="category-row" cdkDrag [cdkDragData]="category">
         <button mat-icon-button type="button" class="reorder-handle" cdkDragHandle
-          matTooltip="Drag to reorder" [attr.aria-label]="'Reorder ' + category.label"
+          [attr.aria-label]="'Reorder ' + category.label"
           aria-description="Use Up and Down arrow keys to move this category"
           (keydown.arrowup)="moveWithKeyboard($event, category, index - 1)"
           (keydown.arrowdown)="moveWithKeyboard($event, category, index + 1)">

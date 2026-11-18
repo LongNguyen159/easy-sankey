@@ -78,7 +78,7 @@ mat-card {
   padding: 0.625rem 0.875rem;
   // border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 0.75rem;
-  background: var(--mat-sys-surface-container-low);
+  // background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
   cursor: pointer;
   text-align: start;
@@ -89,7 +89,7 @@ mat-card {
 }
 
 .category-section-heading:hover {
-  background: var(--mat-sys-surface-container);
+  background: var(--app-category-heading-hover-background);
 }
 
 .category-section-heading:focus-visible {

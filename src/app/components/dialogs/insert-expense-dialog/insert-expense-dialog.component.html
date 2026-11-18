@@ -9,7 +9,7 @@
     <form [formGroup]="form" class="w-[80%]">
         <div class="flex flex-col w-full items-center justify-center gap-2">
           <!-- Regular value input -->
-          <mat-form-field class="w-full">
+          <mat-form-field appearance="outline" class="w-full">
             <mat-label>Amount</mat-label>
             <input matInput formControlName="amount" placeholder="Enter value" (keypress)="validateKeyPress($event)" (blur)="updateInput()" (keydown.enter)="updateInput()" (paste)="validatePaste($event)">
 
