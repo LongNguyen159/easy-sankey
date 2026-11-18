@@ -1,3 +1,4 @@
+import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,7 +17,7 @@ import { onMonthChanges } from '../../utils/data-utils';
 import { PieChartComponent } from '../../components/charts/pie-chart/pie-chart.component';
 import { SankeyChartComponent } from '../../components/charts/sankey-chart/sankey-chart.component';
 import { DialogsService } from '../../services/dialogs.service';
-import { Budget, DateChanges, ExpenseCategory, ExpenseCategoryDetails, expenseCategoryDetails, SYSTEM_PREFIX } from '../../components/models';
+import { Budget, DateChanges, ExpenseCategoryDetails } from '../../components/models';
 import { BudgetRadarChartComponent } from "../../components/charts/budget-radar-chart/budget-radar-chart.component";
 import { BudgetGaugeChartComponent } from "../../components/charts/budget-gauge-chart/budget-gauge-chart.component";
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -25,7 +26,7 @@ import { BudgetService } from '../../services/budget.service';
 import { Router } from '@angular/router';
 import { RoutePath } from '../../components/models';
 import { TreemapChartComponent } from "../../components/charts/treemap-chart/treemap-chart.component";
-import { calculateDifferences, getLastMonth, removeSystemPrefix } from '../../utils/utils';
+import { calculateDifferences, getLastMonth } from '../../utils/utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 @Component({
     selector: 'app-main-page',
@@ -67,7 +68,7 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   pieChartDataBrutto: {name: string, value: number}[] = []
   pieChartDataNetto: {name: string, value: number}[] = []
 
-  categories: ExpenseCategoryDetails[] = Object.values(expenseCategoryDetails)
+  private readonly categoryService = inject(CategoryService);
 
   monthInsights: DifferenceItem[] = []
 
@@ -152,8 +153,8 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
 
 
   getBudgetData() {
-    const categoriesValues = this.pieChartDataNetto.filter(item => item.name.includes(SYSTEM_PREFIX)).map(item => ({
-      category: item.name as ExpenseCategory,
+    const categoriesValues = this.pieChartDataNetto.filter(item => this.categoryService.get(item.name)).map(item => ({
+      category: item.name,
       value: item.value
     }))
     this.spending = categoriesValues
@@ -162,8 +163,8 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
     this.indicators = categoriesValues
       .filter(a => a.value > 0 && this.budgets.some(b => b.category === a.category && b.value > 0))
       .map(a => {
-        return expenseCategoryDetails[a.category];
-      });
+        return this.categoryService.get(a.category);
+      }).filter(category => category !== undefined);
 
     /** Gauge MUST be shown when indicators is < 2. Because we can't show Radar chart if there is less than 3 items.
      */
@@ -207,7 +208,4 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
     this.isVerticalLayout = !this.isVerticalLayout;
   }
 
-  removeSystemPrefix(name: string): string {
-    return removeSystemPrefix(name)
-  }
 }

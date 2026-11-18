@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
 import { MatCardModule } from '@angular/material/card';
-import { expenseCategoryDetails, UserDefinedLink } from '../models';
+import { UserDefinedLink } from '../models';
 import { debounceTime, takeUntil } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -40,26 +40,15 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   override ngOnInit() {
-    this.existingNodes = Object.values(expenseCategoryDetails);
-    this.filteredNodes = [...this.existingNodes];
     this.initialFormState = [...this.linkArray.value]; // Store the initial form state
-    this.listenCategoryChanges()
 
 
-    let existingFixCosts = localStorage.getItem('fixCosts') 
+    const fixedCosts = this.dataService.isDemo()
+      ? this.dataService.demoLinks.filter(item => item.isFixCost)
+      : this.dataService.retrieveFixCostsLinks();
 
-    if (this.dataService.isDemo()) {
-      existingFixCosts = JSON.stringify(this.dataService.demoLinks.filter(item => item.isFixCost));
-    }
-
-
-    if (existingFixCosts) {
-      const parsedFixCosts: UserDefinedLink[] = JSON.parse(existingFixCosts);
-
-      parsedFixCosts.forEach(link => {
-        link.isFixCost = true;
-        this.linkArray.push(this._createLinkGroup(link), { emitEvent: false });
-      })
+    for (const link of fixedCosts) {
+      this.linkArray.push(this._createLinkGroup({ ...link, isFixCost: true }), { emitEvent: false });
     }
 
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(() => {
@@ -103,10 +92,13 @@ export class FixCostInputComponent extends InputListComponent {
 
   saveToLocalStorage() {
     if (!this.linkForm.valid) return;
-    localStorage.setItem('fixCosts', JSON.stringify(this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }))));
+    const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
+    localStorage.setItem('fixCosts', JSON.stringify(this.categoryService.clearMissingSources(links)));
   }
 
   override ngOnDestroy(): void {
+    this.componentDestroyed$.next();
+    this.componentDestroyed$.complete();
 
     if (JSON.stringify(this.linkArray.value) === JSON.stringify(this.initialFormState)) {
       return; // No changes, don't proceed

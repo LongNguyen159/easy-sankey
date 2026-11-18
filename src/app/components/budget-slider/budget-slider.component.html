@@ -49,10 +49,10 @@
                             <div class="flex flex-row gap-2 items-center">
                                 <mat-icon
                                     fontSet="material-symbols-outlined" 
-                                    [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category).colorDark : getCategoriesDetails(category).colorLight }"
-                                >{{ getCategoriesDetails(category).icon }}</mat-icon>
+                                    [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category)?.colorDark : getCategoriesDetails(category)?.colorLight }"
+                                >{{ getCategoriesDetails(category)?.icon }}</mat-icon>
                                 <span>
-                                    {{ removeSystemPrefix(category) }}
+                                    {{ categoryLabel(category) }}
                                 </span>
                             </div>
                         </mat-list-option>
@@ -86,7 +86,7 @@
                                 @if (slider.icon) {
                                     <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                 }
-                                <h3>{{ removeSystemPrefix(slider.name) }}</h3>
+                                <h3>{{ categoryLabel(slider.name) }}</h3>
                             </div>
                             <div class="flex flex-row gap-2 items-center w-full">
                                 <mat-form-field appearance="fill">
@@ -128,10 +128,10 @@
                                 <div class="flex flex-row gap-2 items-center">
                                     <mat-icon
                                         fontSet="material-symbols-outlined" 
-                                        [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category).colorDark : getCategoriesDetails(category).colorLight }"
-                                    >{{ getCategoriesDetails(category).icon }}</mat-icon>
+                                        [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category)?.colorDark : getCategoriesDetails(category)?.colorLight }"
+                                    >{{ getCategoriesDetails(category)?.icon }}</mat-icon>
                                     <span>
-                                        {{ removeSystemPrefix(category) }}
+                                        {{ categoryLabel(category) }}
                                     </span>
                                 </div>
                                 <div [ngClass]="colorService.isDarkMode() ? '!text-neutral-400' : 'text-gray-500' ">
@@ -369,7 +369,7 @@
                                 @if (slider.icon) {
                                     <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                 }
-                                <h3>{{ removeSystemPrefix(slider.name) }}</h3>
+                                <h3>{{ categoryLabel(slider.name) }}</h3>
                             </div>
                             <div class="flex flex-row gap-2 items-center w-full">
                                 <mat-slider
@@ -439,7 +439,7 @@
                                     @if (slider.icon) {
                                         <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                     }
-                                    <h3>{{ removeSystemPrefix(slider.name) }}</h3>
+                                    <h3>{{ categoryLabel(slider.name) }}</h3>
                                 </div>
                                 <div class="flex flex-row gap-2 items-center w-full">
                                     <mat-slider

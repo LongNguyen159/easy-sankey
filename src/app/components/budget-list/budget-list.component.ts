@@ -1,6 +1,7 @@
+import { CategoryService } from '../../services/category.service';
 import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { Budget, ExpenseCategory, expenseCategoryDetails } from '../models';
+import { Budget } from '../models';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { ColorService } from '../../services/color.service';
@@ -9,7 +10,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { BudgetService } from '../../services/budget.service';
 import { BudgetDialogComponent } from '../dialogs/budget-dialog/budget-dialog.component';
 import { UiService } from '../../services/ui.service';
-import { removeSystemPrefix } from '../../utils/utils';
 import { CurrencyService } from '../../services/currency.service';
 
 @Component({
@@ -28,7 +28,8 @@ export class BudgetListComponent implements OnInit{
   colorService = inject(ColorService)
   budgetService = inject(BudgetService)
   uiService = inject(UiService)
-  expenseCategoryDetails = Object.values(expenseCategoryDetails);
+  private readonly categoryService = inject(CategoryService);
+  protected readonly categories = this.categoryService.categories;
   currencyService = inject(CurrencyService)
 
   budgets: Budget[] = [];
@@ -54,20 +55,18 @@ export class BudgetListComponent implements OnInit{
 
   /** Open Edit values dialog for a category */
   onBudgetClick(category: string) {
-    const _category = category as ExpenseCategory;
-    const categoryDetails = this.expenseCategoryDetails.find(cat => cat.value === category);
 
-    const currentBudget = this.getCurrentBudget(_category);
+    const currentBudget = this.getCurrentBudget(category);
 
     const dialogRef = this.dialog.open(BudgetDialogComponent, {
       width: '500px',
       height: '300px',
-      data: { categoryLabel: categoryDetails?.label || '', value: currentBudget }
+      data: { categoryLabel: this.categoryService.label(category), value: currentBudget }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result !== undefined) {
-        this.updateBudget(_category, result);
+        this.updateBudget(category, result);
       }
     });
   }
@@ -86,7 +85,7 @@ export class BudgetListComponent implements OnInit{
    * 
    * @returns Budget value for the category
    */
-  getCurrentBudget(category: ExpenseCategory): number {
+  getCurrentBudget(category: string): number {
     const budgets = this.budgetService.getBudgets();
     return budgets.find(budget => budget.category === category)?.value || 0;
   }
@@ -95,7 +94,7 @@ export class BudgetListComponent implements OnInit{
    * @param category Category to update budget for
    * @param value New budget value
    */
-  updateBudget(category: ExpenseCategory, value: number) {
+  updateBudget(category: string, value: number) {
     const budgetIndex = this.budgets.findIndex(budget => budget.category === category);
 
     if (budgetIndex >= 0) {
@@ -106,9 +105,9 @@ export class BudgetListComponent implements OnInit{
 
     this.budgetService.saveBudgets(this.budgets);
     if (value === 0 || value == null) {
-      this.uiService.showSnackBar(`Removed budget for ${removeSystemPrefix(category)}`, 'OK', 3000);
+      this.uiService.showSnackBar(`Removed budget for ${this.categoryService.label(category)}`, 'OK', 3000);
     } else {
-      this.uiService.showSnackBar(`Budget for ${removeSystemPrefix(category)} set!`, 'OK', 3000);
+      this.uiService.showSnackBar(`Budget for ${this.categoryService.label(category)} set!`, 'OK', 3000);
     }
   }
 }

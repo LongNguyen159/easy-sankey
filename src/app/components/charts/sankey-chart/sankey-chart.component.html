@@ -28,7 +28,7 @@
             @for (item of monthInsights; track $index) {
                 <mat-chip disableRipple>
                     <div class="flex flex-row gap-2 items-center justify-center w-full">
-                        <span>{{ removeSystemPrefix(item.name) }}:</span>
+                        <span>{{ categoryLabel(item.name) }}:</span>
                         @if (item.isPositive === undefined) {
                             <span 
                                 class="font-bold"

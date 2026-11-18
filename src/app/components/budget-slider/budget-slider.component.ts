@@ -1,11 +1,12 @@
+import { CategoryService } from '../../services/category.service';
 import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { DataService } from '../../services/data.service';
 import { debounceTime, takeUntil } from 'rxjs';
-import { Budget, BudgetSlider, ExpenseCategory, expenseCategoryDetails, MonthlyData, SYSTEM_PREFIX, Tracker } from '../models';
+import { Budget, BudgetSlider, MonthlyData, Tracker } from '../models';
 import { CommonModule } from '@angular/common';
 import {MatSliderModule} from '@angular/material/slider';
-import { formatBigNumber, removeSystemPrefix, roundToNearestHundreds } from '../../utils/utils';
+import { formatBigNumber, roundToNearestHundreds } from '../../utils/utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -137,8 +138,10 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   //#region Stepper Categories
   isCategoriesLoading: boolean = false;
   /** All categories. */
-  allCategories = Object.values(ExpenseCategory) as string[];
-  expenseCategoryDetails = expenseCategoryDetails
+  private readonly categoryService = inject(CategoryService);
+  get allCategories(): string[] {
+    return this.categoryService.categories().map(category => category.value);
+  }
 
 
   categoriesToTrack: string[] = []
@@ -198,7 +201,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     /** Retrieve Essential Categories selection from Local Storage */
     const savedEssentialCategories = JSON.parse(localStorage.getItem('essentialCategories') || '[]');
     if (savedEssentialCategories.length > 0) {
-      this.essentialCategories = savedEssentialCategories;
+      this.essentialCategories = savedEssentialCategories.filter((id: string) => this.categoryService.get(id));
 
       // Create sliders for saved essential categories
       this.essentialSliders = this.essentialCategories.map(category => this.createSlider(category, true));
@@ -244,7 +247,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     const aggregatedPieData = this.monthsOfCurrentYear.reduce((acc, month) => {
       this.allMonthsData[month].pieData.forEach(item => {
         // Only extract categories data, exclude surplus and standalone items.
-        if (item.name.includes(SYSTEM_PREFIX)) {
+        if (this.categoryService.get(item.name)) {
           if (!acc[item.name]) {
             acc[item.name] = { total: 0, count: 0 };
           }
@@ -309,7 +312,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     const aggregatedPieData = this.filteredMonths.reduce((acc, month) => {
       this.allMonthsData[month].pieData.forEach(item => {
         // Only extract categories data, exclude surplus and standalone items.
-        if (item.name.includes(SYSTEM_PREFIX)) {
+        if (this.categoryService.get(item.name)) {
           if (!acc[item.name]) {
             acc[item.name] = { total: 0, count: 0 };
           }
@@ -340,18 +343,15 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     const totalCategoryValues = this.averagePieData.reduce((sum, data) => sum + data.averageValue, 0);
     const minMaxThreshold = this.averageIncome * 0.05; // Minimum 5% of income
   
-    const allCategories = Object.values(ExpenseCategory) as string[]
-    
-    this.masterSliders = allCategories
-      .map((categoryName) => {
+    this.masterSliders = this.categoryService.categories()
+      .map(categoryDetails => {
+        const categoryName = categoryDetails.value;
         const matchingData = this.averagePieData.find(data => data.name === categoryName);
         const averageValue = matchingData ? matchingData.averageValue : 0;
         const percentage = totalCategoryValues ? averageValue / totalCategoryValues : 0;
   
         const dynamicMax = this.averageIncome * Math.max(percentage * 3, 0.05); // Scaled or 5% of income
         const max = Math.max(dynamicMax, minMaxThreshold); // Ensure minimum threshold
-  
-        const categoryDetails = expenseCategoryDetails[categoryName as ExpenseCategory];
   
         return {
           name: categoryName,
@@ -360,9 +360,9 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
           max: roundToNearestHundreds(max),
           locked: this.allSlidersLocked,
           weight: 1, // Default weight, can be user-adjusted
-          icon: categoryDetails.icon,
-          colorDark: categoryDetails.colorDark,
-          colorLight: categoryDetails.colorLight,
+          icon: categoryDetails?.icon,
+          colorDark: categoryDetails?.colorDark,
+          colorLight: categoryDetails?.colorLight,
         };
       });
   
@@ -372,7 +372,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
 
   /** Get categories details based on name (with system prefix) */
   getCategoriesDetails(categoryName: string) {
-    return expenseCategoryDetails[categoryName as ExpenseCategory]
+    return this.categoryService.get(categoryName)
   }
 
 
@@ -469,7 +469,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     const minMaxThreshold = this.averageIncome * 0.05; // Minimum 5% of income
     const max = Math.max((value + 1) * 1.5, minMaxThreshold);
   
-    const categoryDetails = expenseCategoryDetails[category as ExpenseCategory];
+    const categoryDetails = this.categoryService.get(category);
   
     return {
       name: category,
@@ -478,9 +478,9 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
       max: roundToNearestHundreds(max),
       locked: isEssential, // Lock essential categories
       weight: isEssential ? 0.2 : 20, // Higher weight for non-essential categories
-      icon: categoryDetails.icon,
-      colorDark: categoryDetails.colorDark,
-      colorLight: categoryDetails.colorLight,
+      icon: categoryDetails?.icon,
+      colorDark: categoryDetails?.colorDark,
+      colorLight: categoryDetails?.colorLight,
       isEssential: isEssential,
     };
   }
@@ -805,7 +805,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   /** Save highlighted categories to budgets. */
   saveToBudgets() {
     const budgetsToAdd: Budget[] = this.visibleSliders.map(item => ({
-      category: item.name as ExpenseCategory,
+      category: item.name,
       value: Math.round((item.value) * 100) / 100
     }))
     const allBudgets = this.budgetService.getBudgets()
@@ -864,8 +864,8 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     return formatBigNumber(value, '', 1000);
   }
 
-  removeSystemPrefix(name: string): string {
-    return removeSystemPrefix(name);
+  categoryLabel(name: string): string {
+    return this.categoryService.label(name);
   }
 
   /** Helper to merge incoming budget to existing budget. Current logic of budget service

@@ -3,7 +3,7 @@
 </div>
 
 <div class="card-container">
-  @for (category of expenseCategoryDetails; track category) {
+  @for (category of categories(); track category.value) {
     <mat-card class="cursor-pointer budget-card"
       (click)="onBudgetClick(category.value)"
       (mouseenter)="onMouseEnter(category.value)"

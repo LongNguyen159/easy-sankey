@@ -1,7 +1,7 @@
 import { Component, effect, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { EChartsOption } from 'echarts';
-import { Budget, ExpenseCategory, expenseCategoryDetails } from '../../models';
+import { Budget } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 
 @Component({
@@ -15,7 +15,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
     styleUrl: './budget-radar-chart.component.scss'
 })
 export class BudgetRadarChartComponent extends BaseChartComponent implements OnChanges {
-  @Input() actualSpending: { category: ExpenseCategory, value: number }[] = []
+  @Input() actualSpending: { category: string, value: number }[] = []
   @Input() budget: Budget[] = []
 
 
@@ -69,7 +69,7 @@ export class BudgetRadarChartComponent extends BaseChartComponent implements OnC
         const budget = this.budget.find(b => b.category === a.category);
         const max = budget ? Math.max(budget.value, a.value) : a.value;
         const paddedMax = max * this.SCALE_FACTOR; // Add 20% padding
-        return { name: expenseCategoryDetails[a.category].label, min: 0, max: undefined};
+        return { name: this.categoryService.label(a.category), min: 0, max: undefined};
       });
 
     const actualValues = this.actualSpending

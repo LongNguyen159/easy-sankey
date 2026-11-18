@@ -4,7 +4,7 @@ export interface UserDefinedLink {
     type: EntryType;  // Type of the entry
     target: string;   // The name of the current node
     value: number;    // Amount associated with the link
-    source?: ExpenseCategory;  // Optional source node (only for expenses)
+    source?: string;  // Category ID or parent node (only for expenses)
     isFixCost?: boolean;  // Optional flag to indicate fix cost
     demo?: boolean;   // Optional flag to indicate demo data
 }
@@ -85,9 +85,7 @@ export interface ExpenseCategoryDetails {
   colorDark?: string;   // New property for dark mode color
 }
 
-/** The labels and color will be shown in Category selector (Dropdown menu) and in Category Cards in Finance Manger.
- * The charts use the actual value for the Category name (e.g. Housing@__system/category__), and trim out the system prefix.
- */
+/** Default definitions. Their values also identify categories in existing saved entries. */
 export const expenseCategoryDetails: { [key in ExpenseCategory]: ExpenseCategoryDetails } = {
   [ExpenseCategory.Housing]: { 
     label: 'Housing', 
@@ -201,7 +199,7 @@ export const expenseCategoryDetails: { [key in ExpenseCategory]: ExpenseCategory
 };
 
 export interface Budget {
-  category: ExpenseCategory;
+  category: string;
   value: number;
 }
 

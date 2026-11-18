@@ -1,13 +1,13 @@
 <h2 mat-dialog-title class="!font-bold text-2xl">Choose Categories to track</h2>
 <mat-dialog-content>
   <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? '!text-neutral-400' : 'text-gray-500' ">
-    Selected: {{ selectedCategories.length }} / {{ allCategories.length }}
+    Selected: {{ selectedCategories.length }} / {{ allCategories().length }}
   </p>
   <button mat-button (click)="toggleSelectAll(categoryList)">
     {{ isAllSelected ? 'Deselect All' : 'Select All' }}
   </button>
   <mat-selection-list #categoryList (selectionChange)="onCategorySelection(categoryList.selectedOptions.selected)">
-    @for (category of allCategories; track category.label) {
+    @for (category of allCategories(); track category.label) {
         <mat-list-option [togglePosition]="'before'" [value]="category.value" [selected]="selectedCategories.includes(category.value)">
             <div class="flex flex-row gap-2 items-center">
                 <mat-icon

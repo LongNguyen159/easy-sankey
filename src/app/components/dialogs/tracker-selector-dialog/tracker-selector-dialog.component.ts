@@ -1,9 +1,9 @@
+import { CategoryService } from '../../../services/category.service';
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { ExpenseCategory, ExpenseCategoryDetails, expenseCategoryDetails } from '../../models';
-import { MatListModule, MatListOption, MatSelectionList, MatSelectionListChange } from '@angular/material/list';
+import { MatListModule, MatListOption, MatSelectionList } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { ColorService } from '../../../services/color.service';
 import { TrackingService } from '../../../services/tracking.service';
@@ -22,7 +22,7 @@ import { TrackingService } from '../../../services/tracking.service';
     styleUrl: './tracker-selector-dialog.component.scss'
 })
 export class TrackerSelectorDialogComponent {
-  allCategories = Object.values(expenseCategoryDetails)
+  protected readonly allCategories = inject(CategoryService).categories;
   colorService = inject(ColorService)
   dialogRef = inject(MatDialogRef)
   trackingService = inject(TrackingService)
@@ -41,12 +41,12 @@ export class TrackerSelectorDialogComponent {
   
   updateSelectedCategories() {
     this.selectedCategories = this.trackingService.categoriesToTrack()
-    this.isAllSelected = this.selectedCategories.length === this.allCategories.length
+    this.isAllSelected = this.selectedCategories.length === this.allCategories().length
   }
 
   /** Save the selected categories option to `selectedCategories` */
   onCategorySelection(options: MatListOption[]) {
-    this.selectedCategories = options.map(option => option.value as ExpenseCategory)
+    this.selectedCategories = options.map(option => option.value)
     this.trackingService.categoriesToTrack.set(this.selectedCategories)
   }
 
@@ -58,7 +58,7 @@ export class TrackerSelectorDialogComponent {
       this.trackingService.categoriesToTrack.set(this.selectedCategories)
     } else {
       // Select all
-      this.selectedCategories = this.allCategories.map(category => category.value);
+      this.selectedCategories = this.allCategories().map(category => category.value);
       categoryList.selectAll();
       this.trackingService.categoriesToTrack.set(this.selectedCategories)
     }

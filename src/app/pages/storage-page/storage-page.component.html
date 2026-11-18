@@ -46,5 +46,16 @@
             }
         </mat-tab>
         
+        <mat-tab>
+            <ng-template mat-tab-label>
+                <mat-icon fontSet="material-symbols-outlined" class="mr-3" [style.color]="colorService.isDarkMode() ? '#e1bee7' : '#9c27b0'">category</mat-icon>
+                Categories
+            </ng-template>
+            @if (selectedTabIndex == 3) {
+                <div class="p-4">
+                    <app-category-manager></app-category-manager>
+                </div>
+            }
+        </mat-tab>
     </mat-tab-group>
 </div>

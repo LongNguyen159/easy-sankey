@@ -1,15 +1,17 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { AfterViewInit, Component, computed, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
-import { DateChanges, EntryType, expenseCategoryDetails, ExpenseCategoryDetails, UserDefinedLink } from '../models';
+import { DateChanges, EntryType, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatSelectChange, MatSelectModule} from '@angular/material/select';
+import {MatSelectModule} from '@angular/material/select';
 import {MatIconModule} from '@angular/material/icon';
 import { debounceTime, takeUntil } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CategoryService } from '../../services/category.service';
 import { MatAutocompleteModule, MatAutocompleteTrigger} from '@angular/material/autocomplete';
 import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
@@ -128,8 +130,12 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Tax]; // Types of links
   entryTypes = EntryType; // Enum for entry types
 
-  existingNodes: ExpenseCategoryDetails[] = []; // To hold existing node names
-  filteredNodes: ExpenseCategoryDetails[] = []; // To hold filtered suggestions for auto-complete
+  protected categoryService = inject(CategoryService);
+  private categorySearch = toSignal(this.sourceSearchControl.valueChanges);
+  filteredNodes = computed(() => {
+    const query = String(this.categorySearch() ?? '').trim().toLowerCase();
+    return this.categoryService.categories().filter(category => category.label.toLowerCase().includes(query));
+  });
 
   taxNodeExists = false; // Flag to check if a tax node exists
 
@@ -217,21 +223,14 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      */
     this.dataService.getSingleMonthData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
       this.singleMonthData = data;
+      this.fixedLinks = this.dataService.retrieveFixCostsLinks();
       this.dataMonth = data.month
-      /** Only include expense nodes. */
-      this.existingNodes = Object.values(expenseCategoryDetails)
-
-
-      this.filteredNodes = [...this.existingNodes];
       this.taxNodeExists = this._hasTaxNode(data.rawInput);
 
       /** Populate links with predefined data */
       this.populateInputFields(data)
-      this._addDefaultNode();
     });
 
-    // Listen to changes in the search control to filter the dropdown
-    this.listenCategoryChanges()
     
     /** Listen to changes in value. If changes, save the current form value immediately. */
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(300)).subscribe((formData) => {
@@ -274,7 +273,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
         restrictedNodeNamesValidator(this.dataService.nonAllowedNames)
       ]],
       value: [link ? link.value : 0, [Validators.required, Validators.min(0)]],
-      source: [link ? link.source : ''], // Optional
+      source: [link?.source === '-- None --' ? '' : link?.source ?? ''],
       isFixCost: [link ? link.isFixCost : false]
     });
 
@@ -332,7 +331,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
       if (value) {
         /** Set type automatic to expense if category chosen */
         linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
-        // this._filterNodes(value);
         this.checkForCycle(value, linkGroup.get('target')?.value, linkGroup, this.linkArray.value);
       }
     });
@@ -373,23 +371,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   }
 
 
-  /** This is used to 'remove' the source from the field. It will be linked to default income node.
-   * In our service, we already have a logic that handles if source node is not found, link to default income node.
-   * We don't have 'default income' node, so it's understood that it'll be linked to default income node.
-   * Unless user defines 'default income' node, it'll be linked to default income node.
-   */
-  private _addDefaultNode() {
-    const defaultNode = {
-      label: '-- None --',
-      value: '-- None --'
-    }
-    if (!this.filteredNodes.includes(defaultNode)) {
-      this.filteredNodes.unshift(defaultNode);
-    }
-  }
-
-
-
   /** Helper function to determine tax node in links */
   protected _hasTaxNode(data: UserDefinedLink[]): boolean {
     return data.some(item => item.type == EntryType.Tax)
@@ -398,19 +379,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   //#endregion
 
 
-  protected listenCategoryChanges() {
-    this.sourceSearchControl.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe((searchTerm) => {
-      this.filteredNodes = this._filterNodes(searchTerm);
-      this._addDefaultNode();
-    });
-
-  }
-
-  /** Clear category search field input when category is selected. */
-  onCategorySelected(option: MatSelectChange) {
-    this.sourceSearchControl.setValue('');
-  }
-  
   //#region Month Changes
   onMonthChanges(selectedMonth: DateChanges) {
     const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
@@ -828,15 +796,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   //#region Link Controls
 
   /********** Filter/Add/Remove Links **********/
-
-  // Filter nodes based on user input
-  private _filterNodes(value: string): { label: string, value: string }[] {
-    const filterValue = value.toLowerCase();
-  
-    // Filter nodes, excluding the current node if it matches
-    return this.filteredNodes = this.existingNodes
-      .filter(node => node.label.toLowerCase().includes(filterValue) && node.label.toLowerCase() !== filterValue);
-  }
 
   // Add a new input row
   addLink(): void {
