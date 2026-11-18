@@ -1,5 +1,5 @@
 @if(!linkForm.valid && linkForm.touched) {
-  <div class="flex flex-row w-full justify-end">
+  <div class="flex flex-row w-full justify-center">
     <div class="fixed top-16 z-50">
       @if(!hasDuplicates) {
         <app-error-card></app-error-card>
@@ -13,14 +13,22 @@
 
 <div [formGroup]="linkForm" class="link-form-container" #bottomContent id="bottom-content">
   <!-- LINKS CONTAINER -->
-  <div formArrayName="links" class="mb-14">
+  <div class="mb-14">
 
-    <!-- VARIABLE COSTS SECTION -->
     <div class="flex flex-row items-center gap-2 w-full mb-4">
       <p class="font-bold text-2xl !m-0">Fix Costs</p>
       <button mat-icon-button class="!flex flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
         <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
       </button>
+      <button mat-icon-button type="button" class="ml-auto shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
+        <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu" xPosition="before">
+        <button mat-menu-item (click)="toggleEntryView()">
+          <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
+          <span>{{ groupByCategory ? 'Show as list' : 'Group by category' }}</span>
+        </button>
+      </mat-menu>
     </div>
     <div class="mb-4">
       <p>
@@ -38,8 +46,55 @@
         </mat-icon>
       </div>
     }
-    @for (linkGroup of linkArray.controls; track linkGroup; let i = $index) {
-      <div [formGroupName]="i" class="link-row">
+    @if (groupByCategory) {
+      @for (group of categoryGroups; track group.id) {
+        <section class="entry-category-section">
+          <h3 class="category-section-title">
+            <button type="button" class="category-section-heading" (click)="toggleCategory(group.id)"
+              [attr.aria-expanded]="!collapsedCategories.has(group.id)">
+              @if (group.category; as category) {
+                <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+              } @else {
+                <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
+              }
+              <span class="category-section-label">{{ group.label }}</span>
+              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedCategories.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+            </button>
+          </h3>
+          @if (!collapsedCategories.has(group.id)) {
+            <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
+          }
+        </section>
+        <mat-divider></mat-divider>
+      }
+    } @else {
+      <ng-container *ngTemplateOutlet="entryList; context: { $implicit: visibleEntries() }"></ng-container>
+    }
+  </div>
+
+  <!-- ADD BUTTON -->
+  <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
+    <div>
+      <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
+        <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+        <span>Add Entries</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<ng-template #entryList let-rows>
+  <div cdkDropList [cdkDropListData]="rows" (cdkDropListDropped)="dropEntries($event)">
+    @for (linkGroup of rows; track linkGroup; let index = $index) {
+      <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="rows.length < 2">
+        <button mat-icon-button type="button" class="entry-reorder-handle" cdkDragHandle
+          [disabled]="rows.length < 2"
+          [attr.aria-label]="'Reorder ' + (linkGroup.get('target')?.value || 'new entry')"
+          aria-description="Use Up and Down arrow keys to move this entry"
+          (keydown.arrowup)="moveEntryWithKeyboard($event, rows, index, index - 1)"
+          (keydown.arrowdown)="moveEntryWithKeyboard($event, rows, index, index + 1)">
+          <mat-icon fontSet="material-symbols-outlined">drag_indicator</mat-icon>
+        </button>
         <!-- Target -->
         <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
@@ -86,20 +141,10 @@
         <!-- Select with search -->
         <app-category-select [control]="categoryControl(linkGroup)" (categoryChange)="updateInput()"></app-category-select>
         <!-- Remove Button -->
-        <button mat-icon-button class="app-button-warn mt-2" (click)="removeLink(i)">
+        <button mat-icon-button class="app-button-warn mt-2" type="button" aria-label="Remove entry" (click)="removeEntry(linkGroup)">
           <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
         </button>
       </div>
     }
   </div>
-
-  <!-- ADD BUTTON -->
-  <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
-    <div>
-      <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
-        <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
-        <span>Add Entries</span>
-      </button>
-    </div>
-  </div>
-</div>
+</ng-template>

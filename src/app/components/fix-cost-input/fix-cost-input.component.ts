@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +9,8 @@ import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { CategorySelectComponent } from '../category-select/category-select.component';
-import { MatCardModule } from '@angular/material/card';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatMenuModule } from '@angular/material/menu';
 import { UserDefinedLink } from '../models';
 import { debounceTime, takeUntil } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
@@ -25,8 +27,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatSelectModule,
         MatIconModule,
         CategorySelectComponent,
-        MatCardModule, ErrorCardComponent,
-        MatTooltipModule
+        ErrorCardComponent,
+        MatTooltipModule,
+        MatDividerModule,
+        MatMenuModule,
+        CdkDrag,
+        CdkDragHandle,
+        CdkDropList
     ],
     templateUrl: './fix-cost-input.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
@@ -59,6 +66,15 @@ export class FixCostInputComponent extends InputListComponent {
     })    
   }
 
+  override addLink(): void {
+    super.addLink();
+    this.newEntries.delete(this.linkArray.at(-1));
+  }
+
+  protected override updateSavedFormValuesOnFormChanges(): void {
+    this.saveToLocalStorage();
+  }
+
   
   override updateInput() {
     if (!this.linkForm.valid) return;
@@ -85,6 +101,7 @@ export class FixCostInputComponent extends InputListComponent {
 
 
   override removeLink(index: number): void {
+    if (index < 0) return;
     this.linkArray.removeAt(index, { emitEvent: false });
     this.saveToLocalStorage()
   }

@@ -8,7 +8,7 @@
 <div [formGroup]="linkForm" class="link-form-container">
 
   <!-- INPUT LIST ACTIONS BAR CONTAINER -->
-  <div class="grid w-full py-2 sticky z-50 top-0 material-background-dialog-custom" style="grid-template-columns: 1fr 1fr 1fr;">
+  <div class="entry-toolbar w-full py-2 sticky z-50 top-0 material-background-dialog-custom">
 
     <!-- LAST UPDATED DATE -->
     <div class="flex flex-row items-center justify-start gap-2">
@@ -21,54 +21,38 @@
           </span>
         </div>
       }
-
-      <!-- MENU FOR MORE OPTIONS -->
-      <div class="flex flex-row items-center gap-2">
-        <!-- Button to open the menu -->
-        <button mat-icon-button aria-label="Entry options" [matMenuTriggerFor]="menu">
-          <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
-        </button>
-
-        <!-- Menu Definition -->
-        <mat-menu #menu="matMenu">
-          <!-- Copy Button inside the menu -->
-          <button mat-menu-item class="!px-4" (click)="copyLinks()" [disabled]="dataService.hasDataCycle()">
-            <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
-            <span>
-              Copy all
-            </span>
-          </button>
-
-          <button mat-menu-item class="!px-4" (click)="toggleEntryView()">
-            <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
-            <span>{{ groupByCategory ? 'Show by cost type' : 'Group by category' }}</span>
-          </button>
-
-          <!-- Paste Button inside the menu -->
-          <button mat-menu-item class="!px-4" (click)="pasteLinks(pasteMonthDialog)">
-            <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>
-            <span>
-              Paste
-            </span>
-          </button>
-        </mat-menu>
-      </div>
     </div>
 
     <!-- MONTH PICKER -->
-    <div class="flex flex-row w-full justify-center items-center">
-      <app-month-picker (monthSelected)="onMonthChanges($event)"></app-month-picker>
-    </div>
+    <app-month-picker class="justify-self-center" (monthSelected)="onMonthChanges($event)"></app-month-picker>
 
-    <!-- ACTIONS BUTTONS -->
-    <div class="flex flex-row w-[25%] items-center justify-end gap-1 absolute right-0">
-      <!-- SEARCH BAR -->
-      <div class="flex flex-row w-full justify-center">
-        <mat-form-field appearance="outline" floatLabel="always">
-          <input #inputValue matInput (input)="filterLinks(inputValue.value)" [value]="filterQuery" placeholder="Search">
-          <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
-        </mat-form-field>
-      </div>
+    <div class="entry-toolbar-actions">
+      <mat-form-field class="min-w-0" appearance="outline" floatLabel="always" subscriptSizing="dynamic">
+        <input #inputValue matInput aria-label="Search entries" (input)="filterLinks(inputValue.value)" [value]="filterQuery" placeholder="Search">
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+      </mat-form-field>
+
+      <button mat-icon-button type="button" class="shrink-0" aria-label="Entry options" [matMenuTriggerFor]="menu">
+        <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
+      </button>
+
+      <mat-menu #menu="matMenu" xPosition="before">
+        <button mat-menu-item (click)="copyLinks()" [disabled]="dataService.hasDataCycle()">
+          <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
+          <span>Copy all</span>
+        </button>
+        <button mat-menu-item (click)="pasteLinks(pasteMonthDialog)">
+          <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>
+          <span>Paste</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <button mat-menu-item (click)="toggleEntryView()">
+          <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
+          <span>{{ groupByCategory ? 'Show by cost type' : 'Group by category' }}</span>
+        </button>
+      </mat-menu>
     </div>
   </div>
 

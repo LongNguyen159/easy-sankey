@@ -143,7 +143,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   private readonly dialog = inject(MatDialog);
   private readonly clipboard = inject(Clipboard);
   private readonly announcer = inject(LiveAnnouncer);
-  private readonly newEntries = new Set<FormGroup>();
+  protected readonly newEntries = new Set<FormGroup>();
   protected readonly collapsedCategories = new Set<string>();
   protected groupByCategory = localStorage.getItem('entryView') === 'category';
 
@@ -271,7 +271,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * If we don't have this functionality of saving current form values, we can't track whether there are changes in the form,
    * so every onMonthChanges, we will process the form values, which is inefficient.
    */
-  private updateSavedFormValuesOnFormChanges() {
+  protected updateSavedFormValuesOnFormChanges() {
     this.savedFormValues = this.linkArray.value.slice();
     this.hasChanges = true;
   }

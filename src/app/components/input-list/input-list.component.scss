@@ -1,7 +1,37 @@
+@use 'entry-list';
+
 .link-form-container {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+}
+
+.entry-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.entry-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 19rem;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .entry-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .entry-toolbar-actions {
+    max-width: none;
+  }
 }
   
 mat-form-field {
@@ -60,89 +90,6 @@ mat-card {
   min-height: 2.5rem;
 }
 
-.entry-category-section {
-  padding-block: 0.875rem 1.125rem;
-}
-
-.category-section-title {
-  margin: 0;
-}
-
-.category-section-heading {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  min-height: 3.25rem;
-  padding: 0.625rem 0.875rem;
-  // border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 0.75rem;
-  // background: var(--mat-sys-surface-container-low);
-  color: var(--mat-sys-on-surface);
-  cursor: pointer;
-  text-align: start;
-}
-
-.category-section-heading[aria-expanded="true"] {
-  margin-bottom: 0.625rem;
-}
-
-.category-section-heading:hover {
-  background: var(--app-category-heading-hover-background);
-}
-
-.category-section-heading:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
-}
-
-.category-section-label {
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.category-section-count,
-.category-section-chevron {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.category-section-count {
-  font-size: 0.875rem;
-  font-weight: 400;
-  white-space: nowrap;
-}
-
-@media (max-width: 440px) {
-  .category-section-heading {
-    gap: 0.5rem;
-    padding-inline: 0.625rem;
-  }
-}
-
 .entry-category-drafts {
   padding-block: 0.5rem 0.75rem;
-}
-
-.entry-reorder-handle {
-  flex: none;
-  margin-top: 0.5rem;
-  cursor: grab;
-  touch-action: none;
-}
-
-.entry-reorder-handle:active {
-  cursor: grabbing;
-}
-
-.entry-editor-row.cdk-drag-preview {
-  background-color: var(--mat-sys-surface-container);
-  border-radius: 0.5rem;
-  box-shadow: var(--mat-sys-level2);
-}
-
-.entry-editor-row.cdk-drag-placeholder {
-  opacity: 0;
 }
