@@ -1,8 +1,7 @@
 const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
-// Import the app version from package.json
-const { version } = require('./package.json');
+const { version, enableDevTools } = require('./package.json');
 const path = require('path');
 
 //#region Server Setup
@@ -111,7 +110,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: false, // disable devTools for production
+      devTools: enableDevTools === true,
     },
     frame: true,         // Show the window frame (this allows you to drag and resize the window)
     resizable: true,     // Allow resizing the window (optional)

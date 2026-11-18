@@ -1,6 +1,6 @@
 {
   "name": "easy-sankey",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A finance management tool for tracking expenses and managing budgets. Easy Sankey helps you create clear and simple financial visualisations without the need for Excel or technical skills. Just a few easy inputs, and you can see where your money goes!",
   "author": "Long Nguyen",
   "main": "main.js",
@@ -15,7 +15,7 @@
     "electron-build": "ng build --prod && electron .",
     "spell-check": "cspell \"src/**/*.ts\" \"src/**/*.html\"",
     "circular-check": "npx madge --circular --extensions ts ./",
-    "deploy-mac": "ng build && electron-builder --mac",
+    "deploy-mac": "node scripts/deploy-mac.js",
     "deploy-win": "ng build && electron-builder --win"
   },
   "private": true,

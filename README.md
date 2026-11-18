@@ -24,6 +24,8 @@ npm run deploy-mac -- --arm64 --publish never
 
 Find the DMG under `releases/v<version>/darwin/arm64/`, where `<version>` is the version in `package.json`.
 
+DevTools are disabled by default. To enable them in a local build, run `npm run deploy-mac -- --arm64 --publish never --devtools`.
+
 For Intel Macs, use `npm run deploy-mac -- --x64 --publish never`. On Windows, use `npm run deploy-win -- --x64 --publish never`.
 
 GitHub Actions builds the Windows x64 and Intel Mac installers on pushes to `main`. You can also run **Build Electron App** manually from the **Actions** tab and download the installers from that run's artifacts.
