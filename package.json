@@ -82,7 +82,7 @@
       "preload.js"
     ],
     "directories": {
-      "output": "releases/v__VERSION__/${platform}/${arch}"
+      "output": "releases/v${version}/${platform}/${arch}"
     },
     "mac": {
       "target": [

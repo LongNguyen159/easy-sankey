@@ -13,14 +13,20 @@ Edit Built App configs (windows size etc.) at `main.js` in root directory
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
 
-## Build and and deploy Desktop app for MacOS and Windows:
+## Build the desktop app
 
-1. Run `ng build` (if you changed the source code)
-2. Run `npx electron-builder --mac --win`
+Install Node.js 26 on the machine that will build the installer. On an Apple Silicon Mac, `node -p process.arch` should print `arm64`. Run these commands from the repository root to create a local DMG:
 
-### Edit build config
+```sh
+npm ci
+npm run deploy-mac -- --arm64 --publish never
+```
 
-Edit buid config at `package.json` and `angular.json`
+Find the DMG under `releases/v<version>/darwin/arm64/`, where `<version>` is the version in `package.json`.
+
+For Intel Macs, use `npm run deploy-mac -- --x64 --publish never`. On Windows, use `npm run deploy-win -- --x64 --publish never`.
+
+GitHub Actions builds the Windows x64 and Intel Mac installers on pushes to `main`. You can also run **Build Electron App** manually from the **Actions** tab and download the installers from that run's artifacts.
 
 
 ## Code scaffolding
