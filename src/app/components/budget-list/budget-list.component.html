@@ -1,33 +1,30 @@
-<div class="flex flex-row items-center w-full mb-4">
+<div class="flex flex-wrap items-center justify-between w-full gap-3 mb-4">
   <p class="font-bold text-2xl !m-0">Set a monthly Budget for your Categories</p>
+  <mat-button-toggle-group class="!border-0 !shadow-lg" aria-label="Budget view"
+    hideSingleSelectionIndicator [value]="view" (change)="setView($event.value)">
+    <mat-button-toggle class="!border-0" value="cards">Cards</mat-button-toggle>
+    <mat-button-toggle class="!border-0" value="list">List</mat-button-toggle>
+  </mat-button-toggle-group>
 </div>
 
-<div class="card-container">
+<div class="budget-container" [class.budget-list]="view === 'list'">
   @for (category of categories(); track category.value) {
-    <mat-card class="cursor-pointer budget-card"
-      (click)="onBudgetClick(category.value)"
-      (mouseenter)="onMouseEnter(category.value)"
-      (mouseleave)="onMouseLeave()"
-            [ngStyle]="{'border-color': hoveredCategory === category.value ? 
-                      (colorService.isDarkMode() ? category.colorDark : category.colorLight) : 'transparent'}"
-      >
-      <mat-card-header class="mb-4 flex flex-row w-full justify-center">
-        <div class="flex flex-col gap-2 items-center">
-          <mat-icon fontSet="material-symbols-outlined" class="flex flex-row w-full justify-center large-icon"
-            [ngStyle]="{'color': colorService.isDarkMode() ? category.colorDark : category.colorLight}">
-            {{ category.icon }}
-          </mat-icon>
-          <mat-card-title class="!font-bold flex flex-row w-full justify-center">{{ category.label }}</mat-card-title>
-        </div>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="flex flex-row w-full justify-center">
-          <div [ngStyle]="{'border-color': colorService.isDarkMode() ? '#404040' : '#d4d4d4' }"
-            class="flex flex-row justify-center items-center rounded-full px-4 py-2 cursor-pointer budget-indicator">
-            {{ getBudgetValue(category.value) }}
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+    <ng-template #budgetItem>
+      <button type="button" class="budget-item"
+        [style.--budget-category-color]="colorService.isDarkMode() ? category.colorDark : category.colorLight"
+        (click)="onBudgetClick(category.value)">
+        <mat-icon fontSet="material-symbols-outlined">{{ category.icon }}</mat-icon>
+        <span class="budget-label">{{ category.label }}</span>
+        <span class="budget-indicator">{{ getBudgetValue(category.value) }}</span>
+      </button>
+    </ng-template>
+    @if (view === 'list') {
+      <ng-container [ngTemplateOutlet]="budgetItem"></ng-container>
+    } @else {
+      <mat-card class="budget-card"
+        [style.--budget-category-color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">
+        <ng-container [ngTemplateOutlet]="budgetItem"></ng-container>
+      </mat-card>
+    }
   }
 </div>

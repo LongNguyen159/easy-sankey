@@ -1,11 +1,11 @@
 import { CategoryService } from '../../services/category.service';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { Budget } from '../models';
 import { MatIconModule } from '@angular/material/icon';
-import { CommonModule } from '@angular/common';
 import { ColorService } from '../../services/color.service';
-import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { BudgetService } from '../../services/budget.service';
 import { BudgetDialogComponent } from '../dialogs/budget-dialog/budget-dialog.component';
@@ -15,10 +15,10 @@ import { CurrencyService } from '../../services/currency.service';
 @Component({
     selector: 'app-budget-list',
     imports: [
-        CommonModule,
         MatCardModule,
         MatIconModule,
-        MatButtonModule
+        MatButtonToggleModule,
+        NgTemplateOutlet
     ],
     templateUrl: './budget-list.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
@@ -34,7 +34,7 @@ export class BudgetListComponent implements OnInit{
 
   budgets: Budget[] = [];
 
-  hoveredCategory: string | null = null;
+  protected view: 'cards' | 'list' = localStorage.getItem('budgetView') === 'list' ? 'list' : 'cards';
 
   constructor(private dialog: MatDialog) {}
 
@@ -42,14 +42,9 @@ export class BudgetListComponent implements OnInit{
     this.budgets = this.budgetService.getBudgets()
   }
 
-  /** Hover logic to display coloured border */
-  onMouseEnter(category: string) {
-    this.hoveredCategory = category;
-  }
-
-  /** Hover logic to display coloured border */
-  onMouseLeave() {
-    this.hoveredCategory = null;
+  protected setView(view: 'cards' | 'list'): void {
+    this.view = view;
+    localStorage.setItem('budgetView', view);
   }
 
 
@@ -76,7 +71,7 @@ export class BudgetListComponent implements OnInit{
    */
   getBudgetValue(category: string): string {
     const budgetValue = this.budgets.find(budget => budget.category === category)?.value;
-    return budgetValue ? this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()) + budgetValue.toLocaleString('en-US') : ' _';
+    return budgetValue ? this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()) + budgetValue.toLocaleString('en-US') : '—';
   }
   
 

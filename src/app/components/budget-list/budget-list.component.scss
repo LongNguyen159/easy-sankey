@@ -1,29 +1,100 @@
-.card-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 16px;
+.budget-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+  gap: 1rem;
 }
 
 .budget-card {
-    border: 2px solid transparent;
-    transition: border-color 0.3s;
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--budget-category-color);
+  }
 }
 
-// .budget-card.dark-mode:hover {
-//     border-color: #90caf9; /* Light Blue for dark mode */
-// }
+.budget-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  border-radius: inherit;
+  cursor: pointer;
 
-// .budget-card.light-mode:hover {
-//     border-color: #1976d2; /* Blue for light mode */
-// }
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  mat-icon {
+    color: var(--budget-category-color);
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    flex: none;
+  }
+}
+
+.budget-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  font-weight: 700;
+}
 
 .budget-indicator {
-    border: 2px solid;
-    font-weight: bold;
+  margin-top: 0.5rem;
+  border: 2px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
 }
 
-.large-icon {
-    font-size: 48px;
-    width: fit-content;
-    height: fit-content;
+.budget-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+
+  .budget-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    min-height: 3rem;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    padding: 0.5rem 0.75rem;
+    text-align: start;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &:hover {
+      background: var(--app-category-heading-hover-background);
+    }
+
+    &:focus-visible {
+      outline-offset: -2px;
+    }
+
+    mat-icon {
+      font-size: 1.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+  }
+
+  .budget-label {
+    font-weight: 500;
+  }
+
+  .budget-indicator {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    color: var(--mat-sys-on-surface-variant);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
 }
