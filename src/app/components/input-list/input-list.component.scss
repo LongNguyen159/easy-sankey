@@ -39,3 +39,27 @@ mat-card {
   padding-right: 8px;
   font-weight: 500;
 }
+.category-section-heading {
+  margin: 0.25rem 0;
+}
+
+.entry-reorder-handle {
+  flex: none;
+  margin-top: 0.5rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.entry-reorder-handle:active {
+  cursor: grabbing;
+}
+
+.entry-editor-row.cdk-drag-preview {
+  background-color: var(--mat-sys-surface-container);
+  border-radius: 0.5rem;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.entry-editor-row.cdk-drag-placeholder {
+  opacity: 0;
+}

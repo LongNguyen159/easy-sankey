@@ -43,7 +43,7 @@
         <!-- Target -->
         <mat-form-field appearance="fill">
           <mat-label>Name</mat-label>
-          <input matInput formControlName="target" placeholder="Entry name" />
+          <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
           @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
             <mat-error>
               This name is not allowed.

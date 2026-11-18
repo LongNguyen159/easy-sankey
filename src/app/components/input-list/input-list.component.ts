@@ -1,8 +1,10 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
+import { afterNextRender, Component, ElementRef, inject, Injector, Input, OnDestroy, OnInit, QueryList, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
-import { DateChanges, EntryType, UserDefinedLink } from '../models';
+import { DateChanges, EntryType, ExpenseCategoryDetails, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {MatInputModule} from '@angular/material/input';
@@ -48,6 +50,13 @@ function nonEmptyValidator(): ValidatorFn {
   };
 }
 
+interface EntryGroup {
+  id: string;
+  label: string;
+  rows: FormGroup[];
+  category?: ExpenseCategoryDetails;
+}
+
 enum ErrorType {
   DuplicatedName = 'duplicatedName',
   EmptyType = 'emptyType',
@@ -57,7 +66,7 @@ enum ErrorType {
 }
 @Component({
     selector: 'app-input-list',
-    imports: [MatButtonModule,
+    imports: [MatButtonModule, CdkDrag, CdkDragHandle, CdkDropList,
         ReactiveFormsModule,
         CommonModule,
         MatInputModule,
@@ -105,7 +114,7 @@ enum ErrorType {
  * 
  */
 
-export class InputListComponent extends BasePageComponent implements OnInit, AfterViewInit, OnDestroy {
+export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
   @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
@@ -117,7 +126,13 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   router = inject(Router)
 
   @ViewChildren(MatAutocompleteTrigger) autocompleteTriggers!: QueryList<MatAutocompleteTrigger>;
-  @ViewChild('bottomContent') bottomContent!: ElementRef;
+  @ViewChildren('entryName') private entryNames!: QueryList<ElementRef<HTMLInputElement>>;
+
+  private readonly injector = inject(Injector);
+  private readonly announcer = inject(LiveAnnouncer);
+  private readonly newEntries = new Set<FormGroup>();
+  protected readonly collapsedCategories = new Set<string>();
+  protected groupByCategory = localStorage.getItem('entryView') === 'category';
 
 
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
@@ -345,6 +360,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   /** Initialise/Populate the form with predefined data */
   populateInputFields(selectedMonthData: SingleMonthData): void {
     /** clear the form and repopulate it with new data. */
+    this.newEntries.clear();
     this.linkArray.clear({ emitEvent: false });
     
     const links = this.dataService.isDemo() ? this.demoLinks : selectedMonthData.rawInput;
@@ -379,6 +395,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   onMonthChanges(selectedMonth: DateChanges) {
     const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
     const prevMonth = formatDateToYYYYMM(selectedMonth.previousMonth)
+    const previousFormValid = this.linkForm.valid;
 
     /** This will trigger subscription onInit of this component. No need to update global variables here as we already did it in the subscription. */
     onMonthChanges(selectedMonth.currentMonth, this.allMonthsData, this.singleMonthData, this.dataService)
@@ -387,8 +404,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      * Else it would process every previous months on month changes.
      */
     if (currentMonth !== prevMonth && this.hasChanges) {
-      // Process previous month values if there are changes of that month and user navigate to another month.
-      this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues)
+      if (previousFormValid) {
+        this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues);
+      }
       
       // Reset has changes flag after processing the month.
       this.hasChanges = false;
@@ -399,14 +417,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      */
     this.savedFormValues = this.linkForm.value.links.slice();
   }
-
-  ngAfterViewInit(): void {
-    /** Scroll to bottom of dialog input every time component is initialised.
-     * Do it here because the view is not yet rendered in ngOnInit.
-     */
-    // this.scrollToBottom();
-  }
-
 
   /** This function is used to process the previous month (in compare to current month).
    * Triggered when user changes the month.
@@ -793,26 +803,110 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
 
   /********** Filter/Add/Remove Links **********/
 
-  // Add a new input row
+  protected toggleEntryView(): void {
+    this.groupByCategory = !this.groupByCategory;
+    localStorage.setItem('entryView', this.groupByCategory ? 'category' : 'costType');
+  }
+
+  protected toggleCategory(id: string): void {
+    if (!this.collapsedCategories.delete(id)) this.collapsedCategories.add(id);
+  }
+
+  protected visibleEntries(isFixCost?: boolean): FormGroup[] {
+    return this.linkArray.controls.filter(row =>
+      this.filteredLinkIds.includes(row.get('id')?.value)
+      && (isFixCost === undefined || Boolean(row.get('isFixCost')?.value) === isFixCost)
+    );
+  }
+
+  protected get draftEntries(): FormGroup[] {
+    return this.visibleEntries().filter(row => this.newEntries.has(row));
+  }
+
+  protected get categoryGroups(): EntryGroup[] {
+    const rowsByCategory = new Map<string, FormGroup[]>();
+    for (const row of this.visibleEntries()) {
+      if (this.newEntries.has(row)) continue;
+      const source = row.get('type')?.value === EntryType.Expense ? row.get('source')?.value : '';
+      const id = this.categoryService.get(source)?.value ?? '';
+      const rows = rowsByCategory.get(id) ?? [];
+      rows.push(row);
+      rowsByCategory.set(id, rows);
+    }
+
+    const groups: EntryGroup[] = [];
+    const uncategorized = rowsByCategory.get('');
+    if (uncategorized) groups.push({ id: '', label: 'Uncategorized', rows: uncategorized });
+    for (const category of this.categoryService.categories()) {
+      const rows = rowsByCategory.get(category.value);
+      if (rows) groups.push({ id: category.value, label: category.label, category, rows });
+    }
+    return groups;
+  }
+
   addLink(): void {
-    /** Mark as untouch to prevent form being marked as invalid on adding link without doing anything yet */
-    this.linkForm.markAsUntouched()
-    this.linkArray.push(this._createLinkGroup(), { emitEvent: false });
-    // scroll to bottom after adding new form field
-    setTimeout(() => {
-      this.scrollToBottom()
-    }, this.isVariableCostsExpanded ? 200 : 300);
+    this.linkForm.markAsUntouched();
+    const row = this._createLinkGroup();
+    this.newEntries.add(row);
+    this.linkArray.insert(0, row, { emitEvent: false });
+    this.filterLinks('');
+    if (this.groupByCategory) this.collapsedCategories.delete('');
+    this.isVariableCostsExpanded = true;
+    this.updateSavedFormValuesOnFormChanges();
+
+    const id = row.get('id')?.value;
+    afterNextRender(() => {
+      this.entryNames.find(field => field.nativeElement.dataset['entryId'] === id)?.nativeElement.focus();
+    }, { injector: this.injector });
+  }
+
+  protected dropEntries(event: CdkDragDrop<FormGroup[]>): void {
+    if (event.isPointerOverContainer) {
+      this.reorderEntries(event.container.data, event.previousIndex, event.currentIndex);
+    }
+  }
+
+  protected moveEntryWithKeyboard(event: Event, rows: FormGroup[], from: number, to: number): void {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLButtonElement;
+    if (this.reorderEntries(rows, from, to)) {
+      afterNextRender(() => handle.focus(), { injector: this.injector });
+    }
+  }
+
+  private reorderEntries(rows: FormGroup[], from: number, to: number): boolean {
+    if (from === to || from < 0 || from >= rows.length || to < 0 || to >= rows.length) return false;
+    const controls = [...this.linkArray.controls];
+    const slots = rows.map(row => controls.indexOf(row));
+    if (slots.includes(-1)) return false;
+
+    // Keep the positions of rows outside this section or filtered out by search.
+    const reordered = [...rows];
+    moveItemInArray(reordered, from, to);
+    slots.forEach((slot, index) => controls[slot] = reordered[index]);
+    this.linkArray.clear({ emitEvent: false });
+    this.linkArray.push(controls, { emitEvent: false });
+    this.updateSavedFormValuesOnFormChanges();
+    const name = reordered[to].get('target')?.value || 'New entry';
+    void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);
+    return true;
+  }
+
+  protected removeEntry(row: FormGroup): void {
+    this.removeLink(this.linkArray.controls.indexOf(row));
   }
 
   // Remove an input row
   removeLink(index: number): void {
-    /** find the invalid input, only process the valid inputs. */
-    const link: UserDefinedLink = this.linkArray.at(index).value;
+    if (index < 0) return;
+    const row = this.linkArray.at(index);
+    const link: UserDefinedLink = row.value;
+    this.newEntries.delete(row);
     this.filteredLinkIds = this.filteredLinkIds.filter(id => id !== link.id);
     this.linkArray.removeAt(index, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges()
-    this.hasDuplicates = this._checkDuplicateName()
-    this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
+    this.hasDuplicates = this._checkDuplicateName();
+    if (this.linkForm.valid) this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
   }
   
   //#endregion
@@ -820,8 +914,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
 
   //#region Getters
   // Getter to easily access the FormArray
-  get linkArray(): FormArray {
-    return this.linkForm.get('links') as FormArray;
+  get linkArray(): FormArray<FormGroup> {
+    return this.linkForm.get('links') as FormArray<FormGroup>;
   }
 
   get fixCosts(): UserDefinedLink[] {
@@ -864,10 +958,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
     }, 0);
   }
 
-
-  scrollToBottom(): void {
-    this.bottomContent.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }
 
   navigateToFixCosts() {
     this.dataService.setNavigateFixCostState(true)
