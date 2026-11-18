@@ -835,12 +835,12 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     }
 
     const groups: EntryGroup[] = [];
-    const uncategorized = rowsByCategory.get('');
-    if (uncategorized) groups.push({ id: '', label: 'Uncategorized', rows: uncategorized });
     for (const category of this.categoryService.categories()) {
       const rows = rowsByCategory.get(category.value);
       if (rows) groups.push({ id: category.value, label: category.label, category, rows });
     }
+    const uncategorized = rowsByCategory.get('');
+    if (uncategorized) groups.push({ id: '', label: 'Uncategorized', rows: uncategorized });
     return groups;
   }
 
@@ -848,7 +848,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkForm.markAsUntouched();
     const row = this._createLinkGroup();
     this.newEntries.add(row);
-    this.linkArray.insert(0, row, { emitEvent: false });
+    this.linkArray.push(row, { emitEvent: false });
     this.filterLinks('');
     if (this.groupByCategory) this.collapsedCategories.delete('');
     this.isVariableCostsExpanded = true;

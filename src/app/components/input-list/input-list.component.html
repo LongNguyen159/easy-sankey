@@ -17,7 +17,7 @@
           <mat-icon fontSet="material-symbols-outlined">history</mat-icon>
           <!-- <span>Last updated</span> -->
           <span matTooltip="Last edited" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}" class="text-highlight">
-            {{ singleMonthData.lastUpdated | date: 'dd. MMM YYYY' }}
+            {{ singleMonthData.lastUpdated | date: 'dd. MMM yyyy' }}
           </span>
         </div>
       }
@@ -75,49 +75,29 @@
   <!-- LINKS CONTAINER -->
   <div>
     <mat-divider class="!mb-4" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
-    <!-- FIX COSTS SECTION -->
-    <div class="flex flex-row items-center w-full mb-2">
+    <div class="entry-cost-header" [class.entry-cost-header-compact]="groupByCategory">
       @if (!groupByCategory) {
         <button mat-icon-button type="button" class="mr-2" aria-label="Fix Costs"
           [attr.aria-expanded]="isFixCostsExpanded || isSearching" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isFixCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
+        <p class="font-bold text-2xl !m-0 cursor-pointer" (click)="isFixCostsExpanded = !isFixCostsExpanded">
+          Fix Costs ({{ fixCosts.length }})
+        </p>
       }
-      <p class="font-bold text-2xl !m-0 flex flex-row w-full items-center"
-        [class.cursor-pointer]="!groupByCategory" (click)="!groupByCategory && (isFixCostsExpanded = !isFixCostsExpanded)">
-        <span>Fix Costs</span>&nbsp;
-        <span>
-          ({{ fixCosts.length }})
-        </span>
-      </p>
 
-      <!-- PASTE FIX COSTS BUTTON -->
-      <div class="flex flex-row w-full gap-2 justify-end">
-        <div>
-          <button mat-button (click)="navigateToFixCosts()">
-            <mat-icon fontSet="material-symbols-outlined">open_in_new</mat-icon>
-            Edit Fix Costs
-          </button>
-        </div>
-        <button
-          mat-stroked-button
-          (click)="pasteFixCosts()"
-          [disabled]="fixedLinks.length == 0"
-          class="ml-2"
-          >
-          <!-- IF FIX COST ALREADY EXISTS, SHOW UPDATE INSTEAD OF PASTING -->
-          @if (fixCosts.length > 0) {
-            <div class="flex flex-row items-center gap-2">
-              <mat-icon fontSet="material-symbols-outlined">update</mat-icon>
-              <span>Update Fix Costs</span>
-            </div>
-          } @else {
-            <div class="flex flex-row items-center gap-2">
-              <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>
-              <span>{{ fixedLinks.length == 0 ? 'No Fix costs defined' : 'Paste Fix Costs'  }}</span>
-            </div>
-          }
+      <div class="entry-fix-cost-actions" role="group" aria-label="Fix Costs actions">
+        <button mat-button type="button" (click)="navigateToFixCosts()">
+          <mat-icon fontSet="material-symbols-outlined">open_in_new</mat-icon>
+          Edit Fix Costs
         </button>
+        @if (!groupByCategory || fixedLinks.length > 0) {
+          <button [matButton]="groupByCategory ? 'text' : 'outlined'" type="button"
+            (click)="pasteFixCosts()" [disabled]="fixedLinks.length === 0">
+            <mat-icon fontSet="material-symbols-outlined">{{ fixCosts.length ? 'update' : 'content_paste' }}</mat-icon>
+            {{ fixCosts.length ? 'Update Fix Costs' : fixedLinks.length ? 'Paste Fix Costs' : 'No Fix costs defined' }}
+          </button>
+        }
       </div>
     </div>
 
@@ -129,22 +109,31 @@
     }
 
     @if (groupByCategory) {
-      @if (draftEntries.length) {
-        <ng-container *ngTemplateOutlet="entryList; context: { $implicit: draftEntries }"></ng-container>
-      }
       @for (group of categoryGroups; track group.id) {
-        <mat-divider></mat-divider>
-        <button mat-button type="button" class="category-section-heading" (click)="toggleCategory(group.id)"
-          [attr.aria-expanded]="!collapsedCategories.has(group.id)">
-          <mat-icon fontSet="material-symbols-outlined">{{ collapsedCategories.has(group.id) ? 'expand_more' : 'expand_less' }}</mat-icon>
-          @if (group.category; as category) {
-            <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+        <section class="entry-category-section">
+          <h3 class="category-section-title">
+            <button type="button" class="category-section-heading" (click)="toggleCategory(group.id)"
+              [attr.aria-expanded]="!collapsedCategories.has(group.id)">
+              @if (group.category; as category) {
+                <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+              } @else {
+                <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
+              }
+              <span class="category-section-label">{{ group.label }}</span>
+              <!-- <span class="category-section-count">{{ group.rows.length }} {{ group.rows.length === 1 ? 'entry' : 'entries' }}</span> -->
+              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedCategories.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+            </button>
+          </h3>
+          @if (!collapsedCategories.has(group.id)) {
+            <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
           }
-          {{ group.label }} ({{ group.rows.length }})
-        </button>
-        @if (!collapsedCategories.has(group.id)) {
-          <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
-        }
+        </section>
+        <!-- <mat-divider></mat-divider> -->
+      }
+      @if (draftEntries.length) {
+        <div class="entry-category-drafts">
+          <ng-container *ngTemplateOutlet="entryList; context: { $implicit: draftEntries }"></ng-container>
+        </div>
       }
     } @else {
       <mat-card class="mb-4 material-background-dialog-custom" [@expandCollapse]="isFixCostsExpanded || isSearching ? 'expanded' : 'collapsed'">
