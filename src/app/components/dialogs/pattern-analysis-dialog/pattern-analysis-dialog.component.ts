@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, Inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -7,7 +7,7 @@ import { CategoryRegressionChartComponent } from "../../charts/category-regressi
 
 @Component({
     selector: 'app-pattern-analysis-dialog',
-    imports: [MatDialogModule, MatButtonModule, CommonModule, CategoryRegressionChartComponent],
+    imports: [MatDialogModule, MatButtonModule, CategoryRegressionChartComponent],
     templateUrl: './pattern-analysis-dialog.component.html',
     styleUrl: './pattern-analysis-dialog.component.scss'
 })

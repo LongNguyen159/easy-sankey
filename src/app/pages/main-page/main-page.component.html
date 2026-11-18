@@ -1,171 +1,171 @@
-<div class="flex flex-col">    
-    <app-navbar [showBackButton]="false" class="navbar">
-        <app-month-picker (monthSelected)="onMonthChanges($event)" [highlightedMonths]="highlightMonths"></app-month-picker>
-    </app-navbar>
-    <div class="p-4 pt-0">
-        <div [ngClass]="isVerticalLayout ? 'flex flex-col p-4' : 'grid grid-cols-2 gap-8 p-4'">
-            <!-- CHART SECTION -->
-            <div class="flex flex-col gap-8">
-                <!-- SANKEY CHART -->
-                <section>
-                    <div class="flex flex-row w-full items-center justify-end gap-2">
-                        <div class="flex flex-row items-center gap-1">
-                            <!-- <div class="text-sm">Vertical View</div>
-                            <div>
-                                <mat-slide-toggle [(ngModel)]="isSankeyVertical" color="primary" labelPosition="before"></mat-slide-toggle>
-                            </div> -->
-                            <button mat-button (click)="isSankeyVertical = !isSankeyVertical">
-                                <mat-icon fontSet="material-symbols-outlined">{{ isSankeyVertical ? 'swap_horiz' : 'swap_vert' }}</mat-icon>
-                                {{ isSankeyVertical ? 'Horizontal View' : 'Vertical View' }}
-                            </button>
-                        </div>
-
-                        <div class="flex flex-row items-center gap-1">
-                            <!-- <div class="text-sm">Show Trends</div>
-                            <div>
-                                <mat-slide-toggle matTooltip="Show trends compared to last month" [matTooltipShowDelay]="800" [(ngModel)]="isShowInsights" color="primary" labelPosition="before"></mat-slide-toggle>
-                            </div> -->
-
-                            <button mat-button (click)="isShowInsights = !isShowInsights">
-                                <mat-icon fontSet="material-symbols-outlined">{{ isShowInsights ? 'hide_source' : 'show_chart' }}</mat-icon>
-                                {{ isShowInsights ? 'Hide Trends' : 'Show Trends' }}
-                            </button>
-                        </div>
-                    </div>
-                    <app-sankey-chart
-                        [sankeyData]="entriesOfOneMonth.sankeyData"
-                        [remainingBalance]="entriesOfOneMonth.remainingBalance"
-                        [orientation]="isSankeyVertical ? 'vertical' : 'horizontal'"
-                        [showInsights]="isShowInsights"
-                        [monthInsights]="monthInsights"
-                    ></app-sankey-chart>
-                </section>
-
-                <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
-
-
-
-                <!-- BUDGET VS ACTUAL SPENDING -->
-                <div class="flex flex-col w-full items-center justify-center">
-                    @if(budgets.length !== 0) {
-                        <div class="flex flex-row w-full justify-end">
-                            <button mat-button (click)="navigateToBudgetList()">
-                                <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
-                                <span>Edit Budgets</span>
-                            </button>
-                        </div>
-                    }
-                    <h2 class="font-bold">
-                        Budget vs Actual Spending
-                    </h2>
-                    <div class="flex flex-row items-center gap-2">
-                        <button mat-button (click)="dialogService.openTrackerDialog()">
-                            <mat-icon fontSet="material-symbols-outlined">rocket_launch</mat-icon>
-                            <span>View Spending Progress</span>
-                        </button>
-                    </div>
-
-                    @if (indicators.length == 0 && budgets.length !== 0) {
-                        <p class="mt-4">
-                            Budget Charts will appear here once you enter your actual spending on the set budgets.
-                        </p>
-                    }
-                </div>
-                
-
-
-                @if (budgets.length == 0) {
-                    <div class="flex flex-col w-full justify-center items-center gap-2">
-                      <p>No budgets set yet!</p>
-                      <button mat-stroked-button color="primary" (click)="navigateToBudgetList()">Create One Now</button>
-                    </div>
-                  }
-
-                <div class="flex flex-row w-full items-center justify-end">
-                    <!-- ENABLE TOGGLE GAUGE CHART IF RADAR CHART EXISTS -->
-                    @if (indicators.length > 2) {
-                        <div class="flex flex-row w-full items-center justify-end gap-1">
-                            <div class="text-sm">Show Gauge Chart</div>
-                            <div>
-                                <mat-slide-toggle [(ngModel)]="showGaugeChart" color="primary" labelPosition="before"></mat-slide-toggle>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-                <!-- SHOW RADAR CHART IF THERE ARE MORE THAN 2 BUDGETS CATEGORIES -->
-                @if (indicators.length > 2) {
-                    <section>
-                        <app-budget-radar-chart
-                            [budget]="budgets"
-                            [actualSpending]="spending"
-                        ></app-budget-radar-chart>
-                        
-                    </section>
-                }
-
-                <!-- GAUGE CHART IS OPTIONAL, CAN BE TOGGLED -->
-                @if (showGaugeChart) {
-                    <section>
-                        <div class="gauge-chart-container">
-                            <ng-container *ngFor="let item of indicators;">
-                                <app-budget-gauge-chart 
-                                    [title]="item.label"
-                                    [budget]="getBudgetValue(item.value)"
-                                    [actualSpending]="getActualSpendingValue(item.value)"
-                                    [color]="colorService.isDarkMode() ? (item.colorDark || 'rgb(92, 144, 247)') : (item.colorLight || 'rgb(90, 111, 192)')">
-                                </app-budget-gauge-chart>
-                            </ng-container>
-                        </div>
-                    </section>
-                }
-
-
-                <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
-
-
-                <!-- NETTO CHART -->
-                <section>
-                    <div class="flex flex-row w-full items-center justify-end gap-2">
-                        <button mat-button class="flex flex-row items-center" (click)="viewTreeMap = !viewTreeMap">
-                            <mat-icon fontSet="material-symbols-outlined">{{ viewTreeMap ? 'pie_chart' : 'map' }}</mat-icon>
-                            <span>{{ viewTreeMap ? 'View Pie Chart' : 'View Tree Map' }}</span>
-                        </button>
-
-                        <button mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
-                            <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>
-                            <span>Did You Know?</span>
-                        </button>
-
-                    </div>
-
-
-                    <app-pie-chart [showPieChart]="!viewTreeMap" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
-                        [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
-                    ></app-pie-chart>
-                    @if (viewTreeMap) {
-                        <section>
-                            <div class="flex flex-row w-full justify-center">
-                                <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [totalExpenses]="totalExpenses" [totalNetIncome]="totalNetIncome"></app-treemap-chart>
-                            </div>
-                        </section>
-                    }
-                </section>
-
-
-
-                <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
-
-                @if (showGrossIncomePieChart) {
-                    <section>
-                        <!-- BRUTTO CHART -->
-                        <app-pie-chart [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
-                            [totalIncome]="totalGrossIncome"
-                        ></app-pie-chart>
-                    </section>
-                }
-
+<div class="flex flex-col">
+  <app-navbar [showBackButton]="false" class="navbar">
+    <app-month-picker (monthSelected)="onMonthChanges($event)" [highlightedMonths]="highlightMonths"></app-month-picker>
+  </app-navbar>
+  <div class="p-4 pt-0">
+    <div [ngClass]="isVerticalLayout ? 'flex flex-col p-4' : 'grid grid-cols-2 gap-8 p-4'">
+      <!-- CHART SECTION -->
+      <div class="flex flex-col gap-8">
+        <!-- SANKEY CHART -->
+        <section>
+          <div class="flex flex-row w-full items-center justify-end gap-2">
+            <div class="flex flex-row items-center gap-1">
+              <!-- <div class="text-sm">Vertical View</div>
+              <div>
+                <mat-slide-toggle [(ngModel)]="isSankeyVertical" color="primary" labelPosition="before"></mat-slide-toggle>
+              </div> -->
+              <button mat-button (click)="isSankeyVertical = !isSankeyVertical">
+                <mat-icon fontSet="material-symbols-outlined">{{ isSankeyVertical ? 'swap_horiz' : 'swap_vert' }}</mat-icon>
+                {{ isSankeyVertical ? 'Horizontal View' : 'Vertical View' }}
+              </button>
             </div>
+
+            <div class="flex flex-row items-center gap-1">
+              <!-- <div class="text-sm">Show Trends</div>
+              <div>
+                <mat-slide-toggle matTooltip="Show trends compared to last month" [matTooltipShowDelay]="800" [(ngModel)]="isShowInsights" color="primary" labelPosition="before"></mat-slide-toggle>
+              </div> -->
+
+              <button mat-button (click)="isShowInsights = !isShowInsights">
+                <mat-icon fontSet="material-symbols-outlined">{{ isShowInsights ? 'hide_source' : 'show_chart' }}</mat-icon>
+                {{ isShowInsights ? 'Hide Trends' : 'Show Trends' }}
+              </button>
+            </div>
+          </div>
+          <app-sankey-chart
+            [sankeyData]="entriesOfOneMonth.sankeyData"
+            [remainingBalance]="entriesOfOneMonth.remainingBalance"
+            [orientation]="isSankeyVertical ? 'vertical' : 'horizontal'"
+            [showInsights]="isShowInsights"
+            [monthInsights]="monthInsights"
+          ></app-sankey-chart>
+        </section>
+
+        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+
+
+
+        <!-- BUDGET VS ACTUAL SPENDING -->
+        <div class="flex flex-col w-full items-center justify-center">
+          @if(budgets.length !== 0) {
+            <div class="flex flex-row w-full justify-end">
+              <button mat-button (click)="navigateToBudgetList()">
+                <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
+                <span>Edit Budgets</span>
+              </button>
+            </div>
+          }
+          <h2 class="font-bold">
+            Budget vs Actual Spending
+          </h2>
+          <div class="flex flex-row items-center gap-2">
+            <button mat-button (click)="dialogService.openTrackerDialog()">
+              <mat-icon fontSet="material-symbols-outlined">rocket_launch</mat-icon>
+              <span>View Spending Progress</span>
+            </button>
+          </div>
+
+          @if (indicators.length == 0 && budgets.length !== 0) {
+            <p class="mt-4">
+              Budget Charts will appear here once you enter your actual spending on the set budgets.
+            </p>
+          }
         </div>
-    </div>    
+
+
+
+        @if (budgets.length == 0) {
+          <div class="flex flex-col w-full justify-center items-center gap-2">
+            <p>No budgets set yet!</p>
+            <button mat-stroked-button color="primary" (click)="navigateToBudgetList()">Create One Now</button>
+          </div>
+        }
+
+        <div class="flex flex-row w-full items-center justify-end">
+          <!-- ENABLE TOGGLE GAUGE CHART IF RADAR CHART EXISTS -->
+          @if (indicators.length > 2) {
+            <div class="flex flex-row w-full items-center justify-end gap-1">
+              <div class="text-sm">Show Gauge Chart</div>
+              <div>
+                <mat-slide-toggle [(ngModel)]="showGaugeChart" color="primary" labelPosition="before"></mat-slide-toggle>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- SHOW RADAR CHART IF THERE ARE MORE THAN 2 BUDGETS CATEGORIES -->
+        @if (indicators.length > 2) {
+          <section>
+            <app-budget-radar-chart
+              [budget]="budgets"
+              [actualSpending]="spending"
+            ></app-budget-radar-chart>
+
+          </section>
+        }
+
+        <!-- GAUGE CHART IS OPTIONAL, CAN BE TOGGLED -->
+        @if (showGaugeChart) {
+          <section>
+            <div class="gauge-chart-container">
+              @for (item of indicators; track item) {
+                <app-budget-gauge-chart
+                  [title]="item.label"
+                  [budget]="getBudgetValue(item.value)"
+                  [actualSpending]="getActualSpendingValue(item.value)"
+                  [color]="colorService.isDarkMode() ? (item.colorDark || 'rgb(92, 144, 247)') : (item.colorLight || 'rgb(90, 111, 192)')">
+                </app-budget-gauge-chart>
+              }
+            </div>
+          </section>
+        }
+
+
+        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+
+
+        <!-- NETTO CHART -->
+        <section>
+          <div class="flex flex-row w-full items-center justify-end gap-2">
+            <button mat-button class="flex flex-row items-center" (click)="viewTreeMap = !viewTreeMap">
+              <mat-icon fontSet="material-symbols-outlined">{{ viewTreeMap ? 'pie_chart' : 'map' }}</mat-icon>
+              <span>{{ viewTreeMap ? 'View Pie Chart' : 'View Tree Map' }}</span>
+            </button>
+
+            <button mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
+              <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>
+              <span>Did You Know?</span>
+            </button>
+
+          </div>
+
+
+          <app-pie-chart [showPieChart]="!viewTreeMap" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
+          ></app-pie-chart>
+          @if (viewTreeMap) {
+            <section>
+              <div class="flex flex-row w-full justify-center">
+                <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [totalExpenses]="totalExpenses" [totalNetIncome]="totalNetIncome"></app-treemap-chart>
+              </div>
+            </section>
+          }
+        </section>
+
+
+
+        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+
+        @if (showGrossIncomePieChart) {
+          <section>
+            <!-- BRUTTO CHART -->
+            <app-pie-chart [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
+              [totalIncome]="totalGrossIncome"
+            ></app-pie-chart>
+          </section>
+        }
+
+      </div>
+    </div>
+  </div>
 </div>

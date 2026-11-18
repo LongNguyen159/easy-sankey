@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, Inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,9 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 
 @Component({
     selector: 'app-budget-dialog',
-    imports: [MatDialogModule, MatButtonModule, CommonModule,
-        MatInputModule, FormsModule, MatFormFieldModule
-    ],
+    imports: [MatDialogModule, MatButtonModule, MatInputModule, FormsModule, MatFormFieldModule],
     templateUrl: './budget-dialog.component.html',
     styleUrl: './budget-dialog.component.scss'
 })

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter } from '@angular/material/core';
@@ -8,10 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
     selector: 'app-month-picker-header',
     imports: [
-        MatIconModule,
-        MatButtonModule,
-        CommonModule
-    ],
+    MatIconModule,
+    MatButtonModule
+],
     templateUrl: './month-picker-header.component.html',
     styleUrl: './month-picker-header.component.scss'
 })

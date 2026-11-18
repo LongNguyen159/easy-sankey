@@ -1,83 +1,88 @@
 @if(!linkForm.valid && linkForm.touched) {
-    <div class="flex flex-row w-full justify-end">
-      <div class="fixed top-16 z-50">
-        @if(!hasDuplicates) {
-          <app-error-card></app-error-card>
-        } @else {
-          <app-error-card [errorMessage]="errorMessage">
-            </app-error-card>
-        }
-      </div>
+  <div class="flex flex-row w-full justify-end">
+    <div class="fixed top-16 z-50">
+      @if(!hasDuplicates) {
+        <app-error-card></app-error-card>
+      } @else {
+        <app-error-card [errorMessage]="errorMessage">
+        </app-error-card>
+      }
     </div>
+  </div>
 }
 
 <div [formGroup]="linkForm" class="link-form-container" #bottomContent id="bottom-content">
-    <!-- LINKS CONTAINER -->
-    <div formArrayName="links" class="mb-14">
-    
-      <!-- VARIABLE COSTS SECTION -->
-      <div class="flex flex-row items-center gap-2 w-full mb-4">
-        <p class="font-bold text-2xl !m-0">Fix Costs</p>
-        <button mat-icon-button class="!flex flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
-          <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
-        </button>
+  <!-- LINKS CONTAINER -->
+  <div formArrayName="links" class="mb-14">
+
+    <!-- VARIABLE COSTS SECTION -->
+    <div class="flex flex-row items-center gap-2 w-full mb-4">
+      <p class="font-bold text-2xl !m-0">Fix Costs</p>
+      <button mat-icon-button class="!flex flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
+        <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
+      </button>
+    </div>
+    <div class="mb-4">
+      <p>
+        Fix costs are costs that occur regularly and are not influenced by your actions. They are fixed and
+        predictable. Examples are rent, insurance, or subscriptions.
+      </p>
+    </div>
+    @if (linkArray.controls.length == 0) {
+      <div class="flex flex-col w-full items-center justify-center gap-2 middle-screen">
+        <span class="font-bold">
+          No Fix Costs defined yet. Add some by clicking 'Add Entries' below.
+        </span>
+        <mat-icon fontSet="material-symbols-outlined" class="big-icon">
+          arrow_downward
+        </mat-icon>
       </div>
-      <div class="mb-4">
-        <p>
-          Fix costs are costs that occur regularly and are not influenced by your actions. They are fixed and
-          predictable. Examples are rent, insurance, or subscriptions.
-        </p>
-      </div>
-      @if (linkArray.controls.length == 0) {
-        <div class="flex flex-col w-full items-center justify-center gap-2 middle-screen">
-          <span class="font-bold">
-            No Fix Costs defined yet. Add some by clicking 'Add Entries' below.
-          </span>
-          <mat-icon fontSet="material-symbols-outlined" class="big-icon">
-            arrow_downward
-          </mat-icon>
-        </div>
-      }
-      <div *ngFor="let linkGroup of linkArray.controls; let i = index" [formGroupName]="i" class="link-row">
+    }
+    @for (linkGroup of linkArray.controls; track linkGroup; let i = $index) {
+      <div [formGroupName]="i" class="link-row">
         <!-- Target -->
         <mat-form-field appearance="fill">
           <mat-label>Name</mat-label>
           <input matInput formControlName="target" placeholder="Entry name" />
-          <mat-error *ngIf="linkGroup.get('target')?.hasError('restrictedNodeName')">
-            This name is not allowed.
-          </mat-error>
-  
-          <mat-error *ngIf="linkGroup.get('target')?.hasError('cycle')">
-            This creates a cycle!
-          </mat-error>
-  
-          <mat-error *ngIf="linkGroup.get('target')?.hasError('duplicatedName')">
-            Duplicated name.
-          </mat-error>
-  
-          <mat-error *ngIf="linkGroup.get('target')?.hasError('emptyOrWhitespace')">
-            Name cannot be empty.
-          </mat-error>
+          @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
+            <mat-error>
+              This name is not allowed.
+            </mat-error>
+          }
+          @if (linkGroup.get('target')?.hasError('cycle')) {
+            <mat-error>
+              This creates a cycle!
+            </mat-error>
+          }
+          @if (linkGroup.get('target')?.hasError('duplicatedName')) {
+            <mat-error>
+              Duplicated name.
+            </mat-error>
+          }
+          @if (linkGroup.get('target')?.hasError('emptyOrWhitespace')) {
+            <mat-error>
+              Name cannot be empty.
+            </mat-error>
+          }
         </mat-form-field>
-        
         <!-- Type (Income, Expense, Tax) -->
         <mat-form-field appearance="fill">
           <mat-select formControlName="type" placeholder="Type" (selectionChange)="checkTaxNodeExists()">
-            <mat-option *ngFor="let type of linkTypes" [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
+            @for (type of linkTypes; track type) {
+              <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
+            }
           </mat-select>
         </mat-form-field>
-  
-  
         <!-- Value -->
         <mat-form-field appearance="fill">
           <mat-label>Amount</mat-label>
           <input matInput formControlName="value" type="number" placeholder="Value" (blur)="updateInput()" />
-  
-          <mat-error *ngIf="linkGroup.get('value')?.hasError('min')">
-            Amount must be greater than or equal 0.
-          </mat-error>
+          @if (linkGroup.get('value')?.hasError('min')) {
+            <mat-error>
+              Amount must be greater than or equal 0.
+            </mat-error>
+          }
         </mat-form-field>
-  
         <!-- Select with search -->
         <mat-form-field appearance="fill">
           <mat-label>Category</mat-label>
@@ -85,36 +90,38 @@
             <mat-option>
               <ngx-mat-select-search [formControl]="sourceSearchControl" placeholderLabel="Search categories..." noEntriesFoundLabel="No entries found."></ngx-mat-select-search>
             </mat-option>
-            <mat-option *ngFor="let node of filteredNodes" [value]="node.value">
-              @if(node.icon) {
-                <mat-icon fontSet="material-symbols-outlined"
-                  [ngStyle]="{'color': colorService.isDarkMode() ? node.colorDark : node.colorLight}"
-                >{{ node.icon }}</mat-icon>
-              }
-              {{ node.label }}
-            </mat-option>
+            @for (node of filteredNodes; track node) {
+              <mat-option [value]="node.value">
+                @if(node.icon) {
+                  <mat-icon fontSet="material-symbols-outlined"
+                    [ngStyle]="{'color': colorService.isDarkMode() ? node.colorDark : node.colorLight}"
+                  >{{ node.icon }}</mat-icon>
+                }
+                {{ node.label }}
+              </mat-option>
+            }
           </mat-select>
-          <mat-error *ngIf="linkGroup.get('source')?.hasError('cycle')">
-            This creates a cycle!
-          </mat-error>
+          @if (linkGroup.get('source')?.hasError('cycle')) {
+            <mat-error>
+              This creates a cycle!
+            </mat-error>
+          }
         </mat-form-field>
-  
-  
-  
         <!-- Remove Button -->
         <button mat-icon-button color="warn" class="mt-2" (click)="removeLink(i)">
           <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
         </button>
       </div>
-    </div>
+    }
+  </div>
 
-    <!-- ADD BUTTON -->
-    <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
-      <div>
-        <button mat-stroked-button color="primary" class="backdrop-blur-[200px]" (click)="addLink()">
-          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
-          <span>Add Entries</span>
-        </button>
-      </div>
+  <!-- ADD BUTTON -->
+  <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
+    <div>
+      <button mat-stroked-button color="primary" class="backdrop-blur-[200px]" (click)="addLink()">
+        <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+        <span>Add Entries</span>
+      </button>
     </div>
+  </div>
 </div>

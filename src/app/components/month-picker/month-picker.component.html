@@ -1,22 +1,22 @@
 <div class="flex flex-row justify-center items-center">
-    <button mat-icon-button class="!flex" (click)="previousMonth()">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-  
-    <button mat-button (click)="toggleCalendar()" [matMenuTriggerFor]="calendarMenu">
-      <span class="px-4">
-        {{ selectedDate() | date: 'MMM yyyy' }}
-      </span>
-    </button>
-  
-    <button mat-icon-button class="!flex" (click)="nextMonth()">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
+  <button mat-icon-button class="!flex" (click)="previousMonth()">
+    <mat-icon>chevron_left</mat-icon>
+  </button>
+
+  <button mat-button (click)="toggleCalendar()" [matMenuTriggerFor]="calendarMenu">
+    <span class="px-4">
+      {{ selectedDate() | date: 'MMM yyyy' }}
+    </span>
+  </button>
+
+  <button mat-icon-button class="!flex" (click)="nextMonth()">
+    <mat-icon>chevron_right</mat-icon>
+  </button>
 </div>
 <div class="flex flex-row w-full justify-center">
   <mat-menu #calendarMenu="matMenu" [class]="'centered-menu'" (closed)="calendarVisible.set(false)">
-    <mat-calendar class="w-80" startView="year"
-        *ngIf="calendarVisible()"
+    @if (calendarVisible()) {
+      <mat-calendar class="w-80" startView="year"
         [selected]="selectedDate()"
         (monthSelected)="onMonthSelected($event);"
         (yearSelected)="yearSelected($event)"
@@ -25,6 +25,7 @@
         [dateClass]="cellClass"
         (click)="$event.stopPropagation();"
         >
-    </mat-calendar>
+      </mat-calendar>
+    }
   </mat-menu>
 </div>

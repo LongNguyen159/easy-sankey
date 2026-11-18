@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, inject, OnDestroy } from '@angular/core';
 import { EChartsType } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
@@ -6,7 +6,7 @@ import { ColorService } from '../../services/color.service';
 
 @Component({
     selector: 'app-base-chart',
-    imports: [NgxEchartsDirective, CommonModule],
+    imports: [NgxEchartsDirective],
     providers: [
         provideEcharts(),
     ],

@@ -15,9 +15,11 @@
     <div>
       <mat-form-field appearance="outline">
         <mat-select class="!w-100" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
-          <mat-option *ngFor="let option of availableOptions" [value]="option.value">
-            {{ option.label }}
-          </mat-option>
+          @for (option of availableOptions; track option) {
+            <mat-option [value]="option.value">
+              {{ option.label }}
+            </mat-option>
+          }
         </mat-select>
       </mat-form-field>
     </div>
@@ -30,7 +32,7 @@
   <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
     <span>Balance: </span>
     <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-[5px]">
-        {{ calculateTotalSurplusAllTimeFiltered() }}
+      {{ calculateTotalSurplusAllTimeFiltered() }}
     </span>
   </h3>
 
@@ -120,7 +122,7 @@
                         <mat-panel-description>Monthly average: {{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</mat-panel-description>
                       }
                     </mat-expansion-panel-header>
-            
+
                     <mat-card-content>
                       <div class="flex flex-row w-full justify-start pb-2">
                         <button mat-button (click)="$event.stopPropagation(); getCategoryPlotData(category.categoryName)">
@@ -170,7 +172,7 @@
                   </mat-expansion-panel>
                 }
               </div>
-            
+
               <!-- Right Column (2nd Set of Categories) -->
               <div class="w-full flex flex-col gap-3">
                 @for (category of secondHalf; track $index) {
@@ -188,7 +190,7 @@
                         <mat-panel-description>Monthly average: {{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</mat-panel-description>
                       }
                     </mat-expansion-panel-header>
-            
+
                     <mat-card-content>
                       <div class="flex flex-row w-full justify-start pb-2">
                         <button mat-button (click)="$event.stopPropagation(); getCategoryPlotData(category.categoryName)">
@@ -244,13 +246,13 @@
 
 
         <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
-  
+
         <!-- TREEMAP CHART -->
         <div class="flex flex-col w-full justify-center items-center">
           <h2 class="text-2xl font-bold text-center mt-4">Net Income Distribution</h2>
           <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [totalNetIncome]="totalNetIncome" [actionsPosition]="'top'"></app-treemap-chart>
         </div>
-        
+
       </div>
     </section>
     <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
@@ -267,7 +269,7 @@
         </button>
         <span [matMenuTriggerFor]="settingsMenu" class="cursor-pointer">Display Settings</span>
       </div>
-    
+
       <mat-menu #settingsMenu="matMenu">
         <div class="flex flex-col gap-2 px-4 py-2">
           <!-- FORMAT NUMBERS -->
@@ -280,7 +282,7 @@
               <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             </button>
           </div>
-    
+
           <!-- SCALE BAR CHART -->
           <div class="flex flex-row gap-2 justify-between items-center" (click)="$event.stopPropagation()">
             <div class="flex flex-row items-center">
@@ -309,18 +311,17 @@
 
 
   <mat-accordion multi>
-    <ng-container *ngFor="let year of storedYears">
-      <ng-container *ngIf="filteredMonthsByYear[year] && filteredMonthsByYear[year].length > 0">
-        <mat-expansion-panel 
-          #yearPanel 
+    @for (year of storedYears; track year) {
+      @if (filteredMonthsByYear[year] && filteredMonthsByYear[year].length > 0) {
+        <mat-expansion-panel
+          #yearPanel
           class="no-shadows round-borders"
           [ngClass]="{
             'panel-dark': colorService.isDarkMode(),
             'panel-light': !colorService.isDarkMode(),
           }"
-          togglePosition="before" 
+          togglePosition="before"
           [expanded]="year === selectedYear">
-          
           <mat-expansion-panel-header class="header-light">
             <mat-panel-title class="text-xl">
               {{ year }}
@@ -329,35 +330,33 @@
               <strong>Total Surplus: </strong>&nbsp;{{ calculateTotalSurplusOfYear(year) }}
             </mat-panel-description>
           </mat-expansion-panel-header>
-    
           <!-- Child panel logic continues here -->
           <mat-accordion multi>
-            <mat-expansion-panel 
-              class="no-shadows round-borders"
-              togglePosition="before"
+            @for (month of filteredMonthsByYear[year]; track month; let j = $index) {
+              <mat-expansion-panel
+                class="no-shadows round-borders"
+                togglePosition="before"
               [ngClass]="{
                 'highlight-light': (j % 2 === 0 || panel.expanded) && !colorService.isDarkMode(),
                 'highlight-dark': (j % 2 === 0 || panel.expanded) && colorService.isDarkMode(),
                 'panel-dark': j % 2 !== 0 && colorService.isDarkMode(),
                 'panel-light': j % 2 !== 0 && !colorService.isDarkMode(),
               }" 
-              *ngFor="let month of filteredMonthsByYear[year]; let j = index"
-              #panel="matExpansionPanel">
-              
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  {{ month }}
-                </mat-panel-title>
-                <mat-panel-description class="flex flex-row gap-6">
-                  <!-- <p><strong>Surplus:</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
-                  <p class="font-bold flex flex-row items-center gap-2">
-                    <span>Surplus: </span>
-                    <span [ngClass]="getSurplusClass(month)" class="flex flex-row items-center rounded-full text-base px-5 py-[5px]">
-                      {{ getFormattedRemainingBalance(month) }}
-                    </span>
-                  </p>
-                </mat-panel-description>
-                <!-- <button mat-icon-button (click)="$event.stopPropagation(); removeItem(month)">
+                #panel="matExpansionPanel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    {{ month }}
+                  </mat-panel-title>
+                  <mat-panel-description class="flex flex-row gap-6">
+                    <!-- <p><strong>Surplus:</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
+                    <p class="font-bold flex flex-row items-center gap-2">
+                      <span>Surplus: </span>
+                      <span [ngClass]="getSurplusClass(month)" class="flex flex-row items-center rounded-full text-base px-5 py-[5px]">
+                        {{ getFormattedRemainingBalance(month) }}
+                      </span>
+                    </p>
+                  </mat-panel-description>
+                  <!-- <button mat-icon-button (click)="$event.stopPropagation(); removeItem(month)">
                   <mat-icon fontSet="material-symbols-outlined" color="warn">delete</mat-icon>
                 </button> -->
               </mat-expansion-panel-header>
@@ -373,14 +372,13 @@
                     <app-income-expense-ratio-chart [gridLeft]="'2%'" [gridRight]="'5%'" [totalIncome]="allMonthsData[month].totalUsableIncome" [totalExpense]="allMonthsData[month].totalExpenses"
                     ></app-income-expense-ratio-chart>
                   </div>
-
                   <!-- MONTHLY DETAILS -->
                   <div class="flex flex-row w-[40%] min-w-32 pr-[1.5vw] justify-end">
                     <ul class="flex flex-col items-end">
                       @for (input of getMonthDisplayInfos(month); track $index) {
                         <li>
                           <p>
-                            {{ input.name }}: 
+                            {{ input.name }}:
                             <span [ngClass]="{
                               'positive-light': input.type === entryTypeEnums.Income && !colorService.isDarkMode(),
                               'positive-dark': input.type === entryTypeEnums.Income && colorService.isDarkMode(),
@@ -395,12 +393,12 @@
                     </ul>
                   </div>
                 }
-
-              </div>    
+              </div>
             </mat-expansion-panel>
-          </mat-accordion>
-        </mat-expansion-panel>
-      </ng-container>
-    </ng-container>
-  </mat-accordion>
+          }
+        </mat-accordion>
+      </mat-expansion-panel>
+    }
+  }
+</mat-accordion>
 </div>

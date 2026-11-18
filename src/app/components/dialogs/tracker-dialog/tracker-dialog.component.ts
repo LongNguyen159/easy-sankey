@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, inject, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -9,7 +9,7 @@ import { takeUntil } from 'rxjs';
 
 @Component({
     selector: 'app-tracker-dialog',
-    imports: [MatDialogModule, MatButtonModule, CommonModule, ProgressCardComponent],
+    imports: [MatDialogModule, MatButtonModule, ProgressCardComponent],
     templateUrl: './tracker-dialog.component.html',
     styleUrl: './tracker-dialog.component.scss'
 })

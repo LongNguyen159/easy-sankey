@@ -1,4 +1,4 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { EChartsOption, EChartsType, SeriesOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
@@ -10,7 +10,7 @@ import { formatBigNumber } from '../../../utils/utils';
 
 @Component({
     selector: 'app-income-expense-ratio-chart',
-    imports: [NgxEchartsDirective, CommonModule],
+    imports: [NgxEchartsDirective],
     providers: [
         provideEcharts(),
         CurrencyPipe

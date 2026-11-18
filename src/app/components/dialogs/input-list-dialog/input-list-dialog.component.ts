@@ -9,15 +9,12 @@ import { BasePageComponent } from '../../../base-components/base-page/base-page.
 import {formatYearMonthToLongDate } from '../../../utils/utils';
 import { NavigationStart, Router } from '@angular/router';
 import { UiService } from '../../../services/ui.service';
-import { CommonModule } from '@angular/common';
+
 import { RoutePath } from '../../models';
 
 @Component({
     selector: 'app-input-list-dialog',
-    imports: [MatButtonModule, MatDialogModule,
-        InputListComponent,
-        CommonModule,
-    ],
+    imports: [MatButtonModule, MatDialogModule, InputListComponent],
     templateUrl: './input-list-dialog.component.html',
     styleUrl: './input-list-dialog.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush
