@@ -24,7 +24,7 @@
         <button mat-icon-button type="button" [attr.aria-label]="'Edit ' + category.label" (click)="openEditor(category)">
           <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
         </button>
-        <button mat-icon-button type="button" [attr.aria-label]="'Delete ' + category.label" (click)="remove(category)">
+        <button mat-icon-button type="button" class="app-button-warn" [attr.aria-label]="'Delete ' + category.label" (click)="remove(category)">
           <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
         </button>
       </li>

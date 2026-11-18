@@ -50,6 +50,41 @@ h1 { font-size: xx-large; }
 h2 { font-size: x-large; }
 h3 { font-size: large; }
 
+// Apply the selected theme role to each Material button appearance.
+.app-button-primary,
+.app-button-accent,
+.app-button-warn {
+  $ink: var(--app-button-color);
+  $on-fill: var(--app-button-on-color);
+  $ink-ripple: color-mix(in srgb, #{$ink} 12%, transparent);
+  $fill-ripple: color-mix(in srgb, #{$on-fill} 12%, transparent);
+
+  @each $appearance in text, outlined, protected {
+    --mat-button-#{$appearance}-label-text-color: #{$ink};
+    --mat-button-#{$appearance}-state-layer-color: #{$ink};
+    --mat-button-#{$appearance}-ripple-color: #{$ink-ripple};
+  }
+  --mat-button-outlined-outline-color: #{$ink};
+
+  @each $appearance in filled, tonal {
+    --mat-button-#{$appearance}-container-color: #{$ink};
+    --mat-button-#{$appearance}-label-text-color: #{$on-fill};
+    --mat-button-#{$appearance}-state-layer-color: #{$on-fill};
+    --mat-button-#{$appearance}-ripple-color: #{$fill-ripple};
+  }
+
+  --mat-icon-button-icon-color: #{$ink};
+  --mat-icon-button-state-layer-color: #{$ink};
+  --mat-icon-button-ripple-color: #{$ink-ripple};
+
+  @each $appearance in fab, fab-small {
+    --mat-#{$appearance}-container-color: #{$ink};
+    --mat-#{$appearance}-foreground-color: #{$on-fill};
+    --mat-#{$appearance}-state-layer-color: #{$on-fill};
+    --mat-#{$appearance}-ripple-color: #{$fill-ripple};
+  }
+}
+
 /* Theme Mixin */
 @mixin apply-theme($theme, $bg-color, $text-color, $secondary-text-color) {
   @include mat.elevation-classes();
@@ -57,6 +92,13 @@ h3 { font-size: large; }
   @include mat.all-component-colors($theme);
   @include mat.all-component-typographies($theme);
   @include mat.all-component-densities($theme);
+
+  @each $class, $role in (primary: primary, accent: tertiary, warn: error) {
+    .app-button-#{$class} {
+      --app-button-color: #{mat.get-theme-color($theme, $role)};
+      --app-button-on-color: #{mat.get-theme-color($theme, on-#{$role})};
+    }
+  }
 
   body {
     background-color: $bg-color;

@@ -57,6 +57,7 @@ export class CategoryManagerComponent {
       message: 'Entries in this category will become uncategorized. Any budget or tracker for this category will be removed.',
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
+      confirmColor: 'warn',
     }, '440px', 'auto').subscribe(confirmed => {
       if (!confirmed) return;
       this.dataService.removeCategory(category.value);

@@ -86,7 +86,7 @@
         <!-- Select with search -->
         <app-category-select [control]="categoryControl(linkGroup)" (categoryChange)="updateInput()"></app-category-select>
         <!-- Remove Button -->
-        <button mat-icon-button color="warn" class="mt-2" (click)="removeLink(i)">
+        <button mat-icon-button class="app-button-warn mt-2" (click)="removeLink(i)">
           <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
         </button>
       </div>
@@ -96,7 +96,7 @@
   <!-- ADD BUTTON -->
   <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
     <div>
-      <button mat-stroked-button color="primary" class="backdrop-blur-[200px]" (click)="addLink()">
+      <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
         <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
         <span>Add Entries</span>
       </button>

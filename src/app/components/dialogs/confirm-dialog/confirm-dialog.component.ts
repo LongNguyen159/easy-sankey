@@ -9,7 +9,7 @@ export interface ConfirmDialogData {
   cancelLabel?: string;
   confirmLabel?: string;
 
-  confirmColor?: string;
+  confirmColor?: 'primary' | 'accent' | 'warn';
 }
 
 @Component({
