@@ -10,16 +10,15 @@ import { TreemapChartComponent } from '../../components/charts/treemap-chart/tre
 import { MatButtonModule } from '@angular/material/button';
 
 @Component({
-  selector: 'app-main-page-single-month',
-  standalone: true,
-  imports: [SankeyChartComponent, PieChartComponent,
-    MatDividerModule, CommonModule,
-    MatIconModule,
-    TreemapChartComponent,
-    MatButtonModule
-  ],
-  templateUrl: './main-page-single-month.component.html',
-  styleUrl: './main-page-single-month.component.scss'
+    selector: 'app-main-page-single-month',
+    imports: [SankeyChartComponent, PieChartComponent,
+        MatDividerModule, CommonModule,
+        MatIconModule,
+        TreemapChartComponent,
+        MatButtonModule
+    ],
+    templateUrl: './main-page-single-month.component.html',
+    styleUrl: './main-page-single-month.component.scss'
 })
 export class MainPageSingleMonthComponent implements OnChanges {
   @Input() chartData: SingleMonthData

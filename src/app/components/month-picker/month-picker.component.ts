@@ -17,20 +17,19 @@ import { formatYYYYMMtoDate } from '../../utils/utils';
 import { DateChanges } from '../models';
 
 @Component({
-  selector: 'app-month-picker',
-  standalone: true,
-  providers: [
-    provideNativeDateAdapter()
-  ],
-  imports: [MatFormFieldModule, MatInputModule, MatDatepickerModule, MatIconModule,
-    CommonModule, MatButtonModule,
-    MatDatepickerModule, MatNativeDateModule,
-    MatMenuModule
-  ],
-  templateUrl: './month-picker.component.html',
-  styleUrl: './month-picker.component.scss',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-month-picker',
+    providers: [
+        provideNativeDateAdapter()
+    ],
+    imports: [MatFormFieldModule, MatInputModule, MatDatepickerModule, MatIconModule,
+        CommonModule, MatButtonModule,
+        MatDatepickerModule, MatNativeDateModule,
+        MatMenuModule
+    ],
+    templateUrl: './month-picker.component.html',
+    styleUrl: './month-picker.component.scss',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MonthPickerComponent extends BasePageComponent implements OnInit {
   @Input() highlightedMonths: string[] = [];

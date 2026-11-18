@@ -29,30 +29,29 @@ import { BudgetService } from '../../services/budget.service';
 
 
 @Component({
-  selector: 'app-budget-slider',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatSliderModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatTooltipModule,
-    ReactiveFormsModule,
-    MatDividerModule,
-    FormsModule,
-    MatStepperModule,
-    MatListModule,
-    MatExpansionModule,
-    MatProgressSpinnerModule,
-    MatCardModule,
-    MatButtonToggleModule
-  ],
-  templateUrl: './budget-slider.component.html',
-  styleUrl: './budget-slider.component.scss',
-  encapsulation: ViewEncapsulation.None
+    selector: 'app-budget-slider',
+    imports: [
+        CommonModule,
+        MatSliderModule,
+        MatButtonModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        MatTooltipModule,
+        ReactiveFormsModule,
+        MatDividerModule,
+        FormsModule,
+        MatStepperModule,
+        MatListModule,
+        MatExpansionModule,
+        MatProgressSpinnerModule,
+        MatCardModule,
+        MatButtonToggleModule
+    ],
+    templateUrl: './budget-slider.component.html',
+    styleUrl: './budget-slider.component.scss',
+    encapsulation: ViewEncapsulation.None
 })
 export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   dataService = inject(DataService)

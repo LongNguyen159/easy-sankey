@@ -9,15 +9,14 @@ import { CurrencyService } from '../../../services/currency.service';
 import { isArray } from 'mathjs';
 
 @Component({
-  selector: 'app-trends-line-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './trends-line-chart.component.html',
-  styleUrl: './trends-line-chart.component.scss'
+    selector: 'app-trends-line-chart',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './trends-line-chart.component.html',
+    styleUrl: './trends-line-chart.component.scss'
 })
 export class TrendsLineChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: TrendsLineChartData[] = [];

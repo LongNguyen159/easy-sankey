@@ -28,18 +28,17 @@ import { TreemapChartComponent } from "../../components/charts/treemap-chart/tre
 import { calculateDifferences, getLastMonth, removeSystemPrefix } from '../../utils/utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 @Component({
-  selector: 'app-main-page',
-  standalone: true,
-  imports: [SankeyChartComponent, PieChartComponent,
-    MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
-    NavbarComponent, MonthPickerComponent,
-    MatChipsModule, BudgetRadarChartComponent, BudgetGaugeChartComponent,
-    MatSlideToggleModule, FormsModule, TreemapChartComponent,
-    MatTooltipModule],
-  templateUrl: './main-page.component.html',
-  styleUrl: './main-page.component.scss',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.Default
+    selector: 'app-main-page',
+    imports: [SankeyChartComponent, PieChartComponent,
+        MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
+        NavbarComponent, MonthPickerComponent,
+        MatChipsModule, BudgetRadarChartComponent, BudgetGaugeChartComponent,
+        MatSlideToggleModule, FormsModule, TreemapChartComponent,
+        MatTooltipModule],
+    templateUrl: './main-page.component.html',
+    styleUrl: './main-page.component.scss',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Default
 })
 export class MainPageComponent extends BasePageComponent implements OnInit, OnChanges {
   @Input() hasMonthPicker: boolean = true;

@@ -13,20 +13,19 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { UiService } from '../../../services/ui.service';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 @Component({
-  selector: 'app-treemap-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective,
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatIconModule,
-    MatTooltipModule
-  ],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './treemap-chart.component.html',
-  styleUrl: './treemap-chart.component.scss'
+    selector: 'app-treemap-chart',
+    imports: [NgxEchartsDirective,
+        MatButtonModule,
+        MatButtonToggleModule,
+        MatIconModule,
+        MatTooltipModule
+    ],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './treemap-chart.component.html',
+    styleUrl: './treemap-chart.component.scss'
 })
 export class TreemapChartComponent extends BaseChartComponent implements OnInit, OnChanges {
   @Input() treeData: TreeNode[] = []

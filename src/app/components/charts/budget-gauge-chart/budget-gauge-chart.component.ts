@@ -6,15 +6,14 @@ import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 @Component({
-  selector: 'app-budget-gauge-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './budget-gauge-chart.component.html',
-  styleUrl: './budget-gauge-chart.component.scss'
+    selector: 'app-budget-gauge-chart',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './budget-gauge-chart.component.html',
+    styleUrl: './budget-gauge-chart.component.scss'
 })
 export class BudgetGaugeChartComponent extends BaseChartComponent implements OnChanges {
   @Input() budget: number = 0

@@ -11,14 +11,13 @@ import { UiService } from '../../services/ui.service';
 import { RoutePath } from '../models';
 
 @Component({
-  selector: 'app-navbar',
-  standalone: true,
-  imports: [MatMenuModule, MatIconModule, MatButtonModule, RouterModule,
-    CommonModule
-  ],
-  templateUrl: './navbar.component.html',
-  styleUrl: './navbar.component.scss',
-  encapsulation: ViewEncapsulation.None,
+    selector: 'app-navbar',
+    imports: [MatMenuModule, MatIconModule, MatButtonModule, RouterModule,
+        CommonModule
+    ],
+    templateUrl: './navbar.component.html',
+    styleUrl: './navbar.component.scss',
+    encapsulation: ViewEncapsulation.None
 })
 export class NavbarComponent {
   @Input() showAddInput: boolean = true;

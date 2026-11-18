@@ -8,11 +8,10 @@ import { AbnormalityConfig, AbnormalityType } from '../../models';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'app-insights-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, CommonModule, MatDividerModule, MatIconModule],
-  templateUrl: './insights-dialog.component.html',
-  styleUrl: './insights-dialog.component.scss'
+    selector: 'app-insights-dialog',
+    imports: [MatDialogModule, MatButtonModule, CommonModule, MatDividerModule, MatIconModule],
+    templateUrl: './insights-dialog.component.html',
+    styleUrl: './insights-dialog.component.scss'
 })
 export class InsightsDialogComponent {
   colorService = inject(ColorService)

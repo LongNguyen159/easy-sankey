@@ -8,15 +8,14 @@ import { CurrencyService } from '../../../services/currency.service';
 import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 
 @Component({
-  selector: 'app-total-surplus-line-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './total-surplus-line-chart.component.html',
-  styleUrls: ['./total-surplus-line-chart.component.scss'],
+    selector: 'app-total-surplus-line-chart',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './total-surplus-line-chart.component.html',
+    styleUrls: ['./total-surplus-line-chart.component.scss']
 })
 export class TotalSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: TrendsLineChartData[] = [];

@@ -12,13 +12,12 @@ import { RoutePath } from '../../components/models';
  * TODO: UPDATE THIS PAGE EVERY TIME A NEW RELEASE IS MADE.
  */
 @Component({
-  selector: 'app-whats-new-page',
-  standalone: true,
-  imports: [NavbarComponent, CommonModule, MatButtonModule,
-    RouterModule, MatCardModule
-  ],
-  templateUrl: './whats-new-page.component.html',
-  styleUrl: './whats-new-page.component.scss'
+    selector: 'app-whats-new-page',
+    imports: [NavbarComponent, CommonModule, MatButtonModule,
+        RouterModule, MatCardModule
+    ],
+    templateUrl: './whats-new-page.component.html',
+    styleUrl: './whats-new-page.component.scss'
 })
 export class WhatsNewPageComponent {
   colorService = inject(ColorService)

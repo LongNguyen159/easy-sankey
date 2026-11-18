@@ -10,19 +10,18 @@ import { MatButtonModule } from '@angular/material/button';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 
 @Component({
-  selector: 'app-category-regression-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective,
-    MatChipsModule,
-    CommonModule,
-    MatButtonModule
-  ],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './category-regression-chart.component.html',
-  styleUrl: './category-regression-chart.component.scss'
+    selector: 'app-category-regression-chart',
+    imports: [NgxEchartsDirective,
+        MatChipsModule,
+        CommonModule,
+        MatButtonModule
+    ],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './category-regression-chart.component.html',
+    styleUrl: './category-regression-chart.component.scss'
 })
 export class CategoryRegressionChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: AbnormalityChartData

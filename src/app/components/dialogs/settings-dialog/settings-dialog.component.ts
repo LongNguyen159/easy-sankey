@@ -19,17 +19,16 @@ import { RoutePath } from '../../models';
 
 
 @Component({
-  selector: 'app-settings-dialog',
-  standalone: true,
-  imports: [MatButtonModule, MatDialogModule, MatCardModule,
-    MatRadioModule, CommonModule, FormsModule, MatIconModule,
-    RouterModule,
-    MatFormFieldModule,
-    MatSelectModule
-  ],
-  templateUrl: './settings-dialog.component.html',
-  styleUrl: './settings-dialog.component.scss',
-  encapsulation: ViewEncapsulation.None
+    selector: 'app-settings-dialog',
+    imports: [MatButtonModule, MatDialogModule, MatCardModule,
+        MatRadioModule, CommonModule, FormsModule, MatIconModule,
+        RouterModule,
+        MatFormFieldModule,
+        MatSelectModule
+    ],
+    templateUrl: './settings-dialog.component.html',
+    styleUrl: './settings-dialog.component.scss',
+    encapsulation: ViewEncapsulation.None
 })
 export class SettingsDialogComponent implements OnInit{
   colorService = inject(ColorService)

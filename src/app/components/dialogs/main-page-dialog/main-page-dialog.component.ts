@@ -5,11 +5,10 @@ import { MainPageSingleMonthComponent } from "../../../pages/main-page-single-mo
 import { SingleMonthData } from '../../models';
 
 @Component({
-  selector: 'app-main-page-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MainPageSingleMonthComponent],
-  templateUrl: './main-page-dialog.component.html',
-  styleUrl: './main-page-dialog.component.scss'
+    selector: 'app-main-page-dialog',
+    imports: [MatDialogModule, MatButtonModule, MainPageSingleMonthComponent],
+    templateUrl: './main-page-dialog.component.html',
+    styleUrl: './main-page-dialog.component.scss'
 })
 export class MainPageDialogComponent{
   constructor(

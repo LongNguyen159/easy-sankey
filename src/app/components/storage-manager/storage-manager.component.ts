@@ -32,23 +32,22 @@ import { DialogsService } from '../../services/dialogs.service';
 import { PredictService } from '../../services/predict.service';
 
 @Component({
-  selector: 'app-storage-manager',
-  standalone: true,
-  imports: [FormsModule, MatFormFieldModule, MatIconModule, CommonModule, MatExpansionModule,
-    MatSelectModule, TotalSurplusLineChartComponent, MatButtonModule, IncomeExpenseRatioChartComponent,
-    MatCardModule,
-    MatSlideToggleModule,
-    MatTooltipModule,
-    MatMenuModule, TreemapChartComponent,
-    MatDividerModule,
-    SimpleMonthPickerComponent, TrendsLineChartComponent],
-  providers: [
-    CurrencyPipe,
-  ],
-  templateUrl: './storage-manager.component.html',
-  styleUrl: './storage-manager.component.scss',
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.Default
+    selector: 'app-storage-manager',
+    imports: [FormsModule, MatFormFieldModule, MatIconModule, CommonModule, MatExpansionModule,
+        MatSelectModule, TotalSurplusLineChartComponent, MatButtonModule, IncomeExpenseRatioChartComponent,
+        MatCardModule,
+        MatSlideToggleModule,
+        MatTooltipModule,
+        MatMenuModule, TreemapChartComponent,
+        MatDividerModule,
+        SimpleMonthPickerComponent, TrendsLineChartComponent],
+    providers: [
+        CurrencyPipe,
+    ],
+    templateUrl: './storage-manager.component.html',
+    styleUrl: './storage-manager.component.scss',
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Default
 })
 export class StorageManagerComponent extends BasePageComponent implements OnInit {
   dataService = inject(DataService);

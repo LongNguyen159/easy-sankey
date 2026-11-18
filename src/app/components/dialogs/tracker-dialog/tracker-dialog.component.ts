@@ -8,11 +8,10 @@ import { NavigationStart, Router } from '@angular/router';
 import { takeUntil } from 'rxjs';
 
 @Component({
-  selector: 'app-tracker-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, CommonModule, ProgressCardComponent],
-  templateUrl: './tracker-dialog.component.html',
-  styleUrl: './tracker-dialog.component.scss'
+    selector: 'app-tracker-dialog',
+    imports: [MatDialogModule, MatButtonModule, CommonModule, ProgressCardComponent],
+    templateUrl: './tracker-dialog.component.html',
+    styleUrl: './tracker-dialog.component.scss'
 })
 export class TrackerDialogComponent extends BasePageComponent implements OnInit {
   router = inject(Router)

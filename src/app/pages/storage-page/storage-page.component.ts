@@ -12,12 +12,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { RoutePath } from '../../components/models';
 
 @Component({
-  selector: 'app-storage-page',
-  standalone: true,
-  imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
-    CommonModule, BudgetListComponent],
-  templateUrl: './storage-page.component.html',
-  styleUrl: './storage-page.component.scss'
+    selector: 'app-storage-page',
+    imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
+        CommonModule, BudgetListComponent],
+    templateUrl: './storage-page.component.html',
+    styleUrl: './storage-page.component.scss'
 })
 export class StoragePageComponent implements OnInit, AfterViewInit {
   colorService = inject(ColorService)

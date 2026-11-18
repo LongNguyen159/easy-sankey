@@ -18,19 +18,18 @@ import { takeUntil } from 'rxjs';
 
 
 @Component({
-  selector: 'app-progress-card',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatProgressBarModule,
-    MatIconModule,
-    MatButtonModule,
-    RouterModule
-  ],
-  templateUrl: './progress-card.component.html',
-  styleUrl: './progress-card.component.scss',
-  encapsulation: ViewEncapsulation.None
+    selector: 'app-progress-card',
+    imports: [
+        CommonModule,
+        MatCardModule,
+        MatProgressBarModule,
+        MatIconModule,
+        MatButtonModule,
+        RouterModule
+    ],
+    templateUrl: './progress-card.component.html',
+    styleUrl: './progress-card.component.scss',
+    encapsulation: ViewEncapsulation.None
 })
 export class ProgressCardComponent extends BasePageComponent implements OnInit {
 

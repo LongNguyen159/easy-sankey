@@ -9,17 +9,16 @@ import { ColorService } from '../../../services/color.service';
 import { TrackingService } from '../../../services/tracking.service';
 
 @Component({
-  selector: 'app-tracker-selector-dialog',
-  standalone: true,
-  imports: [
-    MatDialogModule,
-    MatButtonModule,
-    CommonModule,
-    MatListModule,
-    MatIconModule
-  ],
-  templateUrl: './tracker-selector-dialog.component.html',
-  styleUrl: './tracker-selector-dialog.component.scss'
+    selector: 'app-tracker-selector-dialog',
+    imports: [
+        MatDialogModule,
+        MatButtonModule,
+        CommonModule,
+        MatListModule,
+        MatIconModule
+    ],
+    templateUrl: './tracker-selector-dialog.component.html',
+    styleUrl: './tracker-selector-dialog.component.scss'
 })
 export class TrackerSelectorDialogComponent {
   allCategories = Object.values(expenseCategoryDetails)

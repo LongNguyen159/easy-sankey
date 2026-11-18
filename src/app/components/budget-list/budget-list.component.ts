@@ -13,16 +13,15 @@ import { removeSystemPrefix } from '../../utils/utils';
 import { CurrencyService } from '../../services/currency.service';
 
 @Component({
-  selector: 'app-budget-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule
-  ],
-  templateUrl: './budget-list.component.html',
-  styleUrl: './budget-list.component.scss'
+    selector: 'app-budget-list',
+    imports: [
+        CommonModule,
+        MatCardModule,
+        MatIconModule,
+        MatButtonModule
+    ],
+    templateUrl: './budget-list.component.html',
+    styleUrl: './budget-list.component.scss'
 })
 export class BudgetListComponent implements OnInit{
   colorService = inject(ColorService)

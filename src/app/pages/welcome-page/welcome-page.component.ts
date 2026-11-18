@@ -7,11 +7,10 @@ import { GraphicTextComponent } from "../../components/charts/graphic-text/graph
 import { RoutePath } from '../../components/models';
 
 @Component({
-  selector: 'app-welcome-page',
-  standalone: true,
-  imports: [DemoChartComponent, MatButtonModule, MatIconModule, RouterModule, GraphicTextComponent],
-  templateUrl: './welcome-page.component.html',
-  styleUrl: './welcome-page.component.scss'
+    selector: 'app-welcome-page',
+    imports: [DemoChartComponent, MatButtonModule, MatIconModule, RouterModule, GraphicTextComponent],
+    templateUrl: './welcome-page.component.html',
+    styleUrl: './welcome-page.component.scss'
 })
 export class WelcomePageComponent {
   constructor(private router: Router) {}

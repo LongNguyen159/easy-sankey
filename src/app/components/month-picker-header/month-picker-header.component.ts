@@ -6,15 +6,14 @@ import { MatCalendar } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'app-month-picker-header',
-  standalone: true,
-  imports: [
-    MatIconModule,
-    MatButtonModule,
-    CommonModule
-  ],
-  templateUrl: './month-picker-header.component.html',
-  styleUrl: './month-picker-header.component.scss'
+    selector: 'app-month-picker-header',
+    imports: [
+        MatIconModule,
+        MatButtonModule,
+        CommonModule
+    ],
+    templateUrl: './month-picker-header.component.html',
+    styleUrl: './month-picker-header.component.scss'
 })
 export class MonthPickerHeaderComponent<D> {
   private _calendar = inject<MatCalendar<D>>(MatCalendar);

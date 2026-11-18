@@ -5,14 +5,13 @@ import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { ColorService } from '../../../services/color.service';
 
 @Component({
-  selector: 'app-graphic-text',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-  ],
-  templateUrl: './graphic-text.component.html',
-  styleUrl: './graphic-text.component.scss'
+    selector: 'app-graphic-text',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+    ],
+    templateUrl: './graphic-text.component.html',
+    styleUrl: './graphic-text.component.scss'
 })
 export class GraphicTextComponent implements OnInit, OnChanges {
   @Input() text: string = 'Easy Sankey'

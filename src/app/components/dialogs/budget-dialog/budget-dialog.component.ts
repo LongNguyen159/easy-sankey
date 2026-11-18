@@ -7,13 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 @Component({
-  selector: 'app-budget-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, CommonModule,
-    MatInputModule, FormsModule, MatFormFieldModule
-  ],
-  templateUrl: './budget-dialog.component.html',
-  styleUrl: './budget-dialog.component.scss'
+    selector: 'app-budget-dialog',
+    imports: [MatDialogModule, MatButtonModule, CommonModule,
+        MatInputModule, FormsModule, MatFormFieldModule
+    ],
+    templateUrl: './budget-dialog.component.html',
+    styleUrl: './budget-dialog.component.scss'
 })
 export class BudgetDialogComponent {
   budgetValue: number;

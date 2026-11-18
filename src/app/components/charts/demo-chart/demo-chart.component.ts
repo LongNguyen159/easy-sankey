@@ -3,14 +3,13 @@ import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 
 @Component({
-  selector: 'app-demo-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-  ],
-  templateUrl: './demo-chart.component.html',
-  styleUrl: './demo-chart.component.scss'
+    selector: 'app-demo-chart',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+    ],
+    templateUrl: './demo-chart.component.html',
+    styleUrl: './demo-chart.component.scss'
 })
 export class DemoChartComponent {
 

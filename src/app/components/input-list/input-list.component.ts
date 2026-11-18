@@ -55,40 +55,38 @@ enum ErrorType {
   RowInvalid = 'rowInvalid'
 }
 @Component({
-  selector: 'app-input-list',
-  standalone: true,
-  imports: [MatButtonModule,
-    ReactiveFormsModule,
-    CommonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    MatAutocompleteModule,
-    NgxMatSelectSearchModule,
-    MatSlideToggleModule, MonthPickerComponent,
-    MatCardModule, ErrorCardComponent, MatDividerModule,
-    MatMenuModule,
-    FormsModule,
-    MatTooltipModule
-],
-  templateUrl: './input-list.component.html',
-  styleUrl: './input-list.component.scss',
-  encapsulation: ViewEncapsulation.None,
-
-  animations: [
-    trigger('expandCollapse', [
-      state('expanded', style({
-        height: '*', opacity: 1, transform: 'scale(1)'
-      })),
-      state('collapsed', style({
-        height: '0px', opacity: 0, transform: 'scale(0.95)'
-      })),
-      transition('expanded <=> collapsed', [
-        animate('300ms ease')
-      ]),
-    ]),
-  ]
+    selector: 'app-input-list',
+    imports: [MatButtonModule,
+        ReactiveFormsModule,
+        CommonModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        MatAutocompleteModule,
+        NgxMatSelectSearchModule,
+        MatSlideToggleModule, MonthPickerComponent,
+        MatCardModule, ErrorCardComponent, MatDividerModule,
+        MatMenuModule,
+        FormsModule,
+        MatTooltipModule
+    ],
+    templateUrl: './input-list.component.html',
+    styleUrl: './input-list.component.scss',
+    encapsulation: ViewEncapsulation.None,
+    animations: [
+        trigger('expandCollapse', [
+            state('expanded', style({
+                height: '*', opacity: 1, transform: 'scale(1)'
+            })),
+            state('collapsed', style({
+                height: '0px', opacity: 0, transform: 'scale(0.95)'
+            })),
+            transition('expanded <=> collapsed', [
+                animate('300ms ease')
+            ]),
+        ]),
+    ]
 })
 
 /** 

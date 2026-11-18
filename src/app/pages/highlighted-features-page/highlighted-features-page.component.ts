@@ -9,13 +9,12 @@ import { ColorService } from '../../services/color.service';
 import { RoutePath } from '../../components/models';
 
 @Component({
-  selector: 'app-highlighted-features-page',
-  standalone: true,
-  imports: [NavbarComponent, CommonModule, MatButtonModule,
-    RouterModule, MatCardModule
-  ],
-  templateUrl: './highlighted-features-page.component.html',
-  styleUrl: './highlighted-features-page.component.scss'
+    selector: 'app-highlighted-features-page',
+    imports: [NavbarComponent, CommonModule, MatButtonModule,
+        RouterModule, MatCardModule
+    ],
+    templateUrl: './highlighted-features-page.component.html',
+    styleUrl: './highlighted-features-page.component.scss'
 })
 export class HighlightedFeaturesPageComponent {
   colorService = inject(ColorService)

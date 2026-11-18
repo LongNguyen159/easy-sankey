@@ -16,21 +16,20 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 
 @Component({
-  selector: 'app-fix-cost-input',
-  standalone: true,
-  imports: [MatButtonModule,
-    ReactiveFormsModule,
-    CommonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatIconModule,
-    NgxMatSelectSearchModule,
-    MatCardModule, ErrorCardComponent,
-    MatTooltipModule
-  ],
-  templateUrl: './fix-cost-input.component.html',
-  styleUrl: './fix-cost-input.component.scss',
+    selector: 'app-fix-cost-input',
+    imports: [MatButtonModule,
+        ReactiveFormsModule,
+        CommonModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatIconModule,
+        NgxMatSelectSearchModule,
+        MatCardModule, ErrorCardComponent,
+        MatTooltipModule
+    ],
+    templateUrl: './fix-cost-input.component.html',
+    styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'

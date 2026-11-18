@@ -5,15 +5,14 @@ import { CommonModule } from '@angular/common';
 import { ColorService } from '../../services/color.service';
 
 @Component({
-  selector: 'app-smart-budgeter',
-  standalone: true,
-  imports: [
-    BudgetSliderComponent,
-    NavbarComponent,
-    CommonModule
-  ],
-  templateUrl: './smart-budgeter.component.html',
-  styleUrl: './smart-budgeter.component.scss'
+    selector: 'app-smart-budgeter',
+    imports: [
+        BudgetSliderComponent,
+        NavbarComponent,
+        CommonModule
+    ],
+    templateUrl: './smart-budgeter.component.html',
+    styleUrl: './smart-budgeter.component.scss'
 })
 export class SmartBudgeterComponent {
   colorService = inject(ColorService)

@@ -13,15 +13,14 @@ import { CommonModule } from '@angular/common';
 import { RoutePath } from '../../models';
 
 @Component({
-  selector: 'app-input-list-dialog',
-  standalone: true,
-  imports: [MatButtonModule, MatDialogModule,
-    InputListComponent,
-    CommonModule,
-  ],
-  templateUrl: './input-list-dialog.component.html',
-  styleUrl: './input-list-dialog.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-input-list-dialog',
+    imports: [MatButtonModule, MatDialogModule,
+        InputListComponent,
+        CommonModule,
+    ],
+    templateUrl: './input-list-dialog.component.html',
+    styleUrl: './input-list-dialog.component.scss',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InputListDialogComponent extends BasePageComponent implements OnInit {
   dataService = inject(DataService)

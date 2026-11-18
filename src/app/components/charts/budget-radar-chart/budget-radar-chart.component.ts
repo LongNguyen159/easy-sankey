@@ -5,14 +5,13 @@ import { Budget, ExpenseCategory, expenseCategoryDetails } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 
 @Component({
-  selector: 'app-budget-radar-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective],
-  providers: [
-    provideEcharts(),
-  ],
-  templateUrl: './budget-radar-chart.component.html',
-  styleUrl: './budget-radar-chart.component.scss'
+    selector: 'app-budget-radar-chart',
+    imports: [NgxEchartsDirective],
+    providers: [
+        provideEcharts(),
+    ],
+    templateUrl: './budget-radar-chart.component.html',
+    styleUrl: './budget-radar-chart.component.scss'
 })
 export class BudgetRadarChartComponent extends BaseChartComponent implements OnChanges {
   @Input() actualSpending: { category: ExpenseCategory, value: number }[] = []

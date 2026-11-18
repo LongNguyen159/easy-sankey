@@ -5,11 +5,10 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'app-user-manual',
-  standalone: true,
-  imports: [CommonModule, MatDividerModule, MatIconModule],
-  templateUrl: './user-manual.component.html',
-  styleUrl: './user-manual.component.scss'
+    selector: 'app-user-manual',
+    imports: [CommonModule, MatDividerModule, MatIconModule],
+    templateUrl: './user-manual.component.html',
+    styleUrl: './user-manual.component.scss'
 })
 export class UserManualComponent {
   colorService = inject(ColorService)

@@ -19,16 +19,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
-  selector: 'app-insert-expense-dialog',
-  standalone: true,
-  imports: [MatButtonModule, MatDialogModule, MatInputModule, ReactiveFormsModule, MatSelectModule,
-    CommonModule, NgxMatSelectSearchModule,
-    MatTooltipModule,
-    MatIconModule,
-    MatDividerModule
-  ],
-  templateUrl: './insert-expense-dialog.component.html',
-  styleUrl: './insert-expense-dialog.component.scss'
+    selector: 'app-insert-expense-dialog',
+    imports: [MatButtonModule, MatDialogModule, MatInputModule, ReactiveFormsModule, MatSelectModule,
+        CommonModule, NgxMatSelectSearchModule,
+        MatTooltipModule,
+        MatIconModule,
+        MatDividerModule
+    ],
+    templateUrl: './insert-expense-dialog.component.html',
+    styleUrl: './insert-expense-dialog.component.scss'
 })
 export class InsertExpenseDialogComponent extends BasePageComponent implements OnInit {
   dataService = inject(DataService)

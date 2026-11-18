@@ -8,20 +8,19 @@ import { DatePipe } from '@angular/common';
 import { formatDateToYYYYMM } from '../../utils/utils';
 
 @Component({
-  selector: 'app-simple-month-picker',
-  standalone: true,
-  imports: [
-    MatButtonModule,
-    MatMenuModule,
-    MatDatepickerModule,
-    DatePipe
-  ],
-  providers: [
-    provideNativeDateAdapter()
-  ],
-  templateUrl: './simple-month-picker.component.html',
-  styleUrl: './simple-month-picker.component.scss',
-  encapsulation: ViewEncapsulation.None
+    selector: 'app-simple-month-picker',
+    imports: [
+        MatButtonModule,
+        MatMenuModule,
+        MatDatepickerModule,
+        DatePipe
+    ],
+    providers: [
+        provideNativeDateAdapter()
+    ],
+    templateUrl: './simple-month-picker.component.html',
+    styleUrl: './simple-month-picker.component.scss',
+    encapsulation: ViewEncapsulation.None
 })
 export class SimpleMonthPickerComponent implements OnChanges {
   @Input() dateValue: Date = new Date();

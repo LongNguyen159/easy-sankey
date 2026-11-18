@@ -9,15 +9,14 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
 import { formatBigNumber } from '../../../utils/utils';
 
 @Component({
-  selector: 'app-income-expense-ratio-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective, CommonModule],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './income-expense-ratio-chart.component.html',
-  styleUrls: ['./income-expense-ratio-chart.component.scss']
+    selector: 'app-income-expense-ratio-chart',
+    imports: [NgxEchartsDirective, CommonModule],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './income-expense-ratio-chart.component.html',
+    styleUrls: ['./income-expense-ratio-chart.component.scss']
 })
 export class IncomeExpenseRatioChartComponent extends BaseChartComponent implements OnChanges, OnDestroy {
   @Input() totalIncome: number = 0;

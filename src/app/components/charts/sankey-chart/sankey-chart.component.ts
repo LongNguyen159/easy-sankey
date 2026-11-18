@@ -17,18 +17,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 
 @Component({
-  selector: 'app-sankey-chart',
-  standalone: true,
-  imports: [NgxEchartsDirective, CommonModule, MatChipsModule, MatButtonModule,
-    MatIconModule,
-    MatTooltipModule
-  ],
-  providers: [
-    provideEcharts(),
-    CurrencyPipe
-  ],
-  templateUrl: './sankey-chart.component.html',
-  styleUrl: './sankey-chart.component.scss'
+    selector: 'app-sankey-chart',
+    imports: [NgxEchartsDirective, CommonModule, MatChipsModule, MatButtonModule,
+        MatIconModule,
+        MatTooltipModule
+    ],
+    providers: [
+        provideEcharts(),
+        CurrencyPipe
+    ],
+    templateUrl: './sankey-chart.component.html',
+    styleUrl: './sankey-chart.component.scss'
 })
 export class SankeyChartComponent extends BaseChartComponent implements OnChanges {
 

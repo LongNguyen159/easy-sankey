@@ -6,11 +6,10 @@ import { AbnormalityChartData } from '../../models';
 import { CategoryRegressionChartComponent } from "../../charts/category-regression-chart/category-regression-chart.component";
 
 @Component({
-  selector: 'app-pattern-analysis-dialog',
-  standalone: true,
-  imports: [MatDialogModule, MatButtonModule, CommonModule, CategoryRegressionChartComponent],
-  templateUrl: './pattern-analysis-dialog.component.html',
-  styleUrl: './pattern-analysis-dialog.component.scss'
+    selector: 'app-pattern-analysis-dialog',
+    imports: [MatDialogModule, MatButtonModule, CommonModule, CategoryRegressionChartComponent],
+    templateUrl: './pattern-analysis-dialog.component.html',
+    styleUrl: './pattern-analysis-dialog.component.scss'
 })
 export class PatternAnalysisDialogComponent {
 
