@@ -6,6 +6,7 @@ import { DataService } from './data.service';
 import { LogsService } from './logs.service';
 import { TrackingService } from './tracking.service';
 import { UiService } from './ui.service';
+import { exportBackup, exportMonth, readBackup, readMonth, replaceStorageItems } from '../utils/data-transfer';
 
 describe('expense categories', () => {
   let injector: ReturnType<typeof createInjector>;
@@ -19,7 +20,7 @@ describe('expense categories', () => {
         DataService,
         BudgetService,
         TrackingService,
-        { provide: LogsService, useValue: { sanitiseLogs: () => {} } },
+        { provide: LogsService, useValue: { sanitiseLogs: () => {}, removeMonthLogs: () => {} } },
         { provide: UiService, useValue: { showSnackBar: () => {}, openConfirmDialog: () => {} } },
       ],
     });
@@ -112,5 +113,86 @@ describe('expense categories', () => {
 
     // A copy taken before deletion can still be pasted without reviving the reference.
     expect(data.processInputData(april, '2025-06')?.rawInput[1].source).toBeUndefined();
+  });
+
+  it('imports a copied month into a separate data set, keeping its category and replacing only the selected month', () => {
+    const custom = categories.save('Tools', 'build', CATEGORY_COLORS[0]);
+    const april = seedMonth('2025-04', custom.value);
+    const copied = readMonth(exportMonth(april, categories.categories()));
+    localStorage.removeItem('expenseCategories');
+    localStorage.removeItem('monthlyData');
+    injector = createInjector();
+    categories = injector.get(CategoryService);
+    data = injector.get(DataService);
+    seedMonth('2025-06', ExpenseCategory.Groceries);
+    const july = seedMonth('2025-07', ExpenseCategory.Housing);
+
+    data.importMonth('2025-06', copied);
+
+    const june = data.loadSingleMonth('2025-06')!;
+    expect(june.totalExpenses).toBe(280);
+    expect(june.rawInput[1].source).toBe(custom.value);
+    expect(june.rawInput.map(link => link.id)).not.toEqual(april.map(link => link.id));
+    expect(categories.get(custom.value)).toEqual(custom);
+    expect(data.loadSingleMonth('2025-07')?.rawInput).toEqual(july);
+    expect(data.loadSingleMonth('2025-04')).toBeNull();
+  });
+
+  it('leaves the destination untouched when a copied month has an expense cycle', () => {
+    seedMonth('2025-06', ExpenseCategory.Groceries);
+    const before = localStorage.getItem('monthlyData');
+    const entries = [
+      { id: 'a', type: EntryType.Expense, target: 'A', value: 1, source: 'B' },
+      { id: 'b', type: EntryType.Expense, target: 'B', value: 1, source: 'A' },
+    ];
+
+    expect(() => data.importMonth('2025-06', { entries, categories: [] })).toThrowError(/cycle/);
+    expect(localStorage.getItem('monthlyData')).toBe(before);
+  });
+
+  it('restores a full backup and removes app data absent from the backup', () => {
+    const custom = categories.save('Tools', 'build', CATEGORY_COLORS[0]);
+    const april = seedMonth('2025-04', custom.value);
+    localStorage.setItem('selectedCurrency', 'USD');
+    const backup = readBackup(exportBackup(localStorage));
+    seedMonth('2025-05', ExpenseCategory.Groceries);
+    localStorage.setItem('budgets', JSON.stringify([{ category: custom.value, value: 100 }]));
+    localStorage.setItem('selectedCurrency', 'EUR');
+
+    replaceStorageItems(localStorage, backup);
+
+    const restored = createInjector();
+    expect(restored.get(DataService).loadSingleMonth('2025-04')?.rawInput).toEqual(april);
+    expect(restored.get(DataService).loadSingleMonth('2025-05')).toBeNull();
+    expect(restored.get(CategoryService).get(custom.value)).toEqual(custom);
+    expect(restored.get(BudgetService).getBudgets()).toEqual([]);
+    expect(localStorage.getItem('selectedCurrency')).toBe('USD');
+  });
+
+  it('rejects invalid backups before replacing storage and restores the original values if a write fails', () => {
+    const april = seedMonth('2025-04', ExpenseCategory.Groceries);
+    const before = localStorage.getItem('monthlyData');
+    const invalid = JSON.parse(exportBackup(localStorage));
+    invalid.data.monthlyData['2025-04'].rawInput = null;
+    expect(() => readBackup(JSON.stringify(invalid))).toThrow();
+    expect(() => readBackup(exportMonth(april, categories.categories()))).toThrow();
+
+    const write = jasmine.createSpy('write').and.callFake((key: string, value: string) => {
+      if (key === 'budgets') throw new DOMException('Quota reached', 'QuotaExceededError');
+      saved.set(key, value);
+    });
+    const saved = new Map([['monthlyData', before!]]);
+    const storage: Storage = {
+      get length() { return saved.size; },
+      clear: () => saved.clear(),
+      key: index => [...saved.keys()][index] ?? null,
+      getItem: key => saved.get(key) ?? null,
+      setItem: write,
+      removeItem: key => { saved.delete(key); },
+    };
+    const tooLarge = new Map([['monthlyData', '{}'], ['budgets', '[]']]);
+    expect(() => replaceStorageItems(storage, tooLarge)).toThrow();
+    expect(storage.getItem('monthlyData')).toBe(before);
+    expect(storage.getItem('budgets')).toBeNull();
   });
 });

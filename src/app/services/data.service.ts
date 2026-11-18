@@ -1,5 +1,5 @@
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, TreeNode, UserDefinedLink } from '../components/models';
+import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -9,6 +9,8 @@ import { CategoryService } from './category.service';
 import { BudgetService } from './budget.service';
 import { TrackingService } from './tracking.service';
 import { SingleMonthData, MonthlyData } from '../components/models';
+import { categoryStorageKey, MonthTransfer, replaceStorageItems } from '../utils/data-transfer';
+import { v4 as uuid } from 'uuid';
 
 
 export interface ExpenseData {
@@ -280,7 +282,8 @@ export class DataService {
         return data;
     }
 
-    private calculateMonth(userDefinedLinks: UserDefinedLink[], month: string, lastUpdated: Date | string): SingleMonthData {
+    private calculateMonth(userDefinedLinks: UserDefinedLink[], month: string, lastUpdated: Date | string,
+        hasCategory = (id: string) => !!this.categories.get(id)): SingleMonthData {
         const nodesMap = new Map<string, { value: number, type: EntryType }>(); // Map to hold unique nodes and their total values and types
         const links: SankeyLink[] = []; // Array to hold links between nodes
         const incomeNodes: string[] = []; // Track income nodes
@@ -376,7 +379,7 @@ export class DataService {
                 let sourceNode = link.source || sourceForExpenses;
 
                 // Check if the source node exists in nodesMap or is an allowed category
-                if (!nodesMap.has(sourceNode) && this.categories.get(sourceNode)) {
+                if (!nodesMap.has(sourceNode) && hasCategory(sourceNode)) {
                     // Create the missing source node as a new entry with 'Expense' type
                     nodesMap.set(sourceNode, { value: 0, type: EntryType.Expense });
 
@@ -717,6 +720,57 @@ export class DataService {
 
 
     //#region Copy & Paste Links
+    importMonth(month: string, { entries, categories }: MonthTransfer): void {
+        const currentCategories = this.categories.categories();
+        const definitions = new Map(currentCategories.map(category => [category.value, category]));
+        const sources = new Set(entries.map(entry => entry.source));
+        for (const category of categories) {
+            if (sources.has(category.value) && !definitions.has(category.value)) {
+                definitions.set(category.value, category);
+            }
+        }
+
+        const reservedNames = new Set([...this.nonAllowedNames, ...definitions.keys()]);
+        if (this.checkDuplicateNames(entries) || entries.some(({ target }) => reservedNames.has(target.trim()))) {
+            throw new Error('The copied month has duplicate or reserved entry names.');
+        }
+
+        // Follow each expense's parent chain once to catch cycles before calculation.
+        const parents = new Map(entries.filter(entry => entry.type === EntryType.Expense)
+            .map(entry => [entry.target, entry.source]));
+        const checked = new Set<string>();
+        for (const target of parents.keys()) {
+            const path = new Set<string>();
+            for (let node: string | undefined = target; node && !checked.has(node); node = parents.get(node)) {
+                if (path.has(node)) throw new Error('The copied month has a cycle in its expenses.');
+                path.add(node);
+            }
+            for (const node of path) checked.add(node);
+        }
+
+        const links = entries.map(({ source, type, target, value, isFixCost }) => ({
+            id: uuid(), type, target, value, isFixCost,
+            source: type === EntryType.Expense && (!source?.endsWith(`@${SYSTEM_PREFIX}`) || definitions.has(source))
+                ? source ?? undefined : undefined
+        }));
+        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
+        const savedMonths = { ...this.loadData(), [month]: data };
+        const changes = new Map([['monthlyData', JSON.stringify(savedMonths)]]);
+        if (definitions.size > currentCategories.length) {
+            changes.set(categoryStorageKey, JSON.stringify([...definitions.values()]));
+        }
+        replaceStorageItems(localStorage, changes);
+
+        if (changes.has(categoryStorageKey)) this.categories.reloadFromStorage();
+        this.logService.removeMonthLogs(month);
+        this.monthlyData = { ...this.monthlyData, ...savedMonths };
+        this.isDemo.set(false);
+        this.hasDataCycle.set(false);
+        this.multiMonthEntries$.next(savedMonths);
+        this.processedSingleMonthEntries$.next(data);
+        this.dataSaved$.next(true);
+    }
+
     // Store in sessionStorage
     storeCopiedLinks(links: UserDefinedLink[]) {
         sessionStorage.setItem(this.copiedLinksKey, JSON.stringify(links));

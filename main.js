@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 // Import the app version from package.json
@@ -77,6 +77,26 @@ const serverInstance = server.listen(port, () => {
 /** Set up Electron App. */
 
 let win;
+
+function isAppClipboardRequest(event) {
+  return event.sender === win?.webContents
+    && event.senderFrame === win.webContents.mainFrame
+    && event.senderFrame?.url.startsWith('file:');
+}
+
+ipcMain.handle('month-clipboard:read', event => {
+  if (!isAppClipboardRequest(event)) {
+    throw new Error('Clipboard request from an unexpected window');
+  }
+  return clipboard.readText();
+});
+
+ipcMain.handle('month-clipboard:write', (event, text) => {
+  if (!isAppClipboardRequest(event) || typeof text !== 'string') {
+    throw new Error('Invalid clipboard request');
+  }
+  clipboard.writeText(text);
+});
 
 function createWindow() {
   // Create the browser window.

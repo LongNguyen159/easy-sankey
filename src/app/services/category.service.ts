@@ -2,6 +2,7 @@ import { computed, Injectable, signal } from '@angular/core';
 import { v4 as uuid } from 'uuid';
 import { ExpenseCategoryDetails, expenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
 import { removeSystemPrefix } from '../utils/utils';
+import { categoryStorageKey } from '../utils/data-transfer';
 
 export const CATEGORY_COLORS = [
   { name: 'Blue', colorLight: '#1976d2', colorDark: '#90caf9' },
@@ -77,7 +78,6 @@ export const CATEGORY_ICON_GROUPS = [
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
-  private readonly storageKey = 'expenseCategories';
   private readonly definitions = signal<ExpenseCategoryDetails[]>(this.load());
   readonly categories = this.definitions.asReadonly();
 
@@ -142,8 +142,12 @@ export class CategoryService {
     });
   }
 
+  reloadFromStorage(): void {
+    this.definitions.set(this.load());
+  }
+
   private load(): ExpenseCategoryDetails[] {
-    const stored = localStorage.getItem(this.storageKey);
+    const stored = localStorage.getItem(categoryStorageKey);
     if (stored) {
       try {
         const categories: unknown = JSON.parse(stored);
@@ -160,7 +164,7 @@ export class CategoryService {
   }
 
   private persist(categories: ExpenseCategoryDetails[]): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(categories));
+    localStorage.setItem(categoryStorageKey, JSON.stringify(categories));
     this.definitions.set(categories);
   }
 }

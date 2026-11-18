@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose APIs to the renderer process in a controlled way
 contextBridge.exposeInMainWorld('electronAPI', {
+  readMonthClipboard: () => ipcRenderer.invoke('month-clipboard:read'),
+  writeMonthClipboard: text => ipcRenderer.invoke('month-clipboard:write', text),
   // Send messages from the renderer to the main process
   sendToMain: (channel, data) => {
     ipcRenderer.send(channel, data);

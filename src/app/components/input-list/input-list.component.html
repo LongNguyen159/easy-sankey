@@ -45,7 +45,7 @@
           </button>
 
           <!-- Paste Button inside the menu -->
-          <button mat-menu-item class="!px-4" (click)="pasteLinks()">
+          <button mat-menu-item class="!px-4" (click)="pasteLinks(pasteMonthDialog)">
             <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>
             <span>
               Paste
@@ -275,4 +275,22 @@
       </div>
     }
   </div>
+</ng-template>
+
+<ng-template #pasteMonthDialog let-month let-dialogRef="dialogRef">
+  <h2 mat-dialog-title>Paste month</h2>
+  <mat-dialog-content>
+    <p>Paste the copied month below to replace the entries in {{ month }}.</p>
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Copied month JSON</mat-label>
+      <textarea matInput #monthJson rows="4"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancel</button>
+    @if (lastMonthCopiedInTab?.length) {
+      <button mat-button (click)="pasteMonthFromTab(month) && dialogRef.close()">Paste from this tab</button>
+    }
+    <button mat-flat-button (click)="pasteMonthText(monthJson.value, month) && dialogRef.close()">Paste</button>
+  </mat-dialog-actions>
 </ng-template>

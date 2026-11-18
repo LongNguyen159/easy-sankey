@@ -1,6 +1,7 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
-import { afterNextRender, Component, ElementRef, inject, Injector, Input, OnDestroy, OnInit, QueryList, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, Input, OnDestroy, OnInit, QueryList, TemplateRef, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
@@ -27,11 +28,20 @@ import { onMonthChanges } from '../../utils/data-utils';
 import { Router } from '@angular/router';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { v4 as uuidv4 } from 'uuid';
 import { LogsService } from '../../services/logs.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RoutePath } from '../models';
+import { exportMonth, MonthTransfer, readMonth } from '../../utils/data-transfer';
+
+interface MonthClipboardWindow extends Window {
+  electronAPI?: {
+    readMonthClipboard?: () => Promise<string>;
+    writeMonthClipboard?: (text: string) => Promise<void>;
+  };
+}
 
 /** Prevent user to define a certain node name that coincides with our system generated node name. */
 function restrictedNodeNamesValidator(restrictedNames: string[]): ValidatorFn {
@@ -77,7 +87,7 @@ enum ErrorType {
         CategorySelectComponent,
         MatSlideToggleModule, MonthPickerComponent,
         MatCardModule, ErrorCardComponent, MatDividerModule,
-        MatMenuModule,
+        MatMenuModule, MatDialogModule,
         FormsModule,
         MatTooltipModule
     ],
@@ -129,6 +139,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   @ViewChildren('entryName') private entryNames!: QueryList<ElementRef<HTMLInputElement>>;
 
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly clipboard = inject(Clipboard);
   private readonly announcer = inject(LiveAnnouncer);
   private readonly newEntries = new Set<FormGroup>();
   protected readonly collapsedCategories = new Set<string>();
@@ -556,34 +569,88 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
 
   //#region Copy & Paste Links
-  copyLinks(): void {
+  async copyLinks(): Promise<void> {
     const currentLinks: UserDefinedLink[] = this.linkForm.value.links;
-    if (currentLinks && currentLinks.length > 0) {
-      this.dataService.storeCopiedLinks(currentLinks);
-      this.uiService.showSnackBar(`'${this.dataMonth}' copied to clipboard!`, 'Ok');
-    } else {
-      this.uiService.showSnackBar('Nothing to copy!', 'Dismiss');
+    if (!currentLinks.length) {
+      this.uiService.showSnackBar('Nothing to copy.');
+      return;
     }
+    if (this.linkForm.invalid || this.dataService.checkDuplicateNames(currentLinks)) {
+      this.uiService.showSnackBar('Fix the invalid entries before copying this month.');
+      return;
+    }
+    const month = this.dataMonth;
+    const text = exportMonth(currentLinks, this.categoryService.categories());
+    let savedInTab = false;
+    try {
+      this.dataService.storeCopiedLinks(currentLinks);
+      savedInTab = true;
+    } catch {
+      // The system clipboard is still available if session storage is full.
+    }
+
+    const desktop = (window as MonthClipboardWindow).electronAPI;
+    try {
+      if (desktop?.writeMonthClipboard) await desktop.writeMonthClipboard(text);
+      else await navigator.clipboard.writeText(text);
+    } catch {
+      if (!this.clipboard.copy(text)) {
+        this.uiService.showSnackBar(savedInTab ? 'Month copied for this tab only.' : 'Could not copy this month.');
+        return;
+      }
+    }
+    this.uiService.showSnackBar(`${month} copied to the clipboard.`);
   }
 
-  // Method to paste stored data back into the form
-  pasteLinks(): void {
-    const copiedLinks = this.dataService.retrieveCopiedLinks();
-    if (copiedLinks) {
-      // Generate new UUIDs for each copied link
-      const newLinks = copiedLinks.map(link => ({
-        ...link,
-        id: uuidv4()
-      }));
-  
-      this.populateInputFields({ rawInput: newLinks } as SingleMonthData);
-      this.hasChanges = true;
-      this.uiService.showSnackBar('Links pasted!', 'Ok');
-      /** Process the pasted links */
-      this.dataService.processInputData(newLinks, this.dataMonth);
-      this.updateSavedFormValuesOnFormChanges();
-    } else {
-      this.uiService.showSnackBar('Clipboard is empty!', 'Dismiss');
+  async pasteLinks(dialogTemplate: TemplateRef<unknown>): Promise<void> {
+    const month = this.dataMonth;
+    const desktop = (window as MonthClipboardWindow).electronAPI;
+    let transfer: MonthTransfer;
+    try {
+      const text = desktop?.readMonthClipboard ? await desktop.readMonthClipboard() : await navigator.clipboard.readText();
+      transfer = readMonth(text);
+    } catch {
+      if (!this.destroyRef.destroyed && month === this.dataMonth) {
+        this.dialog.open(dialogTemplate, { data: month, autoFocus: 'textarea' });
+      }
+      return;
+    }
+    this.applyMonthTransfer(transfer, month);
+  }
+
+  protected pasteMonthText(text: string, month: string): boolean {
+    let transfer: MonthTransfer;
+    try {
+      transfer = readMonth(text);
+    } catch {
+      this.uiService.showSnackBar('Copy a month from Easy Sankey first.');
+      return false;
+    }
+    return this.applyMonthTransfer(transfer, month);
+  }
+
+  protected get lastMonthCopiedInTab(): UserDefinedLink[] | null {
+    return this.dataService.retrieveCopiedLinks();
+  }
+
+  protected pasteMonthFromTab(month: string): boolean {
+    const entries = this.lastMonthCopiedInTab;
+    return !!entries?.length && this.applyMonthTransfer({ entries, categories: [] }, month);
+  }
+
+  private applyMonthTransfer(transfer: MonthTransfer, month: string): boolean {
+    if (this.destroyRef.destroyed || month !== this.dataMonth || !month) return false;
+    try {
+      this.dataService.importMonth(month, transfer);
+      this.savedFormValues = this.linkArray.value.slice();
+      this.hasChanges = false;
+      this.uiService.showSnackBar(`Entries pasted into ${month}.`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error && error.message.startsWith('The copied month')
+        ? error.message : 'Could not save the copied month.';
+      this.uiService.showSnackBar(message);
+      return false;
     }
   }
 

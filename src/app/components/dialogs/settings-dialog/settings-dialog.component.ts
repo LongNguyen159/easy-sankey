@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, Renderer2, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import {MatCardModule} from '@angular/material/card';
@@ -6,7 +6,6 @@ import {MatRadioModule} from '@angular/material/radio';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ColorService, Theme } from '../../../services/color.service';
-import { DataService } from '../../../services/data.service';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
 import { UiService } from '../../../services/ui.service';
@@ -16,6 +15,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { RestartDialogComponent } from '../restart-dialog/restart-dialog.component';
 import { CurrencyService } from '../../../services/currency.service';
 import { RoutePath } from '../../models';
+import { firstValueFrom } from 'rxjs';
+import { exportBackup, readBackup, replaceStorageItems } from '../../../utils/data-transfer';
 
 
 @Component({
@@ -33,7 +34,6 @@ import { RoutePath } from '../../models';
 })
 export class SettingsDialogComponent implements OnInit{
   colorService = inject(ColorService)
-  dataService = inject(DataService)
   currencyService = inject(CurrencyService)
   readonly router = inject(Router)
   dialogRef = inject(MatDialogRef);
@@ -45,9 +45,7 @@ export class SettingsDialogComponent implements OnInit{
 
   selectedCurrency = ''
   availableCurrencies: string[] = ['USD', 'EUR', 'VND'];
-
-
-  constructor(private renderer: Renderer2) {}
+  importing = false;
 
   ngOnInit(): void {
     this.selectedTheme = this.colorService.isManualThemeSet() ? (this.colorService.isDarkMode() ? Theme.Dark : Theme.Light) : Theme.System
@@ -78,6 +76,67 @@ export class SettingsDialogComponent implements OnInit{
     this.router.navigate([RoutePath.FinanceManagerPage]);
     this.dialogRef.close()
   }
+
+  exportData(): void {
+    let json: string;
+    try {
+      json = exportBackup(localStorage);
+    } catch {
+      this.uiService.showSnackBar('Could not create the backup.');
+      return;
+    }
+
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'easy-sankey-backup.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async importData(input: HTMLInputElement): Promise<void> {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || this.importing) return;
+    this.importing = true;
+
+    try {
+      let backup: Map<string, string | null>;
+      try {
+        backup = readBackup(await file.text());
+      } catch {
+        this.uiService.showSnackBar('Choose a valid Easy Sankey full backup JSON file.');
+        return;
+      }
+
+      const confirmed = await firstValueFrom(this.uiService.openConfirmDialog({
+        title: 'Replace all app data?',
+        message: 'Importing this backup will overwrite all your current months, budgets, categories, fixed costs, and settings. This cannot be undone. Are you sure?',
+        confirmLabel: 'Replace all data',
+        confirmColor: 'warn',
+        cancelLabel: 'Cancel'
+      }, 'min(30rem, 90vw)', 'auto'));
+      if (!confirmed) return;
+
+      try {
+        replaceStorageItems(localStorage, backup);
+      } catch {
+        this.uiService.showSnackBar('Could not restore the backup.');
+        return;
+      }
+
+      sessionStorage.removeItem('copiedLinks');
+      sessionStorage.removeItem('isFormatBigNumbers');
+      if (location.protocol === 'file:') {
+        location.replace(new URL('index.html', document.baseURI));
+      } else {
+        location.reload();
+      }
+    } finally {
+      this.importing = false;
+    }
+  }
+
   clearLocalStorage() {
     const dialogData: ConfirmDialogData = {
       title: 'Are you sure you want to clear Local Storage?',
