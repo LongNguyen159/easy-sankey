@@ -1,8 +1,7 @@
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
-// Import the app version from package.json
-const { version } = require('./package.json');
+const { version, enableDevTools } = require('./package.json');
 const path = require('path');
 
 //#region Server Setup
@@ -78,6 +77,26 @@ const serverInstance = server.listen(port, () => {
 
 let win;
 
+function isAppClipboardRequest(event) {
+  return event.sender === win?.webContents
+    && event.senderFrame === win.webContents.mainFrame
+    && event.senderFrame?.url.startsWith('file:');
+}
+
+ipcMain.handle('month-clipboard:read', event => {
+  if (!isAppClipboardRequest(event)) {
+    throw new Error('Clipboard request from an unexpected window');
+  }
+  return clipboard.readText();
+});
+
+ipcMain.handle('month-clipboard:write', (event, text) => {
+  if (!isAppClipboardRequest(event) || typeof text !== 'string') {
+    throw new Error('Invalid clipboard request');
+  }
+  clipboard.writeText(text);
+});
+
 function createWindow() {
   // Create the browser window.
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -91,7 +110,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: false, // disable devTools for production
+      devTools: enableDevTools === true,
     },
     frame: true,         // Show the window frame (this allows you to drag and resize the window)
     resizable: true,     // Allow resizing the window (optional)

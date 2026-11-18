@@ -1,18 +1,22 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
-import { MatCardModule } from '@angular/material/card';
-import { expenseCategoryDetails, UserDefinedLink } from '../models';
+import { CategorySelectComponent } from '../category-select/category-select.component';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatMenuModule } from '@angular/material/menu';
+import { UserDefinedLink } from '../models';
 import { debounceTime, takeUntil } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AmountSortComponent } from '../amount-sort/amount-sort.component';
+import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sort';
 
 
 @Component({
@@ -24,15 +28,23 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatFormFieldModule,
         MatSelectModule,
         MatIconModule,
-        NgxMatSelectSearchModule,
-        MatCardModule, ErrorCardComponent,
-        MatTooltipModule
+        CategorySelectComponent,
+        ErrorCardComponent,
+        MatTooltipModule,
+        MatDividerModule,
+        MatMenuModule,
+        CdkDrag,
+        CdkDragHandle,
+        CdkDropList,
+        AmountSortComponent
     ],
     templateUrl: './fix-cost-input.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
+  protected sortOrder = readAmountSort('fixCostSort');
+  protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
 
   constructor(fb: FormBuilder) {
@@ -40,26 +52,15 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   override ngOnInit() {
-    this.existingNodes = Object.values(expenseCategoryDetails);
-    this.filteredNodes = [...this.existingNodes];
     this.initialFormState = [...this.linkArray.value]; // Store the initial form state
-    this.listenCategoryChanges()
 
 
-    let existingFixCosts = localStorage.getItem('fixCosts') 
+    const fixedCosts = this.dataService.isDemo()
+      ? this.dataService.demoLinks.filter(item => item.isFixCost)
+      : this.dataService.retrieveFixCostsLinks();
 
-    if (this.dataService.isDemo()) {
-      existingFixCosts = JSON.stringify(this.dataService.demoLinks.filter(item => item.isFixCost));
-    }
-
-
-    if (existingFixCosts) {
-      const parsedFixCosts: UserDefinedLink[] = JSON.parse(existingFixCosts);
-
-      parsedFixCosts.forEach(link => {
-        link.isFixCost = true;
-        this.linkArray.push(this._createLinkGroup(link), { emitEvent: false });
-      })
+    for (const link of fixedCosts) {
+      this.linkArray.push(this._createLinkGroup({ ...link, isFixCost: true }), { emitEvent: false });
     }
 
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(() => {
@@ -68,6 +69,35 @@ export class FixCostInputComponent extends InputListComponent {
         this.saveToLocalStorage()
       }
     })    
+  }
+
+  override addLink(): void {
+    super.addLink();
+    this.newEntries.delete(this.linkArray.at(-1));
+  }
+
+  protected override updateSavedFormValuesOnFormChanges(): void {
+    this.saveToLocalStorage();
+  }
+
+  protected setSort(order: AmountSort): void {
+    this.sortOrder = order;
+    localStorage.setItem('fixCostSort', order);
+  }
+
+  protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
+    return sortByAmount(super.visibleEntries(isFixCost), this.sortOrder, row =>
+      row === this.editingAmount?.row ? this.editingAmount.value : Number(row.get('value')?.value) || 0
+    );
+  }
+
+  protected startAmountEdit(row: FormGroup): void {
+    this.editingAmount = { row, value: Number(row.get('value')?.value) || 0 };
+  }
+
+  protected finishAmountEdit(): void {
+    this.editingAmount = undefined;
+    this.updateInput();
   }
 
   
@@ -96,6 +126,7 @@ export class FixCostInputComponent extends InputListComponent {
 
 
   override removeLink(index: number): void {
+    if (index < 0) return;
     this.linkArray.removeAt(index, { emitEvent: false });
     this.saveToLocalStorage()
   }
@@ -103,10 +134,13 @@ export class FixCostInputComponent extends InputListComponent {
 
   saveToLocalStorage() {
     if (!this.linkForm.valid) return;
-    localStorage.setItem('fixCosts', JSON.stringify(this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }))));
+    const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
+    localStorage.setItem('fixCosts', JSON.stringify(this.categoryService.clearMissingSources(links)));
   }
 
   override ngOnDestroy(): void {
+    this.componentDestroyed$.next();
+    this.componentDestroyed$.complete();
 
     if (JSON.stringify(this.linkArray.value) === JSON.stringify(this.initialFormState)) {
       return; // No changes, don't proceed

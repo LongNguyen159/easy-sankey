@@ -1,8 +1,9 @@
+import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { DataService } from '../../services/data.service';
-import { Abnormality, AbnormalityAnalysis, AbnormalityChartData, AbnormalityConfig, AbnormalityType, ExpenseCategory, expenseCategoryDetails, ForecastData, MonthlyData, SingleMonthData, TreeNode, TrendsLineChartData } from '../models';
+import { Abnormality, AbnormalityAnalysis, AbnormalityChartData, AbnormalityConfig, AbnormalityType, ForecastData, MonthlyData, SingleMonthData, TreeNode, TrendsLineChartData } from '../models';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -11,7 +12,7 @@ import { UiService } from '../../services/ui.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmDialogData } from '../dialogs/confirm-dialog/confirm-dialog.component';
 import { MatSelectModule } from '@angular/material/select';
-import { detectAbnormalities, formatBigNumber, formatYYYYMMtoDate, getNextMonths, MONTHS_TO_PREDICT, parseLocaleStringToNumber, removeSystemPrefix, sortYearsDescending } from '../../utils/utils';
+import { detectAbnormalities, formatBigNumber, formatYYYYMMtoDate, getNextMonths, MONTHS_TO_PREDICT, parseLocaleStringToNumber, sortYearsDescending } from '../../utils/utils';
 import { TotalSurplusLineChartComponent } from "../charts/total-surplus-line-chart/total-surplus-line-chart.component";
 import { forkJoin, Subscription, takeUntil } from 'rxjs';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
@@ -144,6 +145,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   /** Cache month infos to avoid repeated processing. If data changes (hasDataChanged = true on subscription changes),
    * we will re-process the data.
    */
+  private readonly categoryService = inject(CategoryService);
   private monthInfoCache: { [key: string]: { name: string, type: string, value: number }[] } = {};
   hasDataChanged: boolean = false;
 
@@ -356,7 +358,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     
     const expenseEntries = (currentMonthData.pieData || [])
       .filter(entry => entry.name !== this.dataService.REMAINING_BALANCE_LABEL)
-      .map(entry => ({ type: 'expense', name: removeSystemPrefix(entry.name), value: entry.value }));
+      .map(entry => ({ type: 'expense', name: this.categoryService.label(entry.name), value: entry.value }));
     
     const taxEntry = currentMonthData.rawInput.find(entry => entry.type === EntryType.Tax);
     if (taxEntry) {
@@ -409,19 +411,18 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
 
     /** Get Anomalies Detection. Filter out months with missing data (no input from users) to ensure prediction accuracy. */
-    detectAbnormalities(this.trendsLineChartData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.predictionService, this.uiService)
+    detectAbnormalities(this.trendsLineChartData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.predictionService, this.uiService, name => this.categoryService.label(name))
       .then(insights => {
         this.anomalyReports = insights;
         /** Add configs (colour, icons, etc.) for display purposes */
         this.anomalyReports = this.anomalyReports.map(category => {
-          // Lookup category icon and color from the expenseCategoryDetails based on category.name
-          const categoryDetails = expenseCategoryDetails[category.categoryName as ExpenseCategory];
+          const categoryDetails = this.categoryService.get(category.categoryName);
           
           // Add category-specific icon and color at root level
           return {
             ...category,
             categoryConfig: {
-              label: categoryDetails?.label || category.categoryName,  // Fallback label
+              label: categoryDetails?.label || category.name,  // Fallback label
               value: categoryDetails?.value || category.categoryName,  // Fallback value
               icon: categoryDetails?.icon || 'category',  // Fallback icon
               colorLight: categoryDetails?.colorLight || '#757575',  // Fallback color
@@ -561,7 +562,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
     // Extract raw values & fitted values and open the dialog to plot them.
     const chartData: AbnormalityChartData = {
-      categoryName: removeSystemPrefix(categoryName),
+      categoryName: this.categoryService.label(categoryName),
       rawValues: matchingCategory.rawValues,
       xAxisData: matchingCategory.xAxisData,
       details: matchingCategory.detailedAnalysis,

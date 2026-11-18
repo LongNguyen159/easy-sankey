@@ -1,12 +1,12 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption, EChartsType } from 'echarts';
+import { EChartsOption, EChartsType, format } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
-import { DifferenceItem, SankeyData, SYSTEM_PREFIX } from '../../models';
+import { DifferenceItem, SankeyData } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { MatChipsModule } from '@angular/material/chips';
-import { parseLocaleStringToNumber, removeSystemPrefix } from '../../../utils/utils';
+import { parseLocaleStringToNumber } from '../../../utils/utils';
 import { MatButtonModule } from '@angular/material/button';
 import { DialogsService } from '../../../services/dialogs.service';
 import { CurrencyService } from '../../../services/currency.service';
@@ -142,11 +142,11 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
         },
         formatter: (params: any) => {
           if (params.dataType === 'node') {
-            const nodeName = removeSystemPrefix(params.data.name);
+            const nodeName = format.encodeHTML(this.categoryService.label(params.data.name));
             return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>`;
           } else {
-            const source = params.data.source ? removeSystemPrefix(params.data.source) : '';
-            const target = params.data.target ? removeSystemPrefix(params.data.target) : '';
+            const source = params.data.source ? format.encodeHTML(this.categoryService.label(params.data.source)) : '';
+            const target = params.data.target ? format.encodeHTML(this.categoryService.label(params.data.target)) : '';
             return `${source} → ${target}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>`;
           }
         }
@@ -177,7 +177,11 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
   }
 
   updateSankeyChart() {
-    const isDarkMode = this.colorService.isDarkMode(); // Call the signal
+    const isDarkMode = this.colorService.isDarkMode();
+    const nodes = this.sankeyData.nodes.map(node => {
+      const color = this.categoryService.color(node.name, isDarkMode);
+      return color ? { ...node, itemStyle: { color } } : node;
+    });
 
     this.sankeyMerge = {
       ...this.getBaseChartOptions(),
@@ -185,7 +189,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
         {
           nodeAlign: 'left',
           type: 'sankey',
-          data: this.sankeyData.nodes,
+          data: nodes,
           links: this.sankeyData.links,
           emphasis: { focus: 'adjacency' },
           orient: this.orientation,
@@ -206,7 +210,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
               }
             },
             formatter: (params: any) => {
-              const nodeName = removeSystemPrefix(params.name); // Remove system prefix
+              const nodeName = this.categoryService.label(params.name);
               return [
                 `{bold|${nodeName}}`, // Bold name
                 `{normal|${params.value.toLocaleString('en-US')}}`, // Normal value
@@ -240,8 +244,8 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     return this.isPositiveBalance() ? 'positive-balance' : 'negative-balance';
   }
 
-  removeSystemPrefix(name: string): string {
-    return removeSystemPrefix(name)
+  categoryLabel(name: string): string {
+    return this.categoryService.label(name)
   }
   //#endregion
 }

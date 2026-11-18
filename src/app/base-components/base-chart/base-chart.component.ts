@@ -1,3 +1,4 @@
+import { CategoryService } from '../../services/category.service';
 
 import { Component, inject, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsType } from 'echarts';
@@ -16,6 +17,7 @@ import { ColorService } from '../../services/color.service';
 })
 export class BaseChartComponent implements OnDestroy {
   protected colorService = inject(ColorService)
+  protected readonly categoryService = inject(CategoryService);
   protected _chartInstance?: EChartsType
 
   /** On chart init, assign chart instance. */

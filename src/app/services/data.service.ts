@@ -1,11 +1,16 @@
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, TreeNode, UserDefinedLink } from '../components/models';
+import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
 import { ConfirmDialogData } from '../components/dialogs/confirm-dialog/confirm-dialog.component';
 import { LogsService } from './logs.service';
+import { CategoryService } from './category.service';
+import { BudgetService } from './budget.service';
+import { TrackingService } from './tracking.service';
 import { SingleMonthData, MonthlyData } from '../components/models';
+import { categoryStorageKey, MonthTransfer, replaceStorageItems } from '../utils/data-transfer';
+import { v4 as uuid } from 'uuid';
 
 
 export interface ExpenseData {
@@ -27,6 +32,9 @@ export interface ExpenseData {
 export class DataService {
     private UiService = inject(UiService)
     private logService = inject(LogsService)
+    private categories = inject(CategoryService)
+    private budgets = inject(BudgetService)
+    private tracking = inject(TrackingService)
 
     readonly REMAINING_BALANCE_LABEL = 'Surplus'
 
@@ -98,7 +106,12 @@ export class DataService {
 
     /** Immutable states */
     private readonly copiedLinksKey = 'copiedLinks';
-    readonly nonAllowedNames = ['Total Income', 'Usable Income', 'Total Expenses', 'Total Tax', this.REMAINING_BALANCE_LABEL, '-- None --' , ...Object.values(ExpenseCategory)];
+    get nonAllowedNames(): string[] {
+        return [
+            'Total Income', 'Usable Income', 'Total Expenses', 'Total Tax', this.REMAINING_BALANCE_LABEL, '-- None --',
+            ...this.categories.categories().map(category => category.value),
+        ];
+    }
 
 
     constructor() {
@@ -183,6 +196,7 @@ export class DataService {
          * This line below will set it to true if it's not provided.
          */
         const { demo = false, showSnackbarWhenDone = false, emitObservable = true } = options;
+        userDefinedLinks = this.categories.clearMissingSources(userDefinedLinks);
 
         /** Sanitise logs on process month data. This is to remove invalid logs (Items ID has been changed, or item has been deleted). */
         this.logService.sanitiseLogs(month, userDefinedLinks.map(item => item.id));
@@ -194,25 +208,26 @@ export class DataService {
             this.UiService.showSnackBar('Negative values are not allowed', 'Dismiss', 5000);
             return;
         }
-        
+
         /** Check for non valid values field. */
         if ((userDefinedLinks && userDefinedLinks.length > 0) && userDefinedLinks.some(link => typeof link.value !== 'number' || isNaN(link.value))) {
             console.error('Error: One or more values are not valid numbers');
             this.UiService.showSnackBar('One or more values are not valid numbers', 'Dismiss', 5000);
             return;
         }
-        
+
         if (this.checkDuplicateNames(userDefinedLinks)) {
             this.UiService.showSnackBar('Duplicate names are not allowed', 'Dismiss', 5000);
             return;
         }
 
         /** Check for restricted name usage */
-        if (userDefinedLinks.some(link => this.nonAllowedNames.includes(link.target))) {
-            const foundLinks = userDefinedLinks.filter(link => this.nonAllowedNames.includes(link.target));
+        const restrictedNames = this.nonAllowedNames;
+        const foundLinks = userDefinedLinks.filter(link => restrictedNames.includes(link.target));
+        if (foundLinks.length) {
             const dialogData: ConfirmDialogData = {
                 title: 'Warning: Restricted Name Usage',
-                message: `Some names in your input are reserved for internal use and may cause unexpected behaviours. 
+                message: `Some names in your input are reserved for internal use and may cause unexpected behaviours.
                           Please rename the following entries:<br><br>
                           ${foundLinks.map(link => `- "${link.target}"`).join('<br>')}
                          `,
@@ -242,15 +257,6 @@ export class DataService {
             return;
         }
 
-
-        const nodesMap = new Map<string, { value: number, type: EntryType }>(); // Map to hold unique nodes and their total values and types
-        const links: SankeyLink[] = []; // Array to hold links between nodes
-        const incomeNodes: string[] = []; // Track income nodes
-        let totalIncomeValue = 0; // Variable to store total income value
-        let totalTaxValue = 0; // Variable to store total tax value
-        let singleIncome = false; // Flag to check if there is only one income source
-        const hasTax = userDefinedLinks.some(link => link.type === EntryType.Tax); // Check if there is any tax link
-
         /** Demo flag: Only set to true when the app loads for the first time
          * to show our demo graph for first time users.
          */
@@ -260,6 +266,31 @@ export class DataService {
             this.isDemo.set(false)
         }
 
+
+        const savedMonth = this.loadSingleMonth(month);
+        const changed = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedMonth?.rawInput);
+        const lastUpdated = changed && userDefinedLinks.length ? new Date() : savedMonth?.lastUpdated || '-';
+        const data = this.calculateMonth(userDefinedLinks, month, lastUpdated);
+        this.monthlyData[month] = data;
+
+        if (emitObservable) this.processedSingleMonthEntries$.next(data);
+        if (showSnackbarWhenDone && !this.isDemo()) {
+            this.UiService.showSnackBar('Data updated successfully!', 'OK', 3000);
+        }
+        if (changed) this.saveData();
+
+        return data;
+    }
+
+    private calculateMonth(userDefinedLinks: UserDefinedLink[], month: string, lastUpdated: Date | string,
+        hasCategory = (id: string) => !!this.categories.get(id)): SingleMonthData {
+        const nodesMap = new Map<string, { value: number, type: EntryType }>(); // Map to hold unique nodes and their total values and types
+        const links: SankeyLink[] = []; // Array to hold links between nodes
+        const incomeNodes: string[] = []; // Track income nodes
+        let totalIncomeValue = 0; // Variable to store total income value
+        let totalTaxValue = 0; // Variable to store total tax value
+        let singleIncome = false; // Flag to check if there is only one income source
+        const hasTax = userDefinedLinks.some(link => link.type === EntryType.Tax); // Check if there is any tax link
 
         // Step 1: Initialize the nodes without adding values yet
         userDefinedLinks.forEach(link => {
@@ -335,8 +366,6 @@ export class DataService {
         const sourceForExpenses = hasTax ? 'Usable Income' : incomeSource;
 
         // Step 4: Create links for expenses, using default expense source.
-        const allowedCategories = Object.values(ExpenseCategory);
-
         userDefinedLinks.forEach(link => {
             if (link.type == EntryType.Income) {
                 if (!singleIncome) {
@@ -350,7 +379,7 @@ export class DataService {
                 let sourceNode = link.source || sourceForExpenses;
 
                 // Check if the source node exists in nodesMap or is an allowed category
-                if (!nodesMap.has(sourceNode) && allowedCategories.includes(sourceNode as ExpenseCategory)) {
+                if (!nodesMap.has(sourceNode) && hasCategory(sourceNode)) {
                     // Create the missing source node as a new entry with 'Expense' type
                     nodesMap.set(sourceNode, { value: 0, type: EntryType.Expense });
 
@@ -450,16 +479,8 @@ export class DataService {
         // Add remaining balance to the tree map data        
         treeMapData.push({ name: this.REMAINING_BALANCE_LABEL, value: remainingBalance, children: [] });
 
-        // If there are changes in the data, update the lastUpdated date and write into Local Storage
-        const savedSingleMonthData = this.loadSingleMonth(month);
-        const isDifferent: boolean = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedSingleMonthData?.rawInput);
-        const isEmpty: boolean = userDefinedLinks.length === 0;
-
-
-
-        // Final Object to be emitted
-        this.monthlyData[month] = {
-            lastUpdated: (isDifferent && !isEmpty) ? new Date() : savedSingleMonthData?.lastUpdated || '-',
+        return {
+            lastUpdated,
             sankeyData: { nodes: updatedNodes, links: updatedLinks },
             totalUsableIncome: totalIncomeValue - totalTaxValue,
             totalGrossIncome: totalIncomeValue,
@@ -471,25 +492,61 @@ export class DataService {
             month: month,
             treeMapData: treeMapData
         };
+    }
 
+    /** Rebuild saved projections after clearing a category from its entries. */
+    removeCategory(id: string): void {
+        if (!this.categories.get(id)) return;
+        const clear = (links: UserDefinedLink[]) => links.map(link => {
+            if (link.source !== id) return link;
+            const { source, ...uncategorized } = link;
+            return uncategorized;
+        });
 
-        // Emit the processed data
-        if (emitObservable) {
-            this.processedSingleMonthEntries$.next(this.monthlyData[month]) // emit single month data
-            
-            // this.multiMonthEntries$.next(this.monthlyData) // emit all months data
+        const active = this.processedSingleMonthEntries$.value;
+        const activeWasSaved = active === this.monthlyData[active.month];
+        const affectedMonths = Object.entries(this.monthlyData)
+            .filter(([, data]) => data.rawInput.some(link => link.source === id));
+
+        if (affectedMonths.length) {
+            const updatedMonths = { ...this.monthlyData };
+            for (const [month, data] of affectedMonths) {
+                updatedMonths[month] = this.calculateMonth(clear(data.rawInput), month, data.lastUpdated);
+            }
+            this.saveData(updatedMonths);
         }
 
-        if (showSnackbarWhenDone && !this.isDemo()) {
-            this.UiService.showSnackBar('Data updated successfully!', 'OK', 3000);
+        this.demoLinks = clear(this.demoLinks);
+        const fixed = this.retrieveFixCostsLinks();
+        if (fixed.some(link => link.source === id)) {
+            localStorage.setItem('fixCosts', JSON.stringify(clear(fixed)));
         }
+        const copied = this.retrieveCopiedLinks();
+        if (copied?.some(link => link.source === id)) this.storeCopiedLinks(clear(copied));
 
-        // Write/Save data into Local Storage (if it's changed)
-        if (isDifferent) {
-            this.saveData()
+        const budgets = this.budgets.getBudgets();
+        if (budgets.some(budget => budget.category === id)) {
+            this.budgets.saveBudgets(budgets.filter(budget => budget.category !== id));
         }
-        //#endregion
-        return this.monthlyData[month];
+        if (this.tracking.getTrackingData().some(tracker => tracker.name === id)) {
+            this.tracking.removeTrackingData(id);
+        }
+        this.tracking.categoriesToTrack.update(ids => ids.filter(category => category !== id));
+
+        const essentials: string[] = JSON.parse(localStorage.getItem('essentialCategories') || '[]');
+        if (essentials.includes(id)) {
+            localStorage.setItem('essentialCategories', JSON.stringify(essentials.filter(category => category !== id)));
+        }
+        this.categories.remove(id);
+
+        if (active.rawInput.some(link => link.source === id)) {
+            const rawInput = clear(active.rawInput);
+            let updatedActive = activeWasSaved ? this.monthlyData[active.month] : { ...active, rawInput };
+            if (!activeWasSaved && active.totalExpenses !== -1) {
+                updatedActive = this.calculateMonth(rawInput, active.month, active.lastUpdated);
+            }
+            this.processedSingleMonthEntries$.next(updatedActive);
+        }
     }
 
     checkDuplicateNames(links: UserDefinedLink[]): boolean {
@@ -532,9 +589,9 @@ export class DataService {
 
     //#region Local Storage
     /** Save user data in localStorage. Data will be retrieved on app Init. */
-    private saveData() {
-        const nonEmptyMonthlyData = Object.keys(this.monthlyData).reduce((result, month) => {
-            const data = this.monthlyData[month];
+    private saveData(monthlyData = this.monthlyData) {
+        const nonEmptyMonthlyData = Object.keys(monthlyData).reduce((result, month) => {
+            const data = monthlyData[month];
             // Check if the data contains meaningful entries (you can adjust conditions as needed)
             if (data.rawInput.length > 0 || data.totalGrossIncome > 0 || data.totalExpenses > 0) {
                 result[month] = data; // Only keep non-empty months
@@ -549,6 +606,7 @@ export class DataService {
          * 
          */
         localStorage.setItem('monthlyData', JSON.stringify(nonEmptyMonthlyData));
+        this.monthlyData = monthlyData;
 
         // Emit all months data
         this.multiMonthEntries$.next(nonEmptyMonthlyData);
@@ -662,6 +720,57 @@ export class DataService {
 
 
     //#region Copy & Paste Links
+    importMonth(month: string, { entries, categories }: MonthTransfer): void {
+        const currentCategories = this.categories.categories();
+        const definitions = new Map(currentCategories.map(category => [category.value, category]));
+        const sources = new Set(entries.map(entry => entry.source));
+        for (const category of categories) {
+            if (sources.has(category.value) && !definitions.has(category.value)) {
+                definitions.set(category.value, category);
+            }
+        }
+
+        const reservedNames = new Set([...this.nonAllowedNames, ...definitions.keys()]);
+        if (this.checkDuplicateNames(entries) || entries.some(({ target }) => reservedNames.has(target.trim()))) {
+            throw new Error('The copied month has duplicate or reserved entry names.');
+        }
+
+        // Follow each expense's parent chain once to catch cycles before calculation.
+        const parents = new Map(entries.filter(entry => entry.type === EntryType.Expense)
+            .map(entry => [entry.target, entry.source]));
+        const checked = new Set<string>();
+        for (const target of parents.keys()) {
+            const path = new Set<string>();
+            for (let node: string | undefined = target; node && !checked.has(node); node = parents.get(node)) {
+                if (path.has(node)) throw new Error('The copied month has a cycle in its expenses.');
+                path.add(node);
+            }
+            for (const node of path) checked.add(node);
+        }
+
+        const links = entries.map(({ source, type, target, value, isFixCost }) => ({
+            id: uuid(), type, target, value, isFixCost,
+            source: type === EntryType.Expense && (!source?.endsWith(`@${SYSTEM_PREFIX}`) || definitions.has(source))
+                ? source ?? undefined : undefined
+        }));
+        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
+        const savedMonths = { ...this.loadData(), [month]: data };
+        const changes = new Map([['monthlyData', JSON.stringify(savedMonths)]]);
+        if (definitions.size > currentCategories.length) {
+            changes.set(categoryStorageKey, JSON.stringify([...definitions.values()]));
+        }
+        replaceStorageItems(localStorage, changes);
+
+        if (changes.has(categoryStorageKey)) this.categories.reloadFromStorage();
+        this.logService.removeMonthLogs(month);
+        this.monthlyData = { ...this.monthlyData, ...savedMonths };
+        this.isDemo.set(false);
+        this.hasDataCycle.set(false);
+        this.multiMonthEntries$.next(savedMonths);
+        this.processedSingleMonthEntries$.next(data);
+        this.dataSaved$.next(true);
+    }
+
     // Store in sessionStorage
     storeCopiedLinks(links: UserDefinedLink[]) {
         sessionStorage.setItem(this.copiedLinksKey, JSON.stringify(links));
@@ -670,13 +779,13 @@ export class DataService {
     // Retrieve from sessionStorage
     retrieveCopiedLinks(): UserDefinedLink[] | null {
         const data = sessionStorage.getItem(this.copiedLinksKey);
-        return data ? JSON.parse(data) : null;
+        return data ? this.categories.clearMissingSources(JSON.parse(data)) : null;
     }
 
 
     retrieveFixCostsLinks(): UserDefinedLink[] {
         const fixedLinks = localStorage.getItem('fixCosts')
-        return fixedLinks ? JSON.parse(fixedLinks) : []  
+        return fixedLinks ? this.categories.clearMissingSources(JSON.parse(fixedLinks)) : [];
     }
 
     //#endregion

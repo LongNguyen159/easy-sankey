@@ -1,9 +1,8 @@
 import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption } from 'echarts';
+import { EChartsOption, format } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { TreeNode } from '../../models';
 import { ColorService } from '../../../services/color.service';
-import { removeSystemPrefix } from '../../../utils/utils';
 import { MatButtonModule } from '@angular/material/button';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
@@ -74,7 +73,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
   
           // Get parent node details
           const parentNode = info?.treePathInfo?.[info.treePathInfo.length - 2];
-          const parentName = parentNode ? removeSystemPrefix(parentNode.name) : '';
+          const parentName = parentNode ? format.encodeHTML(this.categoryService.label(parentNode.name)) : '';
           const parentValue = parentNode?.value || null;
           const shareOfParent = parentValue 
             ? ((info.value / parentValue) * 100).toFixed(2) 
@@ -83,7 +82,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
           return `
             <div style="text-align: left; font-size: 14px; line-height: 1.5;">
               <div style="display: flex; justify-content: space-between;">
-                <span><strong>${removeSystemPrefix(info.name) || 'Total'}</strong></span>
+                <span><strong>${format.encodeHTML(this.categoryService.label(info.name) || 'Total')}</strong></span>
               </div>
               <div style="display: flex; justify-content: space-between;">
                 <span>Value:</span>
@@ -120,33 +119,24 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
    * 
    * A good side-effect: It also helps matching the color in the Basic pie chart.
    */
-  generateColorMapping(data: TreeNode[], parentColor?: string): TreeNode[] {
-    const colorPalette = this.colorService.chartColorPaletteLight;
-  
-    // A variable to keep track of the color index
-    let colorIndex = 0;
-  
+  private generateColorMapping(data: TreeNode[], parentColor?: string): TreeNode[] {
+    const isDarkMode = this.colorService.isDarkMode();
+    const palette = isDarkMode ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight;
+
     return data.map((node, index) => {
-      // If no parent color, assign a new color, otherwise inherit the parent color
-      const color = parentColor ?? colorPalette[(index + Math.floor(index / colorPalette.length)) % colorPalette.length];
-  
-      // Apply the color to the current node
-      node.itemStyle = { color };
-  
-      // Recursively apply colors to children if they exist
-      if (node.children) {
-        node.children = this.generateColorMapping(node.children, color);
-      }
-  
-      return node;
+      const color = this.categoryService.color(node.name, isDarkMode) ?? parentColor
+        ?? palette[(index + Math.floor(index / palette.length)) % palette.length];
+
+      return {
+        ...node,
+        itemStyle: { ...node.itemStyle, color },
+        children: this.generateColorMapping(node.children, color),
+      };
     });
   }
 
-
   ngOnChanges(changes: SimpleChanges): void {
     if (changes && changes['treeData']) {
-      /** Assign color for each series to persist colour when switching charts. */
-      this.treeData = this.generateColorMapping([...this.treeData]); // Clone the data for safety
       this.updateChart(this.currentChartType === 'treemap' ? this.getTreemapSeries() : this.getSunburstSeries())
     }
   }
@@ -162,11 +152,11 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
       universalTransition: true,
       label: {
         show: true,
-        formatter: '{b}', // Show the name of each node
+        formatter: params => this.categoryService.label(params.name),
       },
       upperLabel: {
         show: !hideUpperLabels, // Hide or show the labels based on the argument
-        formatter: (params: any) => removeSystemPrefix(params.name),
+        formatter: (params: any) => this.categoryService.label(params.name),
         color: this.colorService.isDarkMode()
           ? this.colorService.darkTextPrimary
           : this.colorService.lightTextPrimary,
@@ -175,7 +165,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
         borderWidth: 1,
         borderColor: this.colorService.isDarkMode() ? '#404040' : '#e5e5e5',
       },
-      data: this.treeData,
+      data: this.generateColorMapping(this.treeData),
       breadcrumb: {
         show: false,
       },
@@ -196,7 +186,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
       label: {
         show: false,
       },
-      data: this.treeData,
+      data: this.generateColorMapping(this.treeData),
     };
   }
 

@@ -23,9 +23,18 @@ export class MonthPickerHeaderComponent<D> {
     this._calendar.activeDate = this._dateAdapter.addCalendarYears(this._calendar.activeDate, -1);
   }
 
-  // Navigate to today's date
   goToToday() {
-    this._calendar.activeDate = this._dateAdapter.today();
+    const today = this._dateAdapter.today();
+    const currentMonth = this._dateAdapter.createDate(
+      this._dateAdapter.getYear(today),
+      this._dateAdapter.getMonth(today),
+      1,
+    );
+
+    this._calendar.activeDate = today;
+    if (!this._calendar.dateFilter || this._calendar.dateFilter(currentMonth)) {
+      this._calendar.monthSelected.emit(currentMonth);
+    }
   }
 
   // Navigate to the next year

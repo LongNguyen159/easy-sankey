@@ -9,12 +9,13 @@ import { CommonModule } from '@angular/common';
 import { ColorService } from '../../services/color.service';
 import { BudgetListComponent } from "../../components/budget-list/budget-list.component";
 import { ActivatedRoute, Router } from '@angular/router';
+import { CategoryManagerComponent } from '../../components/category-manager/category-manager.component';
 import { RoutePath } from '../../components/models';
 
 @Component({
     selector: 'app-storage-page',
     imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
-        CommonModule, BudgetListComponent],
+        CommonModule, BudgetListComponent, CategoryManagerComponent],
     templateUrl: './storage-page.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './storage-page.component.scss'

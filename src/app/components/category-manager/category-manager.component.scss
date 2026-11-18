@@ -1,0 +1,31 @@
+.category-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.category-name {
+  overflow-wrap: anywhere;
+}
+
+.reorder-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.reorder-handle:active {
+  cursor: grabbing;
+}
+
+.category-row.cdk-drag-preview {
+  background: var(--mat-sys-surface-container);
+  border-radius: 0.5rem;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.category-row.cdk-drag-placeholder {
+  opacity: 0;
+}

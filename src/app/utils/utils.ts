@@ -260,7 +260,8 @@ export async function detectAbnormalities(
   allMonths: string[],
   currencySymbol: string = '',
   predictService: PredictService,
-  uiService: UiService
+  uiService: UiService,
+  categoryLabel: (id: string) => string = removeSystemPrefix
 ): Promise<AbnormalityAnalysis[]> {
   const categoryMap = _aggregateCategoryData(data, allMonths);
 
@@ -289,18 +290,18 @@ export async function detectAbnormalities(
     if (result.trend == 'upward' && fluctuation < 0.5) {
       abnormalities.push({
         type: AbnormalityType.Growth,
-        description: `Spending for ${removeSystemPrefix(name)} seems to have a rising pattern`,
+        description: `Spending for ${categoryLabel(name)} seems to have a rising pattern`,
       });
     }
 
     if (result.trend == 'upward' && fluctuation >= 0.5) {
       abnormalities.push({
         type: AbnormalityType.FluctuatingGrowth,
-        description: `Your spending on ${removeSystemPrefix(name)} fluctuates a lot and tends to grow over time.`,
+        description: `Your spending on ${categoryLabel(name)} fluctuates a lot and tends to grow over time.`,
       });
     }
 
-    const cleanedName = removeSystemPrefix(name);
+    const cleanedName = categoryLabel(name);
     return { 
       name: cleanedName, 
       abnormalities,

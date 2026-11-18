@@ -1,9 +1,9 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { BarSeriesOption, EChartsOption, EChartsType, LineSeriesOption, SeriesOption } from 'echarts';
+import { BarSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { TrendsLineChartData } from '../../models';
-import { MONTHS_TO_PREDICT, removeSystemPrefix } from '../../../utils/utils';
+import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
 import { isArray } from 'mathjs';
@@ -112,7 +112,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
             : this.colorService.lightTextSecondary,
           fontSize: 12,
         },
-        formatter: (name: string) => removeSystemPrefix(name),
+        formatter: (name: string) => this.categoryService.label(name),
         data: !this.showCategories ? 
         [
           {
@@ -197,7 +197,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       tooltip += visibleParams.map((item: any) => `
         <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
           <div style="flex: 1; display: flex; align-items: center;">
-            ${item.marker} ${removeSystemPrefix(item.seriesName)}:
+            ${item.marker} ${format.encodeHTML(this.categoryService.label(item.seriesName))}:
           </div>
           <div style="width: 16px;"></div>
           <div style="flex: 1; text-align: right;">
@@ -224,7 +224,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       tooltip += visibleParams.map((item: any) => `
         <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
           <div style="flex: 1; display: flex; align-items: center;">
-            ${item.marker} ${item.seriesName}:
+            ${item.marker} ${format.encodeHTML(this.categoryService.label(item.seriesName))}:
           </div>
           <div style="width: 16px;"></div>
           <div style="flex: 1; text-align: right;">
@@ -266,6 +266,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       type: 'bar',
       showSymbol: false,
       itemStyle: {
+        color: this.categoryService.color(category, this.colorService.isDarkMode()),
         opacity: 0.9,
       },
       stack: this.stackCategories ? 'categories' : '',

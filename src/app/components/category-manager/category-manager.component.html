@@ -1,0 +1,35 @@
+<section class="category-manager mx-auto max-w-3xl" [attr.aria-labelledby]="showHeading() ? 'categories-heading' : null">
+  <header class="flex flex-wrap items-center justify-between gap-3 pb-4">
+    @if (showHeading()) {
+      <h1 id="categories-heading" class="text-xl font-bold">Categories</h1>
+    }
+    <button mat-flat-button type="button" class="ml-auto" (click)="openEditor()">
+      <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+      Add category
+    </button>
+  </header>
+
+  <ul class="category-list" cdkDropList [cdkDropListData]="categories()" (cdkDropListDropped)="drop($event)">
+    @for (category of categories(); track category.value; let index = $index) {
+      <li class="category-row" cdkDrag [cdkDragData]="category">
+        <button mat-icon-button type="button" class="reorder-handle" cdkDragHandle
+          [attr.aria-label]="'Reorder ' + category.label"
+          aria-description="Use Up and Down arrow keys to move this category"
+          (keydown.arrowup)="moveWithKeyboard($event, category, index - 1)"
+          (keydown.arrowdown)="moveWithKeyboard($event, category, index + 1)">
+          <mat-icon fontSet="material-symbols-outlined">drag_indicator</mat-icon>
+        </button>
+        <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+        <span class="category-name">{{ category.label }}</span>
+        <button mat-icon-button type="button" [attr.aria-label]="'Edit ' + category.label" (click)="openEditor(category)">
+          <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
+        </button>
+        <button mat-icon-button type="button" class="app-button-warn" [attr.aria-label]="'Delete ' + category.label" (click)="remove(category)">
+          <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+        </button>
+      </li>
+    } @empty {
+      <li class="py-4">No categories yet.</li>
+    }
+  </ul>
+</section>

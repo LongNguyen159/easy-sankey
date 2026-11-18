@@ -6,7 +6,7 @@
         <button mat-stroked-button (click)="onCancel()"> {{ data.cancelLabel }} </button>
     }
 
-    <button mat-flat-button [color]="data.confirmColor ? data.confirmColor : 'primary' " (click)="onConfirm()">
+    <button mat-flat-button [class]="'app-button-' + (data.confirmColor ?? 'primary')" (click)="onConfirm()">
         {{ data.confirmLabel ? data.confirmLabel : 'Ok' }}
     </button>
 </mat-dialog-actions>

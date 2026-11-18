@@ -1,3 +1,4 @@
+import { CategoryService } from '../../services/category.service';
 import { Component, EventEmitter, inject, OnInit, Output, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { TrackingService } from '../../services/tracking.service';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
@@ -5,9 +6,9 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import { ColorService } from '../../services/color.service';
-import { formatBigNumber, getCurrentYearMetrics, removeSystemPrefix } from '../../utils/utils';
+import { formatBigNumber, getCurrentYearMetrics } from '../../utils/utils';
 import { MatIconModule } from '@angular/material/icon';
-import { ExpenseCategory, expenseCategoryDetails, RoutePath, Tracker } from '../models';
+import { RoutePath, Tracker } from '../models';
 import { CurrencyService } from '../../services/currency.service';
 import { MatButtonModule } from '@angular/material/button';
 import { UiService } from '../../services/ui.service';
@@ -81,17 +82,15 @@ export class ProgressCardComponent extends BasePageComponent implements OnInit {
     return Math.min(percentage, 100);
   }
 
-  removeSystemPrefix(name: string) {
-    return removeSystemPrefix(name);
-  }
+  protected readonly categoryService = inject(CategoryService);
 
   getCategoryIconDetails(category: string) {
-    return expenseCategoryDetails[category as ExpenseCategory];
+    return this.categoryService.get(category);
   }
 
   deleteCategory(category: string) {
     const dialogData: ConfirmDialogData = {
-      title: `Are you sure you want to delete tracker for ${removeSystemPrefix(category)}?`,
+      title: `Are you sure you want to delete tracker for ${this.categoryService.label(category)}?`,
       message: `You can set up a new tracker for this category in Smart Budget Planner anytime.`,
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',

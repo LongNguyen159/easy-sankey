@@ -1,10 +1,9 @@
 import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption } from 'echarts';
+import { EChartsOption, format } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
-import { removeSystemPrefix } from '../../../utils/utils';
 import { CurrencyService } from '../../../services/currency.service';
 import { PieData } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -58,7 +57,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
         formatter: (params: any) => {
           // Use toLocaleString to format the value
           const value = this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency()); // Format the value
-          return `${removeSystemPrefix(params.name)}: <b>${value} (${params.percent}%)</b>`; // Bold the params.name
+          return `${format.encodeHTML(this.categoryService.label(params.name))}: <b>${value} (${params.percent}%)</b>`; // Bold the params.name
         }
       },
       legend: {
@@ -68,7 +67,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
           color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (name: string) => {
-          return removeSystemPrefix(name);
+          return this.categoryService.label(name);
         }
       },
       toolbox: {
@@ -93,7 +92,8 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
 
   updateChart() {
 
-    const colorPalette = this.colorService.isDarkMode() 
+    const isDarkMode = this.colorService.isDarkMode();
+    const colorPalette = isDarkMode
       ? this.colorService.chartColorPaletteDark 
       : this.colorService.chartColorPaletteLight;
 
@@ -105,7 +105,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
         ...data,
         itemStyle: {
           // Assign the color based on the shifted index
-          color: colorPalette[colorIndex]
+          color: this.categoryService.color(data.name, isDarkMode) ?? colorPalette[colorIndex]
         }
       };
     });
@@ -120,7 +120,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
           emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } },
           label: {
             formatter: (params: any) =>  {
-              return `${removeSystemPrefix(params.name)}: ${params.value.toLocaleString('en-US')} (${params.percent.toLocaleString('en-US')}%)`;
+              return `${this.categoryService.label(params.name)}: ${params.value.toLocaleString('en-US')} (${params.percent.toLocaleString('en-US')}%)`;
             },
             fontSize: 12,
             color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary

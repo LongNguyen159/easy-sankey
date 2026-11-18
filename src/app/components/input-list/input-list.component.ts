@@ -1,17 +1,21 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
+import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, Input, OnDestroy, OnInit, QueryList, TemplateRef, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
-import { DateChanges, EntryType, expenseCategoryDetails, ExpenseCategoryDetails, UserDefinedLink } from '../models';
+import { DateChanges, EntryType, ExpenseCategoryDetails, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatSelectChange, MatSelectModule} from '@angular/material/select';
+import {MatSelectModule} from '@angular/material/select';
 import {MatIconModule} from '@angular/material/icon';
 import { debounceTime, takeUntil } from 'rxjs';
+import { CategoryService } from '../../services/category.service';
 import { MatAutocompleteModule, MatAutocompleteTrigger} from '@angular/material/autocomplete';
-import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
+import { CategorySelectComponent } from '../category-select/category-select.component';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import { UiService } from '../../services/ui.service';
@@ -24,11 +28,20 @@ import { onMonthChanges } from '../../utils/data-utils';
 import { Router } from '@angular/router';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { v4 as uuidv4 } from 'uuid';
 import { LogsService } from '../../services/logs.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RoutePath } from '../models';
+import { exportMonth, MonthTransfer, readMonth } from '../../utils/data-transfer';
+
+interface MonthClipboardWindow extends Window {
+  electronAPI?: {
+    readMonthClipboard?: () => Promise<string>;
+    writeMonthClipboard?: (text: string) => Promise<void>;
+  };
+}
 
 /** Prevent user to define a certain node name that coincides with our system generated node name. */
 function restrictedNodeNamesValidator(restrictedNames: string[]): ValidatorFn {
@@ -47,6 +60,13 @@ function nonEmptyValidator(): ValidatorFn {
   };
 }
 
+interface EntryGroup {
+  id: string;
+  label: string;
+  rows: FormGroup[];
+  category?: ExpenseCategoryDetails;
+}
+
 enum ErrorType {
   DuplicatedName = 'duplicatedName',
   EmptyType = 'emptyType',
@@ -56,7 +76,7 @@ enum ErrorType {
 }
 @Component({
     selector: 'app-input-list',
-    imports: [MatButtonModule,
+    imports: [MatButtonModule, CdkDrag, CdkDragHandle, CdkDropList,
         ReactiveFormsModule,
         CommonModule,
         MatInputModule,
@@ -64,10 +84,10 @@ enum ErrorType {
         MatSelectModule,
         MatIconModule,
         MatAutocompleteModule,
-        NgxMatSelectSearchModule,
+        CategorySelectComponent,
         MatSlideToggleModule, MonthPickerComponent,
         MatCardModule, ErrorCardComponent, MatDividerModule,
-        MatMenuModule,
+        MatMenuModule, MatDialogModule,
         FormsModule,
         MatTooltipModule
     ],
@@ -104,7 +124,7 @@ enum ErrorType {
  * 
  */
 
-export class InputListComponent extends BasePageComponent implements OnInit, AfterViewInit, OnDestroy {
+export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
   @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
@@ -116,20 +136,30 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   router = inject(Router)
 
   @ViewChildren(MatAutocompleteTrigger) autocompleteTriggers!: QueryList<MatAutocompleteTrigger>;
-  @ViewChild('bottomContent') bottomContent!: ElementRef;
+  @ViewChildren('entryName') private entryNames!: QueryList<ElementRef<HTMLInputElement>>;
+
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly clipboard = inject(Clipboard);
+  private readonly announcer = inject(LiveAnnouncer);
+  protected readonly newEntries = new Set<FormGroup>();
+  protected readonly collapsedCategories = new Set<string>();
+  protected groupByCategory = localStorage.getItem('entryView') === 'category';
 
 
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
 
   linkForm: FormGroup; // FormGroup to manage input fields
-  sourceSearchControl = new FormControl(); // Search control for the dropdown
   initialFormState: UserDefinedLink[] = []; // Initial form state to compare with new data
 
   linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Tax]; // Types of links
   entryTypes = EntryType; // Enum for entry types
 
-  existingNodes: ExpenseCategoryDetails[] = []; // To hold existing node names
-  filteredNodes: ExpenseCategoryDetails[] = []; // To hold filtered suggestions for auto-complete
+  protected categoryService = inject(CategoryService);
+  protected categoryControl(row: AbstractControl): FormControl<string> {
+    return row.get('source') as FormControl<string>;
+  }
 
   taxNodeExists = false; // Flag to check if a tax node exists
 
@@ -217,21 +247,14 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      */
     this.dataService.getSingleMonthData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
       this.singleMonthData = data;
+      this.fixedLinks = this.dataService.retrieveFixCostsLinks();
       this.dataMonth = data.month
-      /** Only include expense nodes. */
-      this.existingNodes = Object.values(expenseCategoryDetails)
-
-
-      this.filteredNodes = [...this.existingNodes];
       this.taxNodeExists = this._hasTaxNode(data.rawInput);
 
       /** Populate links with predefined data */
       this.populateInputFields(data)
-      this._addDefaultNode();
     });
 
-    // Listen to changes in the search control to filter the dropdown
-    this.listenCategoryChanges()
     
     /** Listen to changes in value. If changes, save the current form value immediately. */
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(300)).subscribe((formData) => {
@@ -248,7 +271,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
    * If we don't have this functionality of saving current form values, we can't track whether there are changes in the form,
    * so every onMonthChanges, we will process the form values, which is inefficient.
    */
-  private updateSavedFormValuesOnFormChanges() {
+  protected updateSavedFormValuesOnFormChanges() {
     this.savedFormValues = this.linkArray.value.slice();
     this.hasChanges = true;
   }
@@ -274,7 +297,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
         restrictedNodeNamesValidator(this.dataService.nonAllowedNames)
       ]],
       value: [link ? link.value : 0, [Validators.required, Validators.min(0)]],
-      source: [link ? link.source : ''], // Optional
+      source: [link?.source === '-- None --' ? '' : link?.source ?? ''],
       isFixCost: [link ? link.isFixCost : false]
     });
 
@@ -332,7 +355,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
       if (value) {
         /** Set type automatic to expense if category chosen */
         linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
-        // this._filterNodes(value);
         this.checkForCycle(value, linkGroup.get('target')?.value, linkGroup, this.linkArray.value);
       }
     });
@@ -351,6 +373,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   /** Initialise/Populate the form with predefined data */
   populateInputFields(selectedMonthData: SingleMonthData): void {
     /** clear the form and repopulate it with new data. */
+    this.newEntries.clear();
     this.linkArray.clear({ emitEvent: false });
     
     const links = this.dataService.isDemo() ? this.demoLinks : selectedMonthData.rawInput;
@@ -373,23 +396,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   }
 
 
-  /** This is used to 'remove' the source from the field. It will be linked to default income node.
-   * In our service, we already have a logic that handles if source node is not found, link to default income node.
-   * We don't have 'default income' node, so it's understood that it'll be linked to default income node.
-   * Unless user defines 'default income' node, it'll be linked to default income node.
-   */
-  private _addDefaultNode() {
-    const defaultNode = {
-      label: '-- None --',
-      value: '-- None --'
-    }
-    if (!this.filteredNodes.includes(defaultNode)) {
-      this.filteredNodes.unshift(defaultNode);
-    }
-  }
-
-
-
   /** Helper function to determine tax node in links */
   protected _hasTaxNode(data: UserDefinedLink[]): boolean {
     return data.some(item => item.type == EntryType.Tax)
@@ -398,23 +404,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   //#endregion
 
 
-  protected listenCategoryChanges() {
-    this.sourceSearchControl.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe((searchTerm) => {
-      this.filteredNodes = this._filterNodes(searchTerm);
-      this._addDefaultNode();
-    });
-
-  }
-
-  /** Clear category search field input when category is selected. */
-  onCategorySelected(option: MatSelectChange) {
-    this.sourceSearchControl.setValue('');
-  }
-  
   //#region Month Changes
   onMonthChanges(selectedMonth: DateChanges) {
     const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
     const prevMonth = formatDateToYYYYMM(selectedMonth.previousMonth)
+    const previousFormValid = this.linkForm.valid;
 
     /** This will trigger subscription onInit of this component. No need to update global variables here as we already did it in the subscription. */
     onMonthChanges(selectedMonth.currentMonth, this.allMonthsData, this.singleMonthData, this.dataService)
@@ -423,8 +417,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      * Else it would process every previous months on month changes.
      */
     if (currentMonth !== prevMonth && this.hasChanges) {
-      // Process previous month values if there are changes of that month and user navigate to another month.
-      this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues)
+      if (previousFormValid) {
+        this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues);
+      }
       
       // Reset has changes flag after processing the month.
       this.hasChanges = false;
@@ -435,14 +430,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
      */
     this.savedFormValues = this.linkForm.value.links.slice();
   }
-
-  ngAfterViewInit(): void {
-    /** Scroll to bottom of dialog input every time component is initialised.
-     * Do it here because the view is not yet rendered in ngOnInit.
-     */
-    // this.scrollToBottom();
-  }
-
 
   /** This function is used to process the previous month (in compare to current month).
    * Triggered when user changes the month.
@@ -582,34 +569,88 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
 
 
   //#region Copy & Paste Links
-  copyLinks(): void {
+  async copyLinks(): Promise<void> {
     const currentLinks: UserDefinedLink[] = this.linkForm.value.links;
-    if (currentLinks && currentLinks.length > 0) {
-      this.dataService.storeCopiedLinks(currentLinks);
-      this.uiService.showSnackBar(`'${this.dataMonth}' copied to clipboard!`, 'Ok');
-    } else {
-      this.uiService.showSnackBar('Nothing to copy!', 'Dismiss');
+    if (!currentLinks.length) {
+      this.uiService.showSnackBar('Nothing to copy.');
+      return;
     }
+    if (this.linkForm.invalid || this.dataService.checkDuplicateNames(currentLinks)) {
+      this.uiService.showSnackBar('Fix the invalid entries before copying this month.');
+      return;
+    }
+    const month = this.dataMonth;
+    const text = exportMonth(currentLinks, this.categoryService.categories());
+    let savedInTab = false;
+    try {
+      this.dataService.storeCopiedLinks(currentLinks);
+      savedInTab = true;
+    } catch {
+      // The system clipboard is still available if session storage is full.
+    }
+
+    const desktop = (window as MonthClipboardWindow).electronAPI;
+    try {
+      if (desktop?.writeMonthClipboard) await desktop.writeMonthClipboard(text);
+      else await navigator.clipboard.writeText(text);
+    } catch {
+      if (!this.clipboard.copy(text)) {
+        this.uiService.showSnackBar(savedInTab ? 'Month copied for this tab only.' : 'Could not copy this month.');
+        return;
+      }
+    }
+    this.uiService.showSnackBar(`${month} copied to the clipboard.`);
   }
 
-  // Method to paste stored data back into the form
-  pasteLinks(): void {
-    const copiedLinks = this.dataService.retrieveCopiedLinks();
-    if (copiedLinks) {
-      // Generate new UUIDs for each copied link
-      const newLinks = copiedLinks.map(link => ({
-        ...link,
-        id: uuidv4()
-      }));
-  
-      this.populateInputFields({ rawInput: newLinks } as SingleMonthData);
-      this.hasChanges = true;
-      this.uiService.showSnackBar('Links pasted!', 'Ok');
-      /** Process the pasted links */
-      this.dataService.processInputData(newLinks, this.dataMonth);
-      this.updateSavedFormValuesOnFormChanges();
-    } else {
-      this.uiService.showSnackBar('Clipboard is empty!', 'Dismiss');
+  async pasteLinks(dialogTemplate: TemplateRef<unknown>): Promise<void> {
+    const month = this.dataMonth;
+    const desktop = (window as MonthClipboardWindow).electronAPI;
+    let transfer: MonthTransfer;
+    try {
+      const text = desktop?.readMonthClipboard ? await desktop.readMonthClipboard() : await navigator.clipboard.readText();
+      transfer = readMonth(text);
+    } catch {
+      if (!this.destroyRef.destroyed && month === this.dataMonth) {
+        this.dialog.open(dialogTemplate, { data: month, autoFocus: 'textarea' });
+      }
+      return;
+    }
+    this.applyMonthTransfer(transfer, month);
+  }
+
+  protected pasteMonthText(text: string, month: string): boolean {
+    let transfer: MonthTransfer;
+    try {
+      transfer = readMonth(text);
+    } catch {
+      this.uiService.showSnackBar('Copy a month from Easy Sankey first.');
+      return false;
+    }
+    return this.applyMonthTransfer(transfer, month);
+  }
+
+  protected get lastMonthCopiedInTab(): UserDefinedLink[] | null {
+    return this.dataService.retrieveCopiedLinks();
+  }
+
+  protected pasteMonthFromTab(month: string): boolean {
+    const entries = this.lastMonthCopiedInTab;
+    return !!entries?.length && this.applyMonthTransfer({ entries, categories: [] }, month);
+  }
+
+  private applyMonthTransfer(transfer: MonthTransfer, month: string): boolean {
+    if (this.destroyRef.destroyed || month !== this.dataMonth || !month) return false;
+    try {
+      this.dataService.importMonth(month, transfer);
+      this.savedFormValues = this.linkArray.value.slice();
+      this.hasChanges = false;
+      this.uiService.showSnackBar(`Entries pasted into ${month}.`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error && error.message.startsWith('The copied month')
+        ? error.message : 'Could not save the copied month.';
+      this.uiService.showSnackBar(message);
+      return false;
     }
   }
 
@@ -829,35 +870,110 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
 
   /********** Filter/Add/Remove Links **********/
 
-  // Filter nodes based on user input
-  private _filterNodes(value: string): { label: string, value: string }[] {
-    const filterValue = value.toLowerCase();
-  
-    // Filter nodes, excluding the current node if it matches
-    return this.filteredNodes = this.existingNodes
-      .filter(node => node.label.toLowerCase().includes(filterValue) && node.label.toLowerCase() !== filterValue);
+  protected toggleEntryView(): void {
+    this.groupByCategory = !this.groupByCategory;
+    localStorage.setItem('entryView', this.groupByCategory ? 'category' : 'costType');
   }
 
-  // Add a new input row
+  protected toggleCategory(id: string): void {
+    if (!this.collapsedCategories.delete(id)) this.collapsedCategories.add(id);
+  }
+
+  protected visibleEntries(isFixCost?: boolean): FormGroup[] {
+    return this.linkArray.controls.filter(row =>
+      this.filteredLinkIds.includes(row.get('id')?.value)
+      && (isFixCost === undefined || Boolean(row.get('isFixCost')?.value) === isFixCost)
+    );
+  }
+
+  protected get draftEntries(): FormGroup[] {
+    return this.visibleEntries().filter(row => this.newEntries.has(row));
+  }
+
+  protected get categoryGroups(): EntryGroup[] {
+    const rowsByCategory = new Map<string, FormGroup[]>();
+    for (const row of this.visibleEntries()) {
+      if (this.newEntries.has(row)) continue;
+      const source = row.get('type')?.value === EntryType.Expense ? row.get('source')?.value : '';
+      const id = this.categoryService.get(source)?.value ?? '';
+      const rows = rowsByCategory.get(id) ?? [];
+      rows.push(row);
+      rowsByCategory.set(id, rows);
+    }
+
+    const groups: EntryGroup[] = [];
+    for (const category of this.categoryService.categories()) {
+      const rows = rowsByCategory.get(category.value);
+      if (rows) groups.push({ id: category.value, label: category.label, category, rows });
+    }
+    const uncategorized = rowsByCategory.get('');
+    if (uncategorized) groups.push({ id: '', label: 'Uncategorized', rows: uncategorized });
+    return groups;
+  }
+
   addLink(): void {
-    /** Mark as untouch to prevent form being marked as invalid on adding link without doing anything yet */
-    this.linkForm.markAsUntouched()
-    this.linkArray.push(this._createLinkGroup(), { emitEvent: false });
-    // scroll to bottom after adding new form field
-    setTimeout(() => {
-      this.scrollToBottom()
-    }, this.isVariableCostsExpanded ? 200 : 300);
+    this.linkForm.markAsUntouched();
+    const row = this._createLinkGroup();
+    this.newEntries.add(row);
+    this.linkArray.push(row, { emitEvent: false });
+    this.filterLinks('');
+    if (this.groupByCategory) this.collapsedCategories.delete('');
+    this.isVariableCostsExpanded = true;
+    this.updateSavedFormValuesOnFormChanges();
+
+    const id = row.get('id')?.value;
+    afterNextRender(() => {
+      this.entryNames.find(field => field.nativeElement.dataset['entryId'] === id)?.nativeElement.focus();
+    }, { injector: this.injector });
+  }
+
+  protected dropEntries(event: CdkDragDrop<FormGroup[]>): void {
+    if (event.isPointerOverContainer) {
+      this.reorderEntries(event.container.data, event.previousIndex, event.currentIndex);
+    }
+  }
+
+  protected moveEntryWithKeyboard(event: Event, rows: FormGroup[], from: number, to: number): void {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLButtonElement;
+    if (this.reorderEntries(rows, from, to)) {
+      afterNextRender(() => handle.focus(), { injector: this.injector });
+    }
+  }
+
+  private reorderEntries(rows: FormGroup[], from: number, to: number): boolean {
+    if (from === to || from < 0 || from >= rows.length || to < 0 || to >= rows.length) return false;
+    const controls = [...this.linkArray.controls];
+    const slots = rows.map(row => controls.indexOf(row));
+    if (slots.includes(-1)) return false;
+
+    // Keep the positions of rows outside this section or filtered out by search.
+    const reordered = [...rows];
+    moveItemInArray(reordered, from, to);
+    slots.forEach((slot, index) => controls[slot] = reordered[index]);
+    this.linkArray.clear({ emitEvent: false });
+    this.linkArray.push(controls, { emitEvent: false });
+    this.updateSavedFormValuesOnFormChanges();
+    const name = reordered[to].get('target')?.value || 'New entry';
+    void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);
+    return true;
+  }
+
+  protected removeEntry(row: FormGroup): void {
+    this.removeLink(this.linkArray.controls.indexOf(row));
   }
 
   // Remove an input row
   removeLink(index: number): void {
-    /** find the invalid input, only process the valid inputs. */
-    const link: UserDefinedLink = this.linkArray.at(index).value;
+    if (index < 0) return;
+    const row = this.linkArray.at(index);
+    const link: UserDefinedLink = row.value;
+    this.newEntries.delete(row);
     this.filteredLinkIds = this.filteredLinkIds.filter(id => id !== link.id);
     this.linkArray.removeAt(index, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges()
-    this.hasDuplicates = this._checkDuplicateName()
-    this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
+    this.hasDuplicates = this._checkDuplicateName();
+    if (this.linkForm.valid) this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
   }
   
   //#endregion
@@ -865,8 +981,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
 
   //#region Getters
   // Getter to easily access the FormArray
-  get linkArray(): FormArray {
-    return this.linkForm.get('links') as FormArray;
+  get linkArray(): FormArray<FormGroup> {
+    return this.linkForm.get('links') as FormArray<FormGroup>;
   }
 
   get fixCosts(): UserDefinedLink[] {
@@ -909,10 +1025,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
     }, 0);
   }
 
-
-  scrollToBottom(): void {
-    this.bottomContent.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }
 
   navigateToFixCosts() {
     this.dataService.setNavigateFixCostState(true)
