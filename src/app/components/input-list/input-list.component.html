@@ -188,40 +188,7 @@
                   </mat-form-field>
                   <!-- Select with search -->
                   @if (dataService.isAdvancedShown) {
-                    <mat-form-field appearance="fill">
-                      <mat-label>Category</mat-label>
-                      <mat-select formControlName="source" [disableOptionCentering]="true" panelClass="custom-select-panel" (selectionChange)="updateInput(); sourceSearchControl.setValue('')">
-                        <mat-select-trigger>
-                          @if (categoryService.get(linkGroup.get('source')?.value); as category) {
-                            <span class="inline-flex items-center gap-2 align-middle">
-                              <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-                              {{ category.label }}
-                            </span>
-                          } @else {
-                            Uncategorized
-                          }
-                        </mat-select-trigger>
-                        <mat-option>
-                          <ngx-mat-select-search [formControl]="sourceSearchControl" placeholderLabel="Search categories..." noEntriesFoundLabel="No entries found."></ngx-mat-select-search>
-                        </mat-option>
-                        <mat-option value="">Uncategorized</mat-option>
-                        @for (node of filteredNodes(); track node.value) {
-                          <mat-option [value]="node.value">
-                            @if(node.icon) {
-                              <mat-icon fontSet="material-symbols-outlined"
-                                [ngStyle]="{'color': colorService.isDarkMode() ? node.colorDark : node.colorLight}"
-                              >{{ node.icon }}</mat-icon>
-                            }
-                            {{ node.label }}
-                          </mat-option>
-                        }
-                      </mat-select>
-                      @if (linkGroup.get('source')?.hasError('cycle')) {
-                        <mat-error>
-                          This creates a cycle!
-                        </mat-error>
-                      }
-                    </mat-form-field>
+                    <app-category-select [control]="categoryControl(linkGroup)" (categoryChange)="updateInput()"></app-category-select>
                   }
                   <!-- Remove Button -->
                   <button mat-icon-button color="warn" class="mt-2" (click)="removeLink(i)">
@@ -331,40 +298,7 @@
                 </mat-form-field>
                 <!-- Select with search -->
                 @if (dataService.isAdvancedShown) {
-                  <mat-form-field appearance="fill">
-                    <mat-label>Category</mat-label>
-                    <mat-select formControlName="source" [disableOptionCentering]="true" panelClass="custom-select-panel" (selectionChange)="updateInput(); sourceSearchControl.setValue('')">
-                      <mat-select-trigger>
-                        @if (categoryService.get(linkGroup.get('source')?.value); as category) {
-                          <span class="inline-flex items-center gap-2 align-middle">
-                            <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-                            {{ category.label }}
-                          </span>
-                        } @else {
-                          Uncategorized
-                        }
-                      </mat-select-trigger>
-                      <mat-option>
-                        <ngx-mat-select-search [formControl]="sourceSearchControl" placeholderLabel="Search categories..." noEntriesFoundLabel="No entries found."></ngx-mat-select-search>
-                      </mat-option>
-                      <mat-option value="">Uncategorized</mat-option>
-                      @for (node of filteredNodes(); track node.value) {
-                        <mat-option [value]="node.value">
-                          @if(node.icon) {
-                            <mat-icon fontSet="material-symbols-outlined"
-                              [ngStyle]="{'color': colorService.isDarkMode() ? node.colorDark : node.colorLight}"
-                            >{{ node.icon }}</mat-icon>
-                          }
-                          {{ node.label }}
-                        </mat-option>
-                      }
-                    </mat-select>
-                    @if (linkGroup.get('source')?.hasError('cycle')) {
-                      <mat-error>
-                        This creates a cycle!
-                      </mat-error>
-                    }
-                  </mat-form-field>
+                  <app-category-select [control]="categoryControl(linkGroup)" (categoryChange)="updateInput()"></app-category-select>
                 }
                 <!-- Remove Button -->
                 <button mat-icon-button color="warn" class="mt-2" (click)="removeLink(i)">

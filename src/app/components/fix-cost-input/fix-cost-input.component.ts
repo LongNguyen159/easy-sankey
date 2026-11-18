@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
+import { CategorySelectComponent } from '../category-select/category-select.component';
 import { MatCardModule } from '@angular/material/card';
 import { UserDefinedLink } from '../models';
 import { debounceTime, takeUntil } from 'rxjs';
@@ -24,7 +24,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatFormFieldModule,
         MatSelectModule,
         MatIconModule,
-        NgxMatSelectSearchModule,
+        CategorySelectComponent,
         MatCardModule, ErrorCardComponent,
         MatTooltipModule
     ],

@@ -1,0 +1,63 @@
+<h2 mat-dialog-title>{{ category ? 'Edit category' : 'Add category' }}</h2>
+<form (ngSubmit)="save()">
+  <mat-dialog-content class="editor" [style.--category-color]="swatch(color)">
+    <div class="preview">
+      <span class="preview-icon">
+        <mat-icon fontSet="material-symbols-outlined">{{ icon }}</mat-icon>
+      </span>
+      <span class="preview-name">{{ label.trim() || 'Category preview' }}</span>
+    </div>
+
+    <mat-form-field class="name-field" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Name</mat-label>
+      <input matInput name="label" [(ngModel)]="label" (ngModelChange)="error = ''" required maxlength="60" cdkFocusInitial>
+    </mat-form-field>
+    @if (error) {
+      <p class="name-error" role="alert">{{ error }}</p>
+    }
+
+    <fieldset>
+      <legend>Colour <span>{{ color.name }}</span></legend>
+      <div class="palette">
+        @for (choice of colors; track choice.name) {
+          <label class="choice" [matTooltip]="choice.name">
+            <input type="radio" name="category-color" [checked]="choice === color" (change)="color = choice" [attr.aria-label]="choice.name">
+            <span class="swatch" [style.background-color]="swatch(choice)"></span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Icon <span>{{ iconLabel(icon) }}</span></legend>
+      <mat-form-field class="icon-search" appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Search icons</mat-label>
+        <input #searchInput matInput type="search" (input)="iconSearch.set(searchInput.value)">
+      </mat-form-field>
+
+      <div class="icon-groups">
+        @for (group of iconGroups(); track group.name) {
+          <div class="icon-group" role="group" [attr.aria-label]="group.name">
+            <h3>{{ group.name }}</h3>
+            <div class="icon-grid">
+              @for (choice of group.icons; track choice) {
+                <label class="choice" [matTooltip]="iconLabel(choice)">
+                  <input type="radio" name="category-icon" [checked]="choice === icon" (change)="icon = choice" [attr.aria-label]="iconLabel(choice)">
+                  <span class="icon-tile">
+                    <mat-icon fontSet="material-symbols-outlined">{{ choice }}</mat-icon>
+                  </span>
+                </label>
+              }
+            </div>
+          </div>
+        } @empty {
+          <p role="status">No matching icons.</p>
+        }
+      </div>
+    </fieldset>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close>Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="!label.trim()">{{ category ? 'Save changes' : 'Add category' }}</button>
+  </mat-dialog-actions>
+</form>

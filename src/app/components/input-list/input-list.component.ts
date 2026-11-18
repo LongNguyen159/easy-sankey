@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
@@ -10,10 +10,9 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatSelectModule} from '@angular/material/select';
 import {MatIconModule} from '@angular/material/icon';
 import { debounceTime, takeUntil } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { CategoryService } from '../../services/category.service';
 import { MatAutocompleteModule, MatAutocompleteTrigger} from '@angular/material/autocomplete';
-import { NgxMatSelectSearchModule } from 'ngx-mat-select-search';
+import { CategorySelectComponent } from '../category-select/category-select.component';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import { UiService } from '../../services/ui.service';
@@ -66,7 +65,7 @@ enum ErrorType {
         MatSelectModule,
         MatIconModule,
         MatAutocompleteModule,
-        NgxMatSelectSearchModule,
+        CategorySelectComponent,
         MatSlideToggleModule, MonthPickerComponent,
         MatCardModule, ErrorCardComponent, MatDividerModule,
         MatMenuModule,
@@ -124,18 +123,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, Aft
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
 
   linkForm: FormGroup; // FormGroup to manage input fields
-  sourceSearchControl = new FormControl(); // Search control for the dropdown
   initialFormState: UserDefinedLink[] = []; // Initial form state to compare with new data
 
   linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Tax]; // Types of links
   entryTypes = EntryType; // Enum for entry types
 
   protected categoryService = inject(CategoryService);
-  private categorySearch = toSignal(this.sourceSearchControl.valueChanges);
-  filteredNodes = computed(() => {
-    const query = String(this.categorySearch() ?? '').trim().toLowerCase();
-    return this.categoryService.categories().filter(category => category.label.toLowerCase().includes(query));
-  });
+  protected categoryControl(row: AbstractControl): FormControl<string> {
+    return row.get('source') as FormControl<string>;
+  }
 
   taxNodeExists = false; // Flag to check if a tax node exists
 
