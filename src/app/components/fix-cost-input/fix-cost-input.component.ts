@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,8 @@ import { UserDefinedLink } from '../models';
 import { debounceTime, takeUntil } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AmountSortComponent } from '../amount-sort/amount-sort.component';
+import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sort';
 
 
 @Component({
@@ -33,13 +35,16 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatMenuModule,
         CdkDrag,
         CdkDragHandle,
-        CdkDropList
+        CdkDropList,
+        AmountSortComponent
     ],
     templateUrl: './fix-cost-input.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
+  protected sortOrder = readAmountSort('fixCostSort');
+  protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
 
   constructor(fb: FormBuilder) {
@@ -73,6 +78,26 @@ export class FixCostInputComponent extends InputListComponent {
 
   protected override updateSavedFormValuesOnFormChanges(): void {
     this.saveToLocalStorage();
+  }
+
+  protected setSort(order: AmountSort): void {
+    this.sortOrder = order;
+    localStorage.setItem('fixCostSort', order);
+  }
+
+  protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
+    return sortByAmount(super.visibleEntries(isFixCost), this.sortOrder, row =>
+      row === this.editingAmount?.row ? this.editingAmount.value : Number(row.get('value')?.value) || 0
+    );
+  }
+
+  protected startAmountEdit(row: FormGroup): void {
+    this.editingAmount = { row, value: Number(row.get('value')?.value) || 0 };
+  }
+
+  protected finishAmountEdit(): void {
+    this.editingAmount = undefined;
+    this.updateInput();
   }
 
   

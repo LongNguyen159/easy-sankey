@@ -1,4 +1,5 @@
 import { EntryType, ExpenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
+import { isAmountSort } from './amount-sort';
 
 const app = 'easy-sankey';
 const version = 1;
@@ -77,6 +78,7 @@ const storageValidators: Record<string, Validator> = {
   fixCosts: value => arrayOf(value, isEntry),
   budgets: value => arrayOf(value, budget => isObject(budget)
     && isString(budget['category']) && isNumber(budget['value'])),
+  budgetManualOrder: value => arrayOf(value, isString),
   trackedCategories: value => isObject(value)
     && isNumber(value['targetSurplus']) && isNumber(value['avgIncome'])
     && arrayOf(value['trackingCategories'], tracker => isObject(tracker) && isString(tracker['name'])
@@ -90,11 +92,13 @@ const storageValidators: Record<string, Validator> = {
     && isBoolean(value['isManualThemeSet']) && isString(value['selectedTheme']),
   selectedCurrency: isString,
   entryView: isString,
+  budgetSort: isAmountSort,
+  fixCostSort: isAmountSort,
   firstTime: value => value === 'true' || value === 'false',
   appVersion: isString,
 };
 
-const textKeys = new Set(['selectedCurrency', 'entryView', 'firstTime', 'appVersion']);
+const textKeys = new Set(['selectedCurrency', 'entryView', 'budgetSort', 'fixCostSort', 'firstTime', 'appVersion']);
 
 export function exportBackup(storage: Storage): string {
   const data: JsonObject = {};

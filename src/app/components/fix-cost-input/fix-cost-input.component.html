@@ -15,12 +15,13 @@
   <!-- LINKS CONTAINER -->
   <div class="mb-14">
 
-    <div class="flex flex-row items-center gap-2 w-full mb-4">
+    <div class="flex flex-wrap items-center gap-2 w-full mb-4">
       <p class="font-bold text-2xl !m-0">Fix Costs</p>
       <button mat-icon-button class="!flex flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
         <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
       </button>
-      <button mat-icon-button type="button" class="ml-auto shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
+      <app-amount-sort class="ml-auto" [value]="sortOrder" (valueChange)="setSort($event)"></app-amount-sort>
+      <button mat-icon-button type="button" class="shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
         <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
       </button>
       <mat-menu #menu="matMenu" xPosition="before">
@@ -84,11 +85,12 @@
 </div>
 
 <ng-template #entryList let-rows>
+  @let canReorder = sortOrder === 'manual' && rows.length > 1;
   <div cdkDropList [cdkDropListData]="rows" (cdkDropListDropped)="dropEntries($event)">
     @for (linkGroup of rows; track linkGroup; let index = $index) {
-      <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="rows.length < 2">
+      <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="!canReorder">
         <button mat-icon-button type="button" class="entry-reorder-handle" cdkDragHandle
-          [disabled]="rows.length < 2"
+          [disabled]="!canReorder"
           [attr.aria-label]="'Reorder ' + (linkGroup.get('target')?.value || 'new entry')"
           aria-description="Use Up and Down arrow keys to move this entry"
           (keydown.arrowup)="moveEntryWithKeyboard($event, rows, index, index - 1)"
@@ -131,7 +133,8 @@
         <!-- Value -->
         <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
-          <input matInput formControlName="value" type="number" placeholder="Value" (blur)="updateInput()" />
+          <input matInput formControlName="value" type="number" placeholder="Value"
+            (focus)="startAmountEdit(linkGroup)" (blur)="finishAmountEdit()" />
           @if (linkGroup.get('value')?.hasError('min')) {
             <mat-error>
               Amount must be greater than or equal 0.

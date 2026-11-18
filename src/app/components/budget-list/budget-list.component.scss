@@ -5,6 +5,7 @@
 }
 
 .budget-card {
+  height: 100%;
   border: 2px solid transparent;
   transition: border-color 0.3s;
 
@@ -12,6 +13,29 @@
   &:focus-within {
     border-color: var(--budget-category-color);
   }
+}
+
+.budget-entry {
+  position: relative;
+  min-width: 0;
+}
+
+.budget-reorder-handle {
+  position: absolute;
+  inset-block-start: 0.25rem;
+  inset-inline-start: 0.25rem;
+  z-index: 1;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.budget-entry.cdk-drag-placeholder {
+  opacity: 0;
 }
 
 .budget-item {
@@ -56,23 +80,40 @@
 .budget-list {
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
+}
+
+.budget-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background: var(--app-category-heading-hover-background);
+  }
+
+  &.cdk-drag-preview {
+    background: var(--mat-sys-surface-container);
+    border-radius: 0.5rem;
+    box-shadow: var(--mat-sys-level2);
+  }
+
+  .budget-reorder-handle {
+    position: static;
+  }
 
   .budget-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 0.75rem;
     min-height: 3rem;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
     padding: 0.5rem 0.75rem;
+    padding-inline-start: 0;
     text-align: start;
-
-    &:last-child {
-      border-bottom: 0;
-    }
-
-    &:hover {
-      background: var(--app-category-heading-hover-background);
-    }
 
     &:focus-visible {
       outline-offset: -2px;
