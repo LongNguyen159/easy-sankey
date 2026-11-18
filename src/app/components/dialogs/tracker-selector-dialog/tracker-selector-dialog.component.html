@@ -8,7 +8,7 @@
   </button>
   <mat-selection-list #categoryList (selectionChange)="onCategorySelection(categoryList.selectedOptions.selected)">
     @for (category of allCategories; track category.label) {
-        <mat-list-option [checkboxPosition]="'before'" [value]="category.value" [selected]="selectedCategories.includes(category.value)">
+        <mat-list-option [togglePosition]="'before'" [value]="category.value" [selected]="selectedCategories.includes(category.value)">
             <div class="flex flex-row gap-2 items-center">
                 <mat-icon
                     fontSet="material-symbols-outlined" 
