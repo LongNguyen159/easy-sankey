@@ -6,7 +6,8 @@
 @import 'material-symbols/outlined.css';
 
 /* Material Theme Definitions */
-@include mat.core();
+@include mat.elevation-classes();
+@include mat.app-background();
 
 // Themes
 $dark-theme: mat.define-theme((
@@ -51,7 +52,8 @@ h3 { font-size: large; }
 
 /* Theme Mixin */
 @mixin apply-theme($theme, $bg-color, $text-color, $secondary-text-color) {
-  @include mat.core-color($theme);
+  @include mat.elevation-classes();
+  @include mat.app-background();
   @include mat.all-component-colors($theme);
   @include mat.all-component-typographies($theme);
   @include mat.all-component-densities($theme);
