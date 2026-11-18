@@ -1,5 +1,5 @@
-import { DOCUMENT } from '@angular/common';
-import { Injectable, signal, effect, Renderer2, Inject } from '@angular/core';
+
+import { Injectable, signal, effect, Renderer2, Inject, DOCUMENT } from '@angular/core';
 
 
 export enum Theme {
