@@ -15,7 +15,7 @@ mat-form-field {
 
 
 .material-background-dialog-custom {
-  background-color: var(--mdc-dialog-container-color, var(--mat-app-surface, white)) !important;
+  background-color: var(--mat-dialog-container-color, var(--mat-app-surface, white)) !important;
 }
 mat-card {
   box-shadow: none !important;
