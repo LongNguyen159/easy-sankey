@@ -141,7 +141,7 @@
             @for (linkGroup of linkArray.controls; track linkGroup; let i = $index) {
               <div [formGroupName]="i" class="link-row">
                 <!-- SEARCH RESULTS -->
-                @if (linkGroup.get('isFixCost')?.value && filteredLinkIds.includes(linkGroup.get('id')?.value)) {
+                @if (linkGroup.get('isFixCost')?.value && filteredLinkIds.includes($safeNavigationMigration(linkGroup.get('id')?.value))) {
                   <!-- Target -->
                   <mat-form-field appearance="fill">
                     <mat-label>Name</mat-label>
@@ -245,7 +245,7 @@
           @for (linkGroup of linkArray.controls; track linkGroup; let i = $index) {
             <div [formGroupName]="i" class="link-row">
               <!-- SEARCH RESULTS -->
-              @if (!linkGroup.get('isFixCost')?.value && filteredLinkIds.includes(linkGroup.get('id')?.value)) {
+              @if (!linkGroup.get('isFixCost')?.value && filteredLinkIds.includes($safeNavigationMigration(linkGroup.get('id')?.value))) {
                 <!-- Target -->
                 <mat-form-field appearance="fill">
                   <mat-label>Name</mat-label>
@@ -287,7 +287,7 @@
                   <button
                     mat-icon-button
                     matSuffix
-                    (click)="toggleRowLog(linkGroup.get('id')?.value); $event.stopPropagation()"
+                    (click)="toggleRowLog($safeNavigationMigration(linkGroup.get('id')?.value)); $event.stopPropagation()"
                     matTooltip="Show recent changes (most recent first)"
                     [matTooltipShowDelay]="1000"
                     >
@@ -297,10 +297,10 @@
                   @if (activeRowId == linkGroup.get('id')?.value && isLogShown) {
                     <div class="flex flex-col gap-1 mr-4 break-words">
                       <mat-divider></mat-divider>
-                      @if(!logService.getLogs(dataMonth, linkGroup.get('id')?.value) || logService.getLogs(dataMonth, linkGroup.get('id')?.value).length == 0) {
+                      @if(!logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)) || logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)).length == 0) {
                         <p class="!m-0">No changes in the past 30 days.</p>
                       }
-                      @for (log of logService.getLogs(dataMonth, linkGroup.get('id')?.value); track $index) {
+                      @for (log of logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)); track $index) {
                         <p class="!m-0">
                           <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
                         </p>

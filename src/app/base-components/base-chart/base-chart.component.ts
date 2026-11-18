@@ -1,5 +1,5 @@
 
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsType } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { ColorService } from '../../services/color.service';
@@ -11,6 +11,7 @@ import { ColorService } from '../../services/color.service';
         provideEcharts(),
     ],
     templateUrl: './base-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './base-chart.component.scss'
 })
 export class BaseChartComponent implements OnDestroy {

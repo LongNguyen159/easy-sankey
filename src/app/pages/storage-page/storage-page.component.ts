@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { StorageManagerComponent } from '../../components/storage-manager/storage-manager.component';
 import { NavbarComponent } from "../../components/navbar/navbar.component";
 import { MatTabsModule } from '@angular/material/tabs';
@@ -16,6 +16,7 @@ import { RoutePath } from '../../components/models';
     imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
         CommonModule, BudgetListComponent],
     templateUrl: './storage-page.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './storage-page.component.scss'
 })
 export class StoragePageComponent implements OnInit, AfterViewInit {

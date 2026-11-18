@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges, effect, inject } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { TrendsLineChartData } from '../../models';
@@ -15,6 +15,7 @@ import { MONTHS_TO_PREDICT } from '../../../utils/utils';
         CurrencyPipe
     ],
     templateUrl: './total-surplus-line-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./total-surplus-line-chart.component.scss']
 })
 export class TotalSurplusLineChartComponent extends BaseChartComponent implements OnChanges {

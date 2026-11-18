@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ExpenseCategory, ExpenseCategoryDetails, expenseCategoryDetails } from '../../models';
@@ -18,6 +18,7 @@ import { TrackingService } from '../../../services/tracking.service';
         MatIconModule
     ],
     templateUrl: './tracker-selector-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './tracker-selector-dialog.component.scss'
 })
 export class TrackerSelectorDialogComponent {

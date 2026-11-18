@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { AbnormalityChartData } from '../../models';
@@ -21,6 +21,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         CurrencyPipe
     ],
     templateUrl: './category-regression-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './category-regression-chart.component.scss'
 })
 export class CategoryRegressionChartComponent extends BaseChartComponent implements OnChanges {

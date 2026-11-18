@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { RouterModule } from '@angular/router';
 import { NavbarComponent } from '../../components/navbar/navbar.component';
@@ -14,6 +14,7 @@ import { RoutePath } from '../../components/models';
         RouterModule, MatCardModule
     ],
     templateUrl: './highlighted-features-page.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './highlighted-features-page.component.scss'
 })
 export class HighlightedFeaturesPageComponent {

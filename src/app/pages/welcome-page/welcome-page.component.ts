@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
@@ -10,6 +10,7 @@ import { RoutePath } from '../../components/models';
     selector: 'app-welcome-page',
     imports: [DemoChartComponent, MatButtonModule, MatIconModule, RouterModule, GraphicTextComponent],
     templateUrl: './welcome-page.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './welcome-page.component.scss'
 })
 export class WelcomePageComponent {

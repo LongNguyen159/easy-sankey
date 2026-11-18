@@ -1,5 +1,5 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter } from '@angular/material/core';
 import { MatCalendar } from '@angular/material/datepicker';
@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
     MatButtonModule
 ],
     templateUrl: './month-picker-header.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './month-picker-header.component.scss'
 })
 export class MonthPickerHeaderComponent<D> {

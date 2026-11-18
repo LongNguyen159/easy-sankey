@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, signal, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, signal, SimpleChanges, ViewChild, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MonthPickerHeaderComponent } from '../month-picker-header/month-picker-header.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
@@ -20,6 +20,7 @@ import { formatDateToYYYYMM } from '../../utils/utils';
     ],
     templateUrl: './simple-month-picker.component.html',
     styleUrl: './simple-month-picker.component.scss',
+    changeDetection: ChangeDetectionStrategy.Eager,
     encapsulation: ViewEncapsulation.None
 })
 export class SimpleMonthPickerComponent implements OnChanges {

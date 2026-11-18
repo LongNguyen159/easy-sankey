@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { BarSeriesOption, EChartsOption, EChartsType, LineSeriesOption, SeriesOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -16,6 +16,7 @@ import { isArray } from 'mathjs';
         CurrencyPipe
     ],
     templateUrl: './trends-line-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './trends-line-chart.component.scss'
 })
 export class TrendsLineChartComponent extends BaseChartComponent implements OnChanges {

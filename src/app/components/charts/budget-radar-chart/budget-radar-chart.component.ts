@@ -1,4 +1,4 @@
-import { Component, effect, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { EChartsOption } from 'echarts';
 import { Budget, ExpenseCategory, expenseCategoryDetails } from '../../models';
@@ -11,6 +11,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         provideEcharts(),
     ],
     templateUrl: './budget-radar-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './budget-radar-chart.component.scss'
 })
 export class BudgetRadarChartComponent extends BaseChartComponent implements OnChanges {

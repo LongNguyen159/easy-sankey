@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -8,6 +8,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
     imports: [MatCardModule, MatIconModule],
     templateUrl: './error-card.component.html',
     styleUrl: './error-card.component.scss',
+    changeDetection: ChangeDetectionStrategy.Eager,
     animations: [
         trigger('fadeInOut', [
             state('void', style({

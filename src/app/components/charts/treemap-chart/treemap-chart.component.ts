@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { TreeNode } from '../../models';
@@ -25,6 +25,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         CurrencyPipe
     ],
     templateUrl: './treemap-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './treemap-chart.component.scss'
 })
 export class TreemapChartComponent extends BaseChartComponent implements OnInit, OnChanges {

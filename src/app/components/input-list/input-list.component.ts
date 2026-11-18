@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
@@ -74,6 +74,7 @@ enum ErrorType {
     templateUrl: './input-list.component.html',
     styleUrl: './input-list.component.scss',
     encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.Eager,
     animations: [
         trigger('expandCollapse', [
             state('expanded', style({

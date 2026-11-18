@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavbarComponent } from '../../components/navbar/navbar.component';
 import { ColorService } from '../../services/color.service';
 import { CommonModule } from '@angular/common';
@@ -17,6 +17,7 @@ import { RoutePath } from '../../components/models';
         RouterModule, MatCardModule
     ],
     templateUrl: './whats-new-page.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './whats-new-page.component.scss'
 })
 export class WhatsNewPageComponent {

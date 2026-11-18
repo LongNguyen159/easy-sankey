@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { SankeyChartComponent } from "../../components/charts/sankey-chart/sankey-chart.component";
 import { PieChartComponent } from "../../components/charts/pie-chart/pie-chart.component";
 import { ColorService } from '../../services/color.service';
@@ -18,6 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
         MatButtonModule
     ],
     templateUrl: './main-page-single-month.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './main-page-single-month.component.scss'
 })
 export class MainPageSingleMonthComponent implements OnChanges {

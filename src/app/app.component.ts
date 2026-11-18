@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, Renderer2 } from '@angular/core';
+import { Component, inject, OnInit, Renderer2, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,7 @@ declare const window: any;
     imports: [RouterOutlet, MatMenuModule, MatIconModule, MatButtonModule, RouterModule
     ],
     templateUrl: './app.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {

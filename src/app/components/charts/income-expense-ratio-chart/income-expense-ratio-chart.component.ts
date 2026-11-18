@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, EChartsType, SeriesOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { DataService } from '../../../services/data.service';
@@ -16,6 +16,7 @@ import { formatBigNumber } from '../../../utils/utils';
         CurrencyPipe
     ],
     templateUrl: './income-expense-ratio-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrls: ['./income-expense-ratio-chart.component.scss']
 })
 export class IncomeExpenseRatioChartComponent extends BaseChartComponent implements OnChanges, OnDestroy {

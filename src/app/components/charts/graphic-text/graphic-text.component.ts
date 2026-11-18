@@ -1,5 +1,5 @@
 
-import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { ColorService } from '../../../services/color.service';
@@ -11,6 +11,7 @@ import { ColorService } from '../../../services/color.service';
         provideEcharts(),
     ],
     templateUrl: './graphic-text.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './graphic-text.component.scss'
 })
 export class GraphicTextComponent implements OnInit, OnChanges {

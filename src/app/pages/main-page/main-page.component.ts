@@ -38,7 +38,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     templateUrl: './main-page.component.html',
     styleUrl: './main-page.component.scss',
     encapsulation: ViewEncapsulation.None,
-    changeDetection: ChangeDetectionStrategy.Default
+    changeDetection: ChangeDetectionStrategy.Eager
 })
 export class MainPageComponent extends BasePageComponent implements OnInit, OnChanges {
   @Input() hasMonthPicker: boolean = true;

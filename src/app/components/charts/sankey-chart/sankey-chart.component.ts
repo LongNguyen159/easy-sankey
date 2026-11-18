@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, EChartsType } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { DifferenceItem, SankeyData, SYSTEM_PREFIX } from '../../models';
@@ -27,6 +27,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         CurrencyPipe
     ],
     templateUrl: './sankey-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './sankey-chart.component.scss'
 })
 export class SankeyChartComponent extends BaseChartComponent implements OnChanges {

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { DataService } from '../../services/data.service';
 import { debounceTime, takeUntil } from 'rxjs';
@@ -51,6 +51,7 @@ import { BudgetService } from '../../services/budget.service';
     ],
     templateUrl: './budget-slider.component.html',
     styleUrl: './budget-slider.component.scss',
+    changeDetection: ChangeDetectionStrategy.Eager,
     encapsulation: ViewEncapsulation.None
 })
 export class BudgetSliderComponent extends BasePageComponent implements OnInit {

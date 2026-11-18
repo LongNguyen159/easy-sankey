@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { InputListComponent } from '../input-list/input-list.component';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,6 +29,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatTooltipModule
     ],
     templateUrl: './fix-cost-input.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {

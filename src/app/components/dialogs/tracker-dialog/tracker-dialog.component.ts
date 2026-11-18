@@ -1,5 +1,5 @@
 
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ProgressCardComponent } from "../../progress-card/progress-card.component";
@@ -11,6 +11,7 @@ import { takeUntil } from 'rxjs';
     selector: 'app-tracker-dialog',
     imports: [MatDialogModule, MatButtonModule, ProgressCardComponent],
     templateUrl: './tracker-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './tracker-dialog.component.scss'
 })
 export class TrackerDialogComponent extends BasePageComponent implements OnInit {

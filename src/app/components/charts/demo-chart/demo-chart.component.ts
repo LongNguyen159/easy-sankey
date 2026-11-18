@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 
@@ -9,6 +9,7 @@ import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
         provideEcharts(),
     ],
     templateUrl: './demo-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './demo-chart.component.scss'
 })
 export class DemoChartComponent {

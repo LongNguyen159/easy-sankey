@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { formatBigNumber } from '../../../utils/utils';
@@ -13,6 +13,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         CurrencyPipe
     ],
     templateUrl: './budget-gauge-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './budget-gauge-chart.component.scss'
 })
 export class BudgetGaugeChartComponent extends BaseChartComponent implements OnChanges {

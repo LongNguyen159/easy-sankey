@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, Renderer2, ViewEncapsulation } from '@angular/core';
+import { Component, inject, OnInit, Renderer2, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import {MatCardModule} from '@angular/material/card';
@@ -28,6 +28,7 @@ import { RoutePath } from '../../models';
     ],
     templateUrl: './settings-dialog.component.html',
     styleUrl: './settings-dialog.component.scss',
+    changeDetection: ChangeDetectionStrategy.Eager,
     encapsulation: ViewEncapsulation.None
 })
 export class SettingsDialogComponent implements OnInit{

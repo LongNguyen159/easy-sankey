@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { Component, EventEmitter, inject, OnInit, Output, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { TrackingService } from '../../services/tracking.service';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { CommonModule } from '@angular/common';
@@ -29,6 +29,7 @@ import { takeUntil } from 'rxjs';
     ],
     templateUrl: './progress-card.component.html',
     styleUrl: './progress-card.component.scss',
+    changeDetection: ChangeDetectionStrategy.Eager,
     encapsulation: ViewEncapsulation.None
 })
 export class ProgressCardComponent extends BasePageComponent implements OnInit {

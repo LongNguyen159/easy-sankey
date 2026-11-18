@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { Budget, ExpenseCategory, expenseCategoryDetails } from '../models';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +21,7 @@ import { CurrencyService } from '../../services/currency.service';
         MatButtonModule
     ],
     templateUrl: './budget-list.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './budget-list.component.scss'
 })
 export class BudgetListComponent implements OnInit{

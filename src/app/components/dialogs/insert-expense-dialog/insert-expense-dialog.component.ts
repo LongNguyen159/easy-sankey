@@ -1,4 +1,4 @@
-import { Component, Inject, inject, OnInit } from '@angular/core';
+import { Component, Inject, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { BasePageComponent } from '../../../base-components/base-page/base-page.component';
@@ -27,6 +27,7 @@ import { MatDividerModule } from '@angular/material/divider';
         MatDividerModule
     ],
     templateUrl: './insert-expense-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './insert-expense-dialog.component.scss'
 })
 export class InsertExpenseDialogComponent extends BasePageComponent implements OnInit {

@@ -47,7 +47,7 @@ import { PredictService } from '../../services/predict.service';
     templateUrl: './storage-manager.component.html',
     styleUrl: './storage-manager.component.scss',
     encapsulation: ViewEncapsulation.None,
-    changeDetection: ChangeDetectionStrategy.Default
+    changeDetection: ChangeDetectionStrategy.Eager
 })
 export class StorageManagerComponent extends BasePageComponent implements OnInit {
   dataService = inject(DataService);

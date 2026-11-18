@@ -1,5 +1,5 @@
 
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { AbnormalityChartData } from '../../models';
@@ -9,6 +9,7 @@ import { CategoryRegressionChartComponent } from "../../charts/category-regressi
     selector: 'app-pattern-analysis-dialog',
     imports: [MatDialogModule, MatButtonModule, CategoryRegressionChartComponent],
     templateUrl: './pattern-analysis-dialog.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './pattern-analysis-dialog.component.scss'
 })
 export class PatternAnalysisDialogComponent {

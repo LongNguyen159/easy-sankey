@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ColorService } from '../../services/color.service';
 import { CommonModule } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
     selector: 'app-user-manual',
     imports: [CommonModule, MatDividerModule, MatIconModule],
     templateUrl: './user-manual.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './user-manual.component.scss'
 })
 export class UserManualComponent {

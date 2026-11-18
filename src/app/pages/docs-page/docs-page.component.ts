@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { UserManualComponent } from '../../components/user-manual/user-manual.component';
 import { NavbarComponent } from "../../components/navbar/navbar.component";
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,7 @@ import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
         UserManualComponent, NavbarComponent, MatSnackBarModule
     ],
     templateUrl: './docs-page.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './docs-page.component.scss'
 })
 export class DocsPageComponent {

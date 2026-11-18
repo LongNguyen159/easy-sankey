@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -16,6 +16,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         CurrencyPipe
     ],
     templateUrl: './pie-chart.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './pie-chart.component.scss'
 })
 export class PieChartComponent extends BaseChartComponent implements OnChanges {
