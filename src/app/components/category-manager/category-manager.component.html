@@ -9,9 +9,16 @@
     </button>
   </header>
 
-  <ul class="category-list">
-    @for (category of categories(); track category.value) {
-      <li class="category-row">
+  <ul class="category-list" cdkDropList [cdkDropListData]="categories()" (cdkDropListDropped)="drop($event)">
+    @for (category of categories(); track category.value; let index = $index) {
+      <li class="category-row" cdkDrag [cdkDragData]="category">
+        <button mat-icon-button type="button" class="reorder-handle" cdkDragHandle
+          matTooltip="Drag to reorder" [attr.aria-label]="'Reorder ' + category.label"
+          aria-description="Use Up and Down arrow keys to move this category"
+          (keydown.arrowup)="moveWithKeyboard($event, category, index - 1)"
+          (keydown.arrowdown)="moveWithKeyboard($event, category, index + 1)">
+          <mat-icon fontSet="material-symbols-outlined">drag_indicator</mat-icon>
+        </button>
         <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
         <span class="category-name">{{ category.label }}</span>
         <button mat-icon-button type="button" [attr.aria-label]="'Edit ' + category.label" (click)="openEditor(category)">

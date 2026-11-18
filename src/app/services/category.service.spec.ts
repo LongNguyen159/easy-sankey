@@ -69,6 +69,21 @@ describe('expense categories', () => {
     expect(savedCategories.categories().some(category => category.label === 'Pets')).toBeTrue();
   });
 
+  it('persists category order without changing which category a saved entry references', () => {
+    seedMonth('2025-04', ExpenseCategory.Groceries);
+    const originalIds = categories.categories().map(category => category.value);
+
+    expect(categories.move(ExpenseCategory.Groceries, 0)).toBeTrue();
+    expect(categories.move(ExpenseCategory.Groceries, -1)).toBeFalse();
+
+    const reopened = createInjector();
+    expect(reopened.get(CategoryService).categories().map(category => category.value)).toEqual([
+      ExpenseCategory.Groceries,
+      ...originalIds.filter(id => id !== ExpenseCategory.Groceries),
+    ]);
+    expect(reopened.get(DataService).loadSingleMonth('2025-04')?.rawInput[1].source).toBe(ExpenseCategory.Groceries);
+  });
+
   it('clears a deleted category across months, templates and copies while retaining entries and totals', () => {
     categories.save('Tools', 'build', CATEGORY_COLORS[0]);
     const id = categories.categories().find(category => category.label === 'Tools')!.value;

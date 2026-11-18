@@ -113,6 +113,20 @@ export class CategoryService {
     return category;
   }
 
+  move(id: string, toIndex: number): boolean {
+    const categories = this.categories();
+    const fromIndex = categories.findIndex(category => category.value === id);
+    if (fromIndex < 0 || fromIndex === toIndex || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= categories.length) {
+      return false;
+    }
+
+    const reordered = [...categories];
+    const [category] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, category);
+    this.persist(reordered);
+    return true;
+  }
+
   remove(id: string): void {
     this.persist(this.categories().filter(category => category.value !== id));
   }
