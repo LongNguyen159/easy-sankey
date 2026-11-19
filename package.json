@@ -16,7 +16,9 @@
     "spell-check": "cspell \"src/**/*.ts\" \"src/**/*.html\"",
     "circular-check": "npx madge --circular --extensions ts ./",
     "deploy-mac": "node scripts/deploy-mac.js",
-    "deploy-win": "ng build && electron-builder --win"
+    "deploy-win": "ng build && electron-builder --win",
+    "test:database": "node --test electron/storage/*.test.js",
+    "rebuild:electron": "electron-builder install-app-deps"
   },
   "private": true,
   "dependencies": {
@@ -80,7 +82,9 @@
     "files": [
       "dist/**/*",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "electron/storage/**/*.js",
+      "!electron/storage/**/*.test.js"
     ],
     "directories": {
       "output": "releases/v${version}/${platform}/${arch}"
@@ -96,6 +100,9 @@
         "nsis"
       ],
       "icon": "resources/icons/win/easy-sankey-512-3d.ico"
-    }
+    },
+    "asarUnpack": [
+      "**/*.node"
+    ]
   }
 }

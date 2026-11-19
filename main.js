@@ -1,3 +1,4 @@
+const { registerDatabaseApi } = require('./electron/storage/ipc');
 const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
@@ -179,7 +180,15 @@ function setupAutoUpdater() {
 
 
 
+let databaseApi;
 app.on('ready', () => {
+  try {
+    databaseApi = registerDatabaseApi({ app, ipcMain, getWindow: () => win });
+  } catch (error) {
+    dialog.showErrorBox('Database could not be opened', error.message);
+    app.quit();
+    return;
+  }
   createWindow();
   // setupAutoUpdater();
 });
@@ -197,6 +206,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  databaseApi?.close();
   serverInstance.close(() => {
     console.log('Express server closed before quit');
   });
