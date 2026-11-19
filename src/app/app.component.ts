@@ -1,4 +1,4 @@
-import { AppStorage } from './storage/app-storage';
+import { SettingsRepository } from './storage/repositories';
 import { Component, inject, OnInit, Renderer2, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
@@ -20,7 +20,7 @@ declare const window: any;
     styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(SettingsRepository);
   title = 'Easy Sankey';
   appVersion = ''
   colorService = inject(ColorService)

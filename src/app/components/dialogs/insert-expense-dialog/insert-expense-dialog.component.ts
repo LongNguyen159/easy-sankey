@@ -150,22 +150,8 @@ export class InsertExpenseDialogComponent extends BasePageComponent implements O
       return;
     }
     
-    // Update the value immutably (patch the value of the entry, everything else remains the same)
-    this.entryToUpdate.value = this.calculatedAmount;
+    await this.dataService.updateEntryAmount(this.userSingleMonthEntries.month,this.entryToUpdate,this.calculatedAmount,this.newValueUpdated);
 
-    /** Update log */
-    await this.logService.setLog(this.userSingleMonthEntries.month, this.entryToUpdate.id, this.newValueUpdated);
-
-
-    // Create a new array with the updated entry
-    const updatedRawInput = [
-      ...this.userSingleMonthEntries.rawInput.slice(0, this.entryToUpdateIndex),
-      this.entryToUpdate,
-      ...this.userSingleMonthEntries.rawInput.slice(this.entryToUpdateIndex + 1)
-    ];
-
-    // Send the updated array to the service
-    await this.dataService.processInputData(updatedRawInput, this.userSingleMonthEntries.month, { showSnackbarWhenDone: true });
   }
 
   toggleHistory() {

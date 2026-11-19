@@ -1,66 +1,14 @@
 import { inject, Injectable } from '@angular/core';
-import { ExpenseCategoryDetails, MonthlyData, SingleMonthData } from '../components/models';
-import { AppStorage } from './app-storage';
-
-/** Month persistence only. Calculations and UI notifications belong to DataService. */
+import { UserDefinedLink, ExpenseCategoryDetails } from '../components/models';
+import { DATABASE_CLIENT } from './repositories';
+import { HistoryItem, MonthSave } from './database-api';
 @Injectable({ providedIn: 'root' })
 export class MonthRepository {
-  private readonly storage = inject(AppStorage);
-
-  list(): MonthlyData {
-    return this.storage.read('monthlyData') ?? {};
-  }
-
-  get(month: string): SingleMonthData | null {
-    const months = this.list();
-    return Object.hasOwn(months, month) ? months[month] : null;
-  }
-
-  async create(data: SingleMonthData): Promise<void> {
-    const months = this.list();
-    if (Object.hasOwn(months, data.month)) throw new Error(`Month ${data.month} already exists.`);
-    await this.replaceAll({ ...months, [data.month]: data });
-  }
-
-  async update(data: SingleMonthData): Promise<void> {
-    const months = this.list();
-    if (!Object.hasOwn(months, data.month)) throw new Error(`Month ${data.month} does not exist.`);
-    await this.replaceAll({ ...months, [data.month]: data });
-  }
-
-  async upsert(data: SingleMonthData): Promise<void> {
-    await this.replaceAll({ ...this.list(), [data.month]: data });
-  }
-
-  async delete(month: string): Promise<boolean> {
-    const months = this.list();
-    if (!Object.hasOwn(months, month)) return false;
-    delete months[month];
-    const logs=this.storage.read('logs') ?? {};
-    delete logs[month];
-    await this.storage.writeBatch({monthlyData:months,logs});
-    return true;
-  }
-
-  /** Persist a copied month and its new category definitions together. */
-  async importMonth(data: SingleMonthData, categories?: ExpenseCategoryDetails[]): Promise<void> {
-    const months = { ...this.list(), [data.month]: data };
-    this.validate(months);
-    const logs=this.storage.read('logs') ?? {};
-    delete logs[data.month];
-    await this.storage.writeBatch({monthlyData:months,logs,...(categories?{expenseCategories:categories}:{})});
-  }
-
-  async replaceAll(months: MonthlyData): Promise<void> {
-    this.validate(months);
-    await this.storage.write('monthlyData', months);
-  }
-
-  private validate(months: MonthlyData): void {
-    for (const [month, data] of Object.entries(months)) {
-      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || data.month !== month) {
-        throw new Error(`Invalid month: ${month}`);
-      }
-    }
-  }
+    private client = inject(DATABASE_CLIENT);
+    list(from?: string, to?: string) { return this.client.api.months.range({ from, to }).then(result => result.value); }
+    get(month: string) { return this.client.api.months.get(month); }
+    save(data: MonthSave) { const command = structuredClone(data); return this.client.command(() => this.client.api.months.save(command)).then(result => result.value); }
+    delete(month: string) { return this.client.command(() => this.client.api.months.remove({ month })).then(result => result.value); }
+    importMonth(data: MonthSave, categories?: ExpenseCategoryDetails[]) { return this.save({ ...data, categories, clearHistory: true }); }
+    updateEntry(month: string, entry: UserDefinedLink, history?: HistoryItem, expected?: UserDefinedLink) { return this.client.command(() => this.client.api.entries.update({ month, id: entry.id, entry, expected, history: history ? { [entry.id]: history } : undefined })).then(async () => {const saved=await this.get(month);if(!saved)throw new Error("Month does not exist.");return saved;}); }
 }

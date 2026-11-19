@@ -17,24 +17,45 @@ async function runSmoke(window,app) {
   await new Promise(resolve=>setTimeout(resolve,100));
  }
  assert.equal(await execute('document.body.innerText.includes("Could not open local database")'),false);
+ const migrated=await execute(`(async()=>{const api=window.electronAPI.database;return {month:await api.months.get('2024-01'),settings:(await api.settings.list()).value};})()`);
+ assert.equal(migrated.month.entries[1].value,123.45);
+ assert.equal(migrated.month.entries[0].lastEditedAt,1234);
+ assert.equal(migrated.settings.selectedCurrency,'USD');
+ assert.equal(migrated.settings.budgetView,'list');
+ await execute(`(()=>{const original=console.error;console.error=(...args)=>original(...args.map(value=>value?.stack??value?.message??String(value)));})()`);
+ // Exercise the real production renderer action, not just the exposed IPC contracts.
+ await execute("location.hash='#/storage?tab=3'");
+ async function waitFor(script) {
+   for(let attempt=0;attempt<100;attempt++) {if(await execute(script))return;await new Promise(resolve=>setTimeout(resolve,100));}
+   throw new Error('UI action timed out: '+script);
+ }
+ await waitFor('!!document.querySelector("app-storage-page [role=tab]")');
+ await execute('Array.from(document.querySelectorAll("[role=tab]")).find(tab=>tab.textContent.includes("Categories")).click()');
+ await waitFor('!!document.querySelector("app-category-manager button")');
+ await execute('document.querySelector("app-category-manager button").click()');
+ await waitFor('!!document.querySelector("input[name=label]")');
+ const uiLabel='Packaged CRUD '+Date.now();
+ await execute(`(()=>{const input=document.querySelector('input[name=label]');input.value=${JSON.stringify(uiLabel)};input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+ await execute('document.querySelector("app-category-editor-dialog button[type=submit]").click()');
+ await waitFor('!document.querySelector("app-category-editor-dialog")');
+ const uiCategory=await execute(`(async()=>{const items=(await window.electronAPI.database.categories.list()).items;return items.find(item=>item.label===${JSON.stringify(uiLabel)});})()`);
+ assert.ok(uiCategory,'Normal category editor did not persist through CRUD');
+ await execute(`window.electronAPI.database.deleteCategory({id:${JSON.stringify(uiCategory.value)}})`);
  const result=await execute(`(async()=>{
   const api=window.electronAPI.database;
-  const first=await api.state.initialize({});
-  const migrated=first.data.monthlyData['2024-01'];
-  if(migrated.rawInput[1].value!==123.45 || migrated.rawInput[0].lastEditedAt!==1234 || migrated.pieData!==undefined)throw new Error('Legacy migration lost source data or retained chart cache');
-  if(first.data.selectedCurrency!=='USD'||first.data.budgetView!=='list')throw new Error('Legacy settings were lost');
   const previous=await api.months.get('2025-04');
-  if(previous) { if(previous.entries[1].value!==250)throw new Error('Restart lost saved data'); await api.months.delete('2025-04'); }
+  if(previous) { if(previous.entries[1].value!==250)throw new Error('Restart lost saved data'); await api.months.remove({month:'2025-04'}); }
   const month='2025-04';
   const entries=[{id:'income',type:'income',target:'Smoke salary',value:1000},
    {id:'expense',type:'expense',target:'Smoke rent',value:200}];
-  const created=await api.months.create({month,lastUpdated:'2025-04-01T00:00:00Z',entries});
-  const updated=await api.months.update({...created,entries:[entries[0],{...entries[1],value:250}]});
+  const created=(await api.months.save({month,lastUpdated:'2025-04-01T00:00:00Z',entries,mode:'create'})).value;
+  await api.entries.update({month,id:'expense',entry:{...entries[1],value:250},history:{expense:{timestamp:'smoke',value:'200+50'}}});
+  const updated=await api.months.get(month);
   const backup=await api.state.exportBackup();
-  const state=await api.state.initialize({});
+  const state=await api.state.snapshot();
   await api.state.reset(state.revision);
   const empty=await api.months.list();
-  const reset=await api.state.initialize({selectedCurrency:'OLD'});
+  const reset=await api.state.snapshot();
   await api.state.restore({text:backup,revision:reset.revision});
   return {restartVerified:!!previous,created,updated,empty,reset,restored:await api.months.get(month),backup:JSON.parse(backup)};
  })()`);
@@ -54,7 +75,7 @@ async function runSmoke(window,app) {
  }
  assert.equal(await execute('document.body.innerText.includes("Could not open local database")'),false);
  assert.deepEqual(consoleErrors.filter(message=>/NG\d|ERROR|TypeError|Uncaught/.test(message)),[]);
- writeFileSync(join(app.getPath('userData'),'smoke-result.json'),JSON.stringify({passed:true,offline:true,legacyMigrationVerified:true,packaged:app.isPackaged,restartVerified:result.restartVerified,result},null,2));
+ writeFileSync(join(app.getPath('userData'),'smoke-result.json'),JSON.stringify({passed:true,offline:true,legacyMigrationVerified:true,uiCrudVerified:true,packaged:app.isPackaged,restartVerified:result.restartVerified,result},null,2));
  console.log('SQLITE_ELECTRON_SMOKE_PASS');
 }
 module.exports={runSmoke};

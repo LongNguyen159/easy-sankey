@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import {FixedCostRepository} from '../../storage/repositories';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -43,6 +44,7 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
+  private fixedCosts=inject(FixedCostRepository);
   protected sortOrder = resolveAmountSort(this.storage.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
@@ -66,7 +68,7 @@ export class FixCostInputComponent extends InputListComponent {
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(async () => {
      
       if (this.linkForm.valid) {
-        await this.saveToLocalStorage();
+        await this.saveTemplates();
       }
     })    
   }
@@ -77,7 +79,7 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   protected override async updateSavedFormValuesOnFormChanges(): Promise<void> {
-    await this.saveToLocalStorage();
+    await this.saveTemplates();
   }
 
   protected async setSort(order: AmountSort): Promise<void> {
@@ -118,7 +120,7 @@ export class FixCostInputComponent extends InputListComponent {
     }
     
     this.taxNodeExists = this._hasTaxNode(formData);
-    await this.saveToLocalStorage();
+    await this.saveTemplates();
 
     // After processing, update the initial form state to the new one
     this.initialFormState = [...formData]; // Update the stored form state
@@ -128,14 +130,14 @@ export class FixCostInputComponent extends InputListComponent {
   override async removeLink(index: number): Promise<void> {
     if (index < 0) return;
     this.linkArray.removeAt(index, { emitEvent: false });
-    await this.saveToLocalStorage();
+    await this.saveTemplates();
   }
 
 
-  async saveToLocalStorage() {
+  async saveTemplates() {
     if (!this.linkForm.valid) return;
     const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
-    await this.storage.write('fixCosts', this.categoryService.clearMissingSources(links));
+    await this.fixedCosts.save(this.categoryService.clearMissingSources(links));
   }
 
   override async ngOnDestroy(): Promise<void> {
@@ -147,7 +149,7 @@ export class FixCostInputComponent extends InputListComponent {
     }
 
     if (this.linkForm.valid) {
-      await this.saveToLocalStorage();
+      await this.saveTemplates();
     }
   }
 }

@@ -1,4 +1,4 @@
-import { AppStorage } from '../storage/app-storage';
+import { CategoryRepository } from '../storage/repositories';
 import { computed, Injectable, signal, inject } from '@angular/core';
 import { v4 as uuid } from 'uuid';
 import { ExpenseCategoryDetails, expenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
@@ -79,7 +79,7 @@ export const CATEGORY_ICON_GROUPS = [
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(CategoryRepository);
   private readonly definitions = signal<ExpenseCategoryDetails[]>(this.load());
   readonly categories = this.definitions.asReadonly();
 
@@ -108,10 +108,8 @@ export class CategoryService {
       colorLight: color.colorLight,
       colorDark: color.colorDark,
     };
-    const categories = this.categories();
-    ;(await this.persist(id
-      ? categories.map(existing => existing.value === id ? category : existing)
-      : [...categories, category]));
+    if(id)await this.storage.update(category);else await this.storage.create(category);
+    this.definitions.set(this.storage.list());
     return category;
   }
 
@@ -125,12 +123,14 @@ export class CategoryService {
     const reordered = [...categories];
     const [category] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, category);
-    await this.persist(reordered);
+    await this.storage.reorder(reordered.map(category=>category.value));
+    this.definitions.set(this.storage.list());
     return true;
   }
 
   async remove(id: string): Promise<void> {
-    await this.persist(this.categories().filter(category => category.value !== id));
+    await this.storage.remove(id);
+    await this.reloadFromStorage();
   }
 
   /** Clear references from old copies or forms that were opened before a deletion. */
@@ -144,13 +144,14 @@ export class CategoryService {
     });
   }
 
-  reloadFromStorage(): void {
+  async reloadFromStorage(): Promise<void> {
+    await this.storage.reload();
     this.definitions.set(this.load());
   }
 
   private load(): ExpenseCategoryDetails[] {
     try {
-      const stored = this.storage.read(categoryStorageKey);
+      const stored = this.storage.list();
       if (stored) {
         const categories: unknown = stored;
         if (Array.isArray(categories)) {
@@ -165,8 +166,4 @@ export class CategoryService {
     return Object.values(expenseCategoryDetails);
   }
 
-  private async persist(categories: ExpenseCategoryDetails[]): Promise<void> {
-    await this.storage.write(categoryStorageKey, categories);
-    this.definitions.set(categories);
-  }
 }

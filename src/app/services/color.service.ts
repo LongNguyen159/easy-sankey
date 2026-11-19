@@ -1,4 +1,4 @@
-import { AppStorage } from '../storage/app-storage';
+import { SettingsRepository } from '../storage/repositories';
 
 import { Injectable, signal, effect, Renderer2, Inject, DOCUMENT, inject } from '@angular/core';
 
@@ -12,7 +12,7 @@ export enum Theme {
   providedIn: 'root'
 })
 export class ColorService {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(SettingsRepository);
   renderer: Renderer2
   // Define a signal for dark mode
   isDarkMode = signal<boolean>(false);

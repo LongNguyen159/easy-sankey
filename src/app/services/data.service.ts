@@ -1,5 +1,7 @@
 import { calculateMonth } from '../utils/month-calculation';
-import { AppStorage, SessionStore } from '../storage/app-storage';
+import { SettingsRepository, FixedCostRepository, CategoryRepository } from '../storage/repositories';
+import { SessionStore } from '../storage/session-store';
+import {StoredMonth,HistoryItem} from '../storage/database-api';
 import { MonthRepository } from '../storage/month.repository';
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
 import { EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
@@ -27,9 +29,20 @@ import { v4 as uuid } from 'uuid';
  */
 export class DataService {
     private inputSaveQueue:Promise<unknown>=Promise.resolve();
-    private readonly storage = inject(AppStorage);
+    private readonly storage = inject(SettingsRepository);
     private readonly sessionStore = inject(SessionStore);
     private readonly months = inject(MonthRepository);
+    private readonly fixedCosts=inject(FixedCostRepository);
+    private readonly categoryRepository=inject(CategoryRepository);
+    readonly loading=signal(true);
+    readonly loadError=signal<string|null>(null);
+    readonly ready:Promise<void>;
+    private selection=0;
+    private sources=new Map<string,StoredMonth>();
+    private editors=new Set<()=>Promise<boolean>>();
+    private failedDrafts=new Map<string,UserDefinedLink[]>();
+    registerEditor(flush:()=>Promise<boolean>){this.editors.add(flush);return ()=>this.editors.delete(flush);}
+    async flushEdits():Promise<boolean>{for(const flush of this.editors)if(!await flush())return false;return true;}
     private UiService = inject(UiService)
     private logService = inject(LogsService)
     private categories = inject(CategoryService)
@@ -114,14 +127,15 @@ export class DataService {
 
 
     constructor() {
-        this.initializeData().catch(error => { this.UiService.showSnackBar(`Could not load data: ${error.message}`); })
+        this.ready=this.initializeData().catch(error => {this.loadError.set(error.message);this.UiService.showSnackBar(`Could not load data: ${error.message}`);}).finally(()=>this.loading.set(false));
     }
 
     //#region: Initialise Data
     private async initializeData(): Promise<void> {
     
         // Check if it's the user's first time
-        if (!Object.keys(this.loadData()).length && (this.isFirstTimeUser() || this.isOldVersion())) {
+        this.monthlyData=await this.loadData();
+        if (!Object.keys(this.monthlyData).length && (this.isFirstTimeUser() || this.isOldVersion())) {
             console.log('First time user or outdated app version. Processing demo data.');
             await this.processDemoData();
         } else {
@@ -145,18 +159,18 @@ export class DataService {
     
     private async processDemoData(): Promise<void> {
         const todaysDate = new Date();
-        await this.processInputData(this.demoLinks, formatDateToYYYYMM(todaysDate), { demo: true, emitObservable: true});
+        await this.saveMonthDraft(this.demoLinks, formatDateToYYYYMM(todaysDate), { demo: true, emitObservable: true});
     }
     
     private async loadExistingData(): Promise<void> {
-        const savedData = this.loadData();
+        const savedData = this.monthlyData;
         if (savedData && Object.keys(savedData).length > 0) {
             this.monthlyData = savedData;  // Load saved data
             // this.processedSingleMonthEntries$.next(this.monthlyData['2024-09']);  // Emit saved data
             this.multiMonthEntries$.next(this.monthlyData);  // Emit all months data
         } else {
             console.log('No saved data found.');
-            await this.processInputData([], formatDateToYYYYMM(new Date()));
+            await this.selectMonth(formatDateToYYYYMM(new Date()));
         }
     }
     //#endregion
@@ -183,16 +197,17 @@ export class DataService {
      *   - demo: `boolean` (default: `false`) - Indicates if the data is demo data.
      *   - showSnackbarWhenDone: `boolean` (default: `false`) - Shows a snackbar notification when data processing is complete.
      *   - emitObservable: `boolean` (default: `true`) - If `true`, emits an observable with the processed data for further actions.
-     *       If `false`, only saves the processed data in local storage without emitting.
+     *       If `false`, only saves the processed data in the database without emitting.
      */
-    async processInputData(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
+    async saveMonthDraft(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
         const entries=structuredClone(userDefinedLinks);
-        const operation=this.inputSaveQueue.then(()=>this.processInputDataNow(entries,month,options));
+        const history=this.logService.pendingFor(month);
+        const operation=this.inputSaveQueue.then(()=>this.commitMonthDraft(entries,month,options,history));
         this.inputSaveQueue=operation.catch(()=>{});
-        return operation;
+        return operation.then(result=>{this.failedDrafts.delete(month);return result;},error=>{this.failedDrafts.set(month,entries);throw error;});
     }
 
-    private async processInputDataNow(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
+    private async commitMonthDraft(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }, history?:Record<string,HistoryItem>) {
         /** Prevent overriding default value if not given.
          * e.g. `emitObservable` defaults to true, but if not provided by caller, it will be undefined.
          * This line below will set it to true if it's not provided.
@@ -269,15 +284,19 @@ export class DataService {
         }
 
 
-        const savedMonth = this.loadSingleMonth(month);
-        const changed = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedMonth?.rawInput);
+        const savedSource=this.sources.get(month)??null;
+        const savedMonth = savedSource ? this.project(savedSource) : null;
+        const changed = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedSource?.entries);
         const lastUpdated = changed && userDefinedLinks.length ? new Date() : savedMonth?.lastUpdated || '-';
         const data = this.calculateMonth(userDefinedLinks, month, lastUpdated);
         const updatedMonths = { ...this.monthlyData, [month]: data };
 
-        if (changed && !demo) {
-            await this.saveData(updatedMonths);
-            await this.logService.sanitiseLogs(month, userDefinedLinks.map(item => item.id));
+        if (changed && !this.isDemo()) {
+            if(userDefinedLinks.length) {const saved=await this.months.save({month,entries:userDefinedLinks,lastUpdated:new Date(lastUpdated).toISOString(),base:savedSource?.entries??[],history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined});this.sources.set(month,saved);}
+            else if(savedSource) {await this.months.delete(month);this.sources.delete(month);}
+            this.logService.commitPending(month,history);
+            this.multiMonthEntries$.next(Object.fromEntries(Object.entries(updatedMonths).filter(([,value])=>value.rawInput.length)));
+            this.dataSaved$.next(true);
         }
         this.monthlyData=updatedMonths;
         if (emitObservable) this.processedSingleMonthEntries$.next(data);
@@ -287,6 +306,21 @@ export class DataService {
 
 
         return data;
+    }
+
+    async updateEntryAmount(month:string,entry:UserDefinedLink,value:number,expression:string|number):Promise<void> {
+      const source=this.sources.get(month);
+      if(!source)throw new Error('Month is not loaded.');
+      const original=source.entries.find(item=>item.id===entry.id);
+      if(!original)throw new Error('Entry does not exist.');
+      const updated={...original,value,lastEditedAt:Date.now()};
+      const timestamp=new Date().toLocaleString('en-GB',{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const saved=await this.months.updateEntry(month,updated,{timestamp,value:expression},original);
+      this.sources.set(month,saved);
+      const data=this.project(saved);this.monthlyData={...this.monthlyData,[month]:data};
+      this.multiMonthEntries$.next(this.monthlyData);
+      if(this.processedSingleMonthEntries$.value.month===month)this.processedSingleMonthEntries$.next(data);
+      await this.logService.reloadFromStorage();this.dataSaved$.next(true);
     }
 
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
@@ -303,65 +337,15 @@ export class DataService {
             return uncategorized;
         });
 
-        if (await this.storage.deleteCategory(id)) {
-            this.categories.reloadFromStorage();
-            this.budgets.budget.set(this.budgets.getBudgets());
-            this.tracking.reloadFromStorage();
-            this.tracking.categoriesToTrack.update(ids => ids.filter(value => value !== id));
-            this.demoLinks=clear(this.demoLinks);
-            const copied=this.retrieveCopiedLinks();
-            if(copied) this.storeCopiedLinks(clear(copied));
-            this.monthlyData=this.loadData();
-            this.multiMonthEntries$.next(this.monthlyData);
-            const active=this.processedSingleMonthEntries$.value;
-            this.processedSingleMonthEntries$.next(this.monthlyData[active.month] ??
-                this.calculateMonth(clear(active.rawInput),active.month,active.lastUpdated));
-            return;
-        }
-        const active = this.processedSingleMonthEntries$.value;
-        const activeWasSaved = active === this.monthlyData[active.month];
-        const affectedMonths = Object.entries(this.monthlyData)
-            .filter(([, data]) => data.rawInput.some(link => link.source === id));
-
-        if (affectedMonths.length) {
-            const updatedMonths = { ...this.monthlyData };
-            for (const [month, data] of affectedMonths) {
-                updatedMonths[month] = this.calculateMonth(clear(data.rawInput), month, data.lastUpdated);
-            }
-            await this.saveData(updatedMonths);
-        }
-
-        this.demoLinks = clear(this.demoLinks);
-        const fixed = this.retrieveFixCostsLinks();
-        if (fixed.some(link => link.source === id)) {
-            await this.storage.write('fixCosts', clear(fixed));
-        }
-        const copied = this.retrieveCopiedLinks();
-        if (copied?.some(link => link.source === id)) this.storeCopiedLinks(clear(copied));
-
-        const budgets = this.budgets.getBudgets();
-        if (budgets.some(budget => budget.category === id)) {
-            await this.budgets.saveBudgets(budgets.filter(budget => budget.category !== id));
-        }
-        if (this.tracking.getTrackingData().some(tracker => tracker.name === id)) {
-            await this.tracking.removeTrackingData(id);
-        }
-        this.tracking.categoriesToTrack.update(ids => ids.filter(category => category !== id));
-
-        const essentials: string[] = this.storage.read('essentialCategories') ?? [];
-        if (essentials.includes(id)) {
-            await this.storage.write('essentialCategories', essentials.filter(category => category !== id));
-        }
-        await this.categories.remove(id);
-
-        if (active.rawInput.some(link => link.source === id)) {
-            const rawInput = clear(active.rawInput);
-            let updatedActive = activeWasSaved ? this.monthlyData[active.month] : { ...active, rawInput };
-            if (!activeWasSaved && active.totalExpenses !== -1) {
-                updatedActive = this.calculateMonth(rawInput, active.month, active.lastUpdated);
-            }
-            this.processedSingleMonthEntries$.next(updatedActive);
-        }
+        await this.categoryRepository.remove(id);
+        await Promise.all([this.categories.reloadFromStorage(),this.budgets.reload(),this.tracking.reloadFromStorage(),this.fixedCosts.reload(),this.storage.reload()]);
+        this.tracking.categoriesToTrack.update(ids=>ids.filter(value=>value!==id));
+        this.demoLinks=clear(this.demoLinks);
+        const copied=this.retrieveCopiedLinks();if(copied)this.storeCopiedLinks(clear(copied));
+        this.monthlyData=await this.loadData();
+        this.multiMonthEntries$.next(this.monthlyData);
+        const active=this.processedSingleMonthEntries$.value;
+        this.processedSingleMonthEntries$.next(this.monthlyData[active.month]??this.calculateMonth(clear(active.rawInput),active.month,active.lastUpdated));
     }
 
     checkDuplicateNames(links: UserDefinedLink[]): boolean {
@@ -393,43 +377,32 @@ export class DataService {
     //#endregion
 
 
-    //#region Local Storage
-    /** Commit source records through SQLite before notifying subscribers. */
-    private async saveData(monthlyData = this.monthlyData) {
-        const nonEmptyMonthlyData = Object.keys(monthlyData).reduce((result, month) => {
-            const data = monthlyData[month];
-            // Check if the data contains meaningful entries (you can adjust conditions as needed)
-            if (data.rawInput.length > 0 || data.totalGrossIncome > 0 || data.totalExpenses > 0) {
-                result[month] = data; // Only keep non-empty months
-            }
-            return result;
-        }, {} as MonthlyData);
-    
-        // The repository owns persistence; these objects also remain the runtime view model.
-        await this.months.replaceAll(nonEmptyMonthlyData);
-        this.monthlyData = monthlyData;
+    private project(source:StoredMonth):SingleMonthData {return this.calculateMonth(source.entries,source.month,source.lastUpdated);}
 
-        // Emit all months data
-        this.multiMonthEntries$.next(nonEmptyMonthlyData);
-        this.dataSaved$.next(true);
+    async loadData():Promise<MonthlyData> {
+      const sources=await this.months.list();this.sources=new Map(sources.map(source=>[source.month,source]));
+      return Object.fromEntries(sources.map(source=>[source.month,this.project(source)]));
     }
-
-    loadData(): MonthlyData {
-        return this.months.list();
+    async loadSingleMonth(month:string):Promise<SingleMonthData|null> {
+      const source=await this.months.get(month);if(!this.failedDrafts.has(month)){if(source)this.sources.set(month,source);else this.sources.delete(month);}return source?this.project(source):null;
     }
-
-    loadSingleMonth(month: string): SingleMonthData | null {
-        return this.months.get(month);
+    /** Querying a month never saves it. Stale responses cannot replace the active selection. */
+    async selectMonth(month:string):Promise<void> {
+      const selection=++this.selection;
+      const loaded=await this.loadSingleMonth(month);
+      const draft=this.failedDrafts.get(month);
+      const data=draft?this.calculateMonth(draft,month,loaded?.lastUpdated??'-'):loaded??this.calculateMonth([],month,'-');
+      if(selection===this.selection)this.processedSingleMonthEntries$.next(data);
     }
 
     /** Delete persisted entries, then update the runtime views. */
     async removeMonth(month: string): Promise<void> {
         if (!(await this.months.delete(month))) return;
-        this.logService.reloadFromStorage();
+        await this.logService.reloadFromStorage();
         const empty=this.calculateMonth([],month,'-');
-        this.monthlyData={...this.loadData(),[month]:empty};
+        this.monthlyData={...await this.loadData(),[month]:empty};
         this.processedSingleMonthEntries$.next(empty);
-        this.multiMonthEntries$.next(this.loadData());
+        this.multiMonthEntries$.next(await this.loadData());
         this.dataSaved$.next(true);
     }
     //#endregion
@@ -470,12 +443,13 @@ export class DataService {
                 ? source ?? undefined : undefined
         }));
         const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
-        const savedMonths = { ...this.loadData(), [month]: data };
+        const savedMonths = { ...this.monthlyData, [month]: data };
         const addedCategories = definitions.size > currentCategories.length;
-        await this.months.importMonth(data, addedCategories ? [...definitions.values()] : undefined);
+        const saved=await this.months.importMonth({month:data.month,entries:links,lastUpdated:new Date(data.lastUpdated).toISOString(),base:this.sources.get(month)?.entries??[]}, addedCategories ? [...definitions.values()] : undefined);
+        this.sources.set(month,saved);
 
-        if (addedCategories) this.categories.reloadFromStorage();
-        this.logService.reloadFromStorage();
+        if (addedCategories) await this.categories.reloadFromStorage();
+        await this.logService.reloadFromStorage();
         this.monthlyData = { ...this.monthlyData, ...savedMonths };
         this.isDemo.set(false);
         this.hasDataCycle.set(false);
@@ -495,7 +469,7 @@ export class DataService {
 
 
     retrieveFixCostsLinks(): UserDefinedLink[] {
-        const fixedLinks = this.storage.read('fixCosts')
+        const fixedLinks = this.fixedCosts.list()
         return fixedLinks ? this.categories.clearMissingSources(fixedLinks) : [];
     }
 

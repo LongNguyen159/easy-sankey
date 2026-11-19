@@ -7,7 +7,7 @@ initializeSqlite().then(() => bootstrapApplication(AppComponent, appConfig))
   .catch((err) => {
     console.error(err);
     document.body.textContent = `Could not open local database: ${err.message}. Your existing data has been retained.`;
-    const api=(window as any).electronAPI?.database?.state;
+    const api=window.electronAPI?.database?.state;
     if(!api)return;
     const restore=document.createElement('input');restore.type='file';restore.accept='.json,application/json';
     const label=document.createElement('p');label.textContent='Restore a full backup to recover:';

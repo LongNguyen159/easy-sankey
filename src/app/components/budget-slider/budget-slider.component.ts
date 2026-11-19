@@ -1,4 +1,4 @@
-import { AppStorage } from '../../storage/app-storage';
+import { SettingsRepository } from '../../storage/repositories';
 import { CategoryService } from '../../services/category.service';
 import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
@@ -57,7 +57,7 @@ import { BudgetService } from '../../services/budget.service';
     encapsulation: ViewEncapsulation.None
 })
 export class BudgetSliderComponent extends BasePageComponent implements OnInit {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(SettingsRepository);
   dataService = inject(DataService)
   colorService = inject(ColorService)
   currencyService = inject(CurrencyService)

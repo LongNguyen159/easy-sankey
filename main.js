@@ -24,6 +24,7 @@ if (development && !storageSmoke) {
 if (!app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance', () => { if(win) { if(win.isMinimized()) win.restore(); win.focus(); } });
 
+
 const smokeLegacySeed=storageSmoke && !require('node:fs').existsSync(path.join(app.getPath('userData'),'finance.sqlite'));
 
 //#region Server Setup

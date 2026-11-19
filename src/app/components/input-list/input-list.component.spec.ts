@@ -2,7 +2,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DatePipe } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { PERSISTENT_STORAGE } from '../../storage/app-storage';
+import { provideTestDatabase } from '../../testing/database';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -36,9 +36,9 @@ describe('InputListComponent manual sorting', () => {
 
   beforeEach(() => {
     save = jasmine.createSpy('processInputData');
-    TestBed.configureTestingModule({ providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, { provide: PERSISTENT_STORAGE, useValue: localStorage },
+    TestBed.configureTestingModule({ providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase(),
       { provide: DataService, useValue: { demoLinks: [], nonAllowedNames: [], isDemo: () => false,
-        hasDataCycle: { set: () => {} }, processInputData: save } },
+        hasDataCycle: { set: () => {} }, saveMonthDraft: save } },
       { provide: UiService, useValue: { showSnackBar: jasmine.createSpy('showSnackBar') } },
       { provide: ColorService, useValue: {} },
       { provide: LogsService, useValue: {} },

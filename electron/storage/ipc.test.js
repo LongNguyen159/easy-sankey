@@ -15,12 +15,12 @@ test('database bridge authorizes only the application main frame and validates r
   api=registerDatabaseApi({app:{getPath:()=>directory,getAppPath:()=>process.cwd()},
    ipcMain:{handle:(key,value)=>handlers.set(key,value),removeHandler:key=>handlers.delete(key)},
    getWindow:()=>({webContents})});
-  assert.throws(()=>handlers.get('database:state:initialize')({...event,sender:{}},{}),/Unauthorized/);
-  assert.throws(()=>handlers.get('database:state:initialize')({...event,senderFrame:{url:mainFrame.url}},{}),/Unauthorized/);
+  assert.throws(()=>handlers.get('database:state:snapshot')({...event,sender:{}},{}),/Unauthorized/);
+  assert.throws(()=>handlers.get('database:state:snapshot')({...event,senderFrame:{url:mainFrame.url}},{}),/Unauthorized/);
   assert.throws(()=>handlers.get('database:months:get')(event,'not-a-month'),/Invalid/);
-  const initial=handlers.get('database:state:initialize')(event,{});
-  assert.equal(initial.revision,1);
-  const saved=handlers.get('database:months:create')(event,{month:'2025-04',lastUpdated:'-',entries:[]});
+  const initial=handlers.get('database:state:snapshot')(event,{});
+  assert.equal(initial.revision,0);
+  const saved=handlers.get('database:months:save')(event,{month:'2025-04',lastUpdated:'-',entries:[],mode:'create'}).value;
   assert.equal(saved.month,'2025-04');
   assert.deepEqual(handlers.get('database:months:list')(event),['2025-04']);
   mainFrame.url='https://example.com/';

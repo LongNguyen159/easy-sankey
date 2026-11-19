@@ -1,4 +1,4 @@
-import { AppStorage } from '../storage/app-storage';
+import { TrackingRepository } from '../storage/repositories';
 import { Injectable, signal, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Tracker, TrackingMetaData } from '../components/models';
@@ -7,9 +7,9 @@ import { Tracker, TrackingMetaData } from '../components/models';
   providedIn: 'root'
 })
 export class TrackingService {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(TrackingRepository);
 
-  private readonly localStorageKey = 'trackedCategories';
+  private readonly configurationKey = 'trackedCategories';
 
   // BehaviorSubject to hold the tracking data
   private trackingDataSubject = new BehaviorSubject<Tracker[]>(this.getTrackingData());
@@ -23,7 +23,7 @@ export class TrackingService {
 
   constructor() { }
 
-  /** Save tracking data to local storage and notify subscribers */
+  /** Save tracking data to database and notify subscribers */
   async saveTrackingData(newData: Tracker[], targetSurplus: number, avgIncome: number, mergeNewIntoExisting: boolean = false): Promise<void> {
     // Filter out any categories where the target spending is 0
     const validData = newData.filter(item => item.targetSpending !== 0);
@@ -64,14 +64,14 @@ export class TrackingService {
       finalData = validData;
     }
 
-    // Save all data into local storage
+    // Save all data into database
     const dataToSave = {
       trackingCategories: finalData,
       targetSurplus,
       avgIncome
     };
 
-    await this.storage.write(this.localStorageKey, dataToSave);
+    await this.storage.saveConfiguration(dataToSave.trackingCategories, {targetSurplus,avgIncome});
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(finalData);
@@ -79,8 +79,8 @@ export class TrackingService {
 
     console.log(
       mergeNewIntoExisting
-        ? 'Tracking data merged and saved to local storage:'
-        : 'Tracking data overridden and saved to local storage:',
+        ? 'Tracking data merged and saved to database:'
+        : 'Tracking data overridden and saved to database:',
       dataToSave
     );
   }
@@ -135,31 +135,24 @@ export class TrackingService {
     // Retrieve existing targetSurplus and avgIncome
     const { targetSurplus, avgIncome } = this.getAdditionalData();
 
-    // Save updated data back to local storage
-    const dataToSave = {
-      trackingCategories: updatedData,
-      targetSurplus,
-      avgIncome
-    };
-
-    await this.storage.write(this.localStorageKey, dataToSave);
+    await this.storage.removeTarget(name);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(updatedData);
     this.trackingMetaDataSubject.next({ targetSurplus, avgIncome });
   }
 
-  /** Retrieve tracking data from local storage */
+  /** Retrieve tracking data from database */
   getTrackingData(): Tracker[] {
     if(this.trackingDataSubject) return structuredClone(this.trackingDataSubject.value);
     try {
-      const savedData = this.storage.read(this.localStorageKey);
+      const savedData = ({...this.storage.metadata,trackingCategories:this.storage.list().map(item=>({...item,currentSpending:0,percentageSpent:0}))});
       if (savedData) {
         const parsedData = savedData as TrackingMetaData;
         return parsedData.trackingCategories || [];
       }
     } catch (error) {
-      console.error('Error parsing tracking data from local storage:', error);
+      console.error('Error parsing tracking data from database:', error);
     }
     return [];
   }
@@ -167,7 +160,7 @@ export class TrackingService {
   /** Retrieve target surplus and average income */
   getAdditionalData(): { targetSurplus: number; avgIncome: number } {
     try {
-      const savedData = this.storage.read(this.localStorageKey);
+      const savedData = ({...this.storage.metadata,trackingCategories:this.storage.list().map(item=>({...item,currentSpending:0,percentageSpent:0}))});
       if (savedData) {
         const parsedData = savedData;
         return {
@@ -176,21 +169,22 @@ export class TrackingService {
         };
       }
     } catch (error) {
-      console.error('Error parsing additional data from local storage:', error);
+      console.error('Error parsing additional data from database:', error);
     }
     return { targetSurplus: 0, avgIncome: 0 };
   }
 
-  reloadFromStorage():void {
-    this.trackingDataSubject.next(this.storage.read(this.localStorageKey)?.trackingCategories ?? []);
+  async reloadFromStorage():Promise<void> {
+    await this.storage.reload();
+    this.trackingDataSubject.next(({...this.storage.metadata,trackingCategories:this.storage.list().map(item=>({...item,currentSpending:0,percentageSpent:0}))})?.trackingCategories ?? []);
     this.trackingMetaDataSubject.next(this.getAdditionalData());
   }
 
-  /** Clear tracking data from local storage and notify subscribers */
+  /** Clear tracking data from database and notify subscribers */
   async clearTrackingData(): Promise<void> {
-    await this.storage.delete(this.localStorageKey);
+    await this.storage.saveConfiguration([], {targetSurplus:0,avgIncome:0});
     this.trackingDataSubject.next([]); // Notify subscribers about the change
     this.trackingMetaDataSubject.next({ targetSurplus: 0, avgIncome: 0 }); // Notify subscribers about the change
-    console.log('Tracking data cleared from local storage.');
+    console.log('Tracking data cleared from database.');
   }
 }

@@ -1,4 +1,5 @@
-import { AppStorage, SessionStore } from '../../../storage/app-storage';
+import { BackupRepository } from '../../../storage/repositories';
+import { SessionStore } from '../../../storage/session-store';
 import { Component, inject, OnInit, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -34,7 +35,7 @@ import { readBackup } from '../../../utils/data-transfer';
     encapsulation: ViewEncapsulation.None
 })
 export class SettingsDialogComponent implements OnInit{
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(BackupRepository);
   private readonly sessionStore = inject(SessionStore);
   colorService = inject(ColorService)
   currencyService = inject(CurrencyService)
@@ -81,7 +82,7 @@ export class SettingsDialogComponent implements OnInit{
   }
 
   async exportData(): Promise<void> {
-    const desktop=(window as any).electronAPI?.database?.state;
+    const desktop=window.electronAPI?.database?.state;
     if(desktop?.exportFile) {
       try { await desktop.exportFile(); }
       catch { this.uiService.showSnackBar('Could not export the backup.'); }

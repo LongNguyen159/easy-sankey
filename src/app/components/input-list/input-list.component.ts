@@ -1,4 +1,4 @@
-import { AppStorage } from '../../storage/app-storage';
+import { SettingsRepository } from '../../storage/repositories';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -37,12 +37,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RoutePath } from '../models';
 import { exportMonth, MonthTransfer, readMonth } from '../../utils/data-transfer';
 
-interface MonthClipboardWindow extends Window {
-  electronAPI?: {
-    readMonthClipboard?: () => Promise<string>;
-    writeMonthClipboard?: (text: string) => Promise<void>;
-  };
-}
+type MonthClipboardWindow=Window;
 
 /** Prevent user to define a certain node name that coincides with our system generated node name. */
 function restrictedNodeNamesValidator(restrictedNames: string[]): ValidatorFn {
@@ -126,7 +121,7 @@ enum ErrorType {
  */
 
 export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
-  protected readonly storage = inject(AppStorage);
+  protected readonly storage = inject(SettingsRepository);
   @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
@@ -232,7 +227,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     });
   }
 
+  private unregisterEditor?:()=>unknown;
   ngOnInit(): void {
+    this.unregisterEditor=this.dataService.registerEditor(()=>this.flushPendingEdits());
     /** Retrieve fixed costs from local storage */
     this.fixedLinks = this.dataService.retrieveFixCostsLinks()
 
@@ -259,6 +256,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
     
     /** Listen to changes in value. If changes, save the current form value immediately. */
+    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(()=>this.hasChanges=true);
     this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(300)).subscribe((formData) => {
       this.updateSavedFormValuesOnFormChanges()
     })
@@ -424,26 +422,13 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   async onMonthChanges(selectedMonth: DateChanges) {
     const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
     const prevMonth = formatDateToYYYYMM(selectedMonth.previousMonth)
-    const previousFormValid = this.linkForm.valid;
-
-    /** This will trigger subscription onInit of this component. No need to update global variables here as we already did it in the subscription. */
-    await onMonthChanges(selectedMonth.currentMonth, this.allMonthsData, this.singleMonthData, this.dataService);
-
-    /** Only process previous months if there are changes in the form detected by the boolean flag `hasChanges`.
-     * Else it would process every previous months on month changes.
-     */
-    if (currentMonth !== prevMonth && this.hasChanges) {
-      if (previousFormValid) {
-        await this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues);
-      }
-      
-      // Reset has changes flag after processing the month.
-      this.hasChanges = false;
+    if(currentMonth!==prevMonth && this.hasChanges) {
+      if(!this.linkForm.valid) {this.uiService.showSnackBar('Correct the current month before switching.');return;}
+      await this.processMonthBeforeMonthChanges(prevMonth,this.linkArray.getRawValue() as UserDefinedLink[]);
+      this.hasChanges=false;
     }
+    await onMonthChanges(selectedMonth.currentMonth,this.allMonthsData,this.singleMonthData,this.dataService);
 
-    /** Assign the saved form values to the current form values (instead of previous month)
-     * We do this to make the savedFormValues up-to-date to track whether it changes.
-     */
     this.savedFormValues = this.linkForm.value.links.slice();
   }
 
@@ -455,13 +440,13 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    */
   async processMonthBeforeMonthChanges(previousMonthValue: string | undefined, previousFormValues: UserDefinedLink[]) {
     /** On first change the previousMonthValue can be undefined, in that case, do nothing. */
-    if (!previousMonthValue || previousFormValues.length == 0) return;
+    if (!previousMonthValue) return;
 
 
     /** If process Input data, remember NOT to emit, because we only want to save it, if we emit,
      * the current month will be overridden from the data of previous month.
      */
-    await this.dataService.processInputData(previousFormValues, previousMonthValue, { showSnackbarWhenDone: true, emitObservable: false});
+    await this.dataService.saveMonthDraft(previousFormValues, previousMonthValue, { showSnackbarWhenDone: true, emitObservable: false});
   }
   //#endregion
 
@@ -543,7 +528,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     
     if (!this.linkForm.valid || this.updateFromService) return; // Exit function here, don't process input if not valid.
 
-    await this.dataService.processInputData(updatedFormData, this.dataMonth);
+    await this.dataService.saveMonthDraft(updatedFormData, this.dataMonth);
   
     // After processing, update the initial form state to the new one
     this.initialFormState = [...updatedFormData]; // Update the stored form state
@@ -711,7 +696,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       /** Update saved form values. */
       this.updateSavedFormValuesOnFormChanges();
   
-      await this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
+      await this.dataService.saveMonthDraft(this.linkForm.value.links, this.dataMonth);
       this.hasChanges = true;
       this.uiService.showSnackBar('Fix costs updated!', 'Ok');
     }
@@ -918,7 +903,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   private async saveEntryOrder(): Promise<void> {
     if (!this.linkForm.valid) return;
     // Persist without rebuilding the editor, preserving focus and draft row state.
-    await this.dataService.processInputData(this.savedFormValues, this.dataMonth, { emitObservable: false });
+    await this.dataService.saveMonthDraft(this.savedFormValues, this.dataMonth, { emitObservable: false });
   }
 
   protected visibleEntries(isFixCost?: boolean): FormGroup[] {
@@ -1016,7 +1001,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.removeAt(index, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges()
     this.hasDuplicates = this._checkDuplicateName();
-    if (this.linkForm.valid) (await this.dataService.processInputData(this.linkForm.value.links, this.dataMonth));
+    if (this.linkForm.valid) (await this.dataService.saveMonthDraft(this.linkForm.value.links, this.dataMonth));
   }
   
   //#endregion
@@ -1055,10 +1040,10 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   // Submit form and emit the data (to parent component or a service)
   async onSubmit(): Promise<void> {
-    if (!this.linkForm.valid) return;
+    if (!this.linkForm.valid || !/^\d{4}-(0[1-9]|1[0-2])$/.test(this.dataMonth)) return;
 
     const formData: UserDefinedLink[] = this.linkForm.value.links;
-    await this.dataService.processInputData(formData, this.dataMonth);
+    await this.dataService.saveMonthDraft(formData, this.dataMonth);
   }
 
   closeAutoComplete(index: number): void {
@@ -1092,8 +1077,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
 
   
+  async flushPendingEdits():Promise<boolean> {
+    if(!this.hasChanges && !this.linkForm.dirty)return true;
+    if(!this.linkForm.valid){this.uiService.showSnackBar('Correct the current entries before leaving.');return false;}
+    try {await this.onSubmit();this.hasChanges=false;this.linkForm.markAsPristine();return true;}
+    catch {this.uiService.showSnackBar('Could not save your edits. They have been retained.');return false;}
+  }
   override async ngOnDestroy(): Promise<void> {
+    this.unregisterEditor?.();
     super.ngOnDestroy();
-    await this.onSubmit();
+    await this.flushPendingEdits();
   }
 }

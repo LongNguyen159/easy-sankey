@@ -1,11 +1,11 @@
-import { AppStorage } from '../storage/app-storage';
+import { SettingsRepository } from '../storage/repositories';
 import { Injectable, inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrencyService {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(SettingsRepository);
 
   private readonly currencyKey = 'selectedCurrency';
   private readonly defaultCurrency = 'EUR';

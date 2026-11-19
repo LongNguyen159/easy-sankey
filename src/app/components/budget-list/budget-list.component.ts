@@ -1,4 +1,4 @@
-import { AppStorage } from '../../storage/app-storage';
+import { SettingsRepository } from '../../storage/repositories';
 import { CategoryService } from '../../services/category.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -36,7 +36,7 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './budget-list.component.scss'
 })
 export class BudgetListComponent implements OnInit{
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(SettingsRepository);
   colorService = inject(ColorService)
   budgetService = inject(BudgetService)
   uiService = inject(UiService)
@@ -151,15 +151,8 @@ export class BudgetListComponent implements OnInit{
    * @param value New budget value
    */
   async updateBudget(category: string, value: number) {
-    const budgetIndex = this.budgets.findIndex(budget => budget.category === category);
-
-    if (budgetIndex >= 0) {
-      this.budgets[budgetIndex].value = value;
-    } else {
-      this.budgets.push({ category, value });
-    }
-
-    await this.budgetService.saveBudgets(this.budgets);
+    await this.budgetService.setBudget(category,value??0);
+    this.budgets=this.budgetService.getBudgets();
     if (value === 0 || value == null) {
       this.uiService.showSnackBar(`Removed budget for ${this.categoryService.label(category)}`, 'OK', 3000);
     } else {

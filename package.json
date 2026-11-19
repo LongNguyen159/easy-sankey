@@ -84,7 +84,7 @@
       "private": true
     },
     "files": [
-      "dist/**/*",
+      "dist/easy-sankey/**/*",
       "main.js",
       "preload.js",
       "electron/storage/**/*.js",

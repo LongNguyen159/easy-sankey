@@ -92,17 +92,6 @@ const storageValidators: Record<string, Validator> = {
   appVersion: isString,
 };
 
-const textKeys = new Set(['selectedCurrency', 'entryView', 'budgetView', 'budgetSort', 'fixCostSort', 'firstTime', 'appVersion']);
-
-export function exportBackup(storage: Storage): string {
-  const data: JsonObject = {};
-  for (const key of Object.keys(storageValidators)) {
-    const value = storage.getItem(key);
-    if (value !== null) data[key] = textKeys.has(key) ? value : JSON.parse(value);
-  }
-  return JSON.stringify({ app, version, type: 'full', data }, null, 2);
-}
-
 function readTransfer(text: string, type: 'full' | 'month'): JsonObject {
   const payload: unknown = JSON.parse(text);
   if (!isObject(payload) || payload['app'] !== app || ![1, 2].includes(payload['version'] as number) || payload['type'] !== type) {
@@ -111,33 +100,13 @@ function readTransfer(text: string, type: 'full' | 'month'): JsonObject {
   return payload;
 }
 
-export function readBackup(text: string): Map<string, string | null> {
+export function readBackup(text: string): JsonObject {
   const data = readTransfer(text, 'full')['data'];
   if (!isObject(data) || Object.keys(data).some(key =>
     !Object.hasOwn(storageValidators, key) || !storageValidators[key](data[key]))) {
     throw new Error('Invalid backup data.');
   }
-  return new Map(Object.keys(storageValidators).map(key => [
-    key, !Object.hasOwn(data, key) ? null : textKeys.has(key) ? data[key] as string : JSON.stringify(data[key])
-  ]));
-}
-
-/** Free space for replacement values and restore the original values if a write fails. */
-export function replaceStorageItems(storage: Storage, changes: ReadonlyMap<string, string | null>): void {
-  const previous = new Map(Array.from(changes.keys(), key => [key, storage.getItem(key)]));
-  const write = (items: ReadonlyMap<string, string | null>) => {
-    for (const key of items.keys()) storage.removeItem(key);
-    for (const [key, value] of items) {
-      if (value !== null) storage.setItem(key, value);
-    }
-  };
-
-  try {
-    write(changes);
-  } catch (error) {
-    write(previous);
-    throw error;
-  }
+  return data;
 }
 
 export interface MonthTransfer {

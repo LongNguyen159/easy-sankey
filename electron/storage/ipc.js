@@ -19,23 +19,29 @@ function registerDatabaseApi({ app, ipcMain, getWindow, developmentURL }) {
       writeFileSync(temporary,state.exportBackup(),{mode:0o600});renameSync(temporary,filePath);
       return true;
     },
+    'database:state:initialize': payload => state.initialize(payload),
     'database:state:snapshot': () => state.snapshot(),
-    'database:state:initialize': legacy => state.initialize(legacy),
-    'database:state:mutate': payload => state.mutate(payload.changes, payload.revision, payload.replace === true),
     'database:state:export': () => state.exportBackup(),
     'database:state:restore': payload => state.restore(payload.text, payload.revision),
     'database:state:reset': revision => state.reset(revision),
-    'database:state:category-delete': payload => state.deleteCategory(payload.id,payload.revision),
-    'database:months:list': () => Object.keys(state.snapshot().data.monthlyData ?? {}),
-    'database:months:get': month => state.monthOperation('get',month),
-    'database:months:create': record => state.monthOperation('create',record),
-    'database:months:update': record => state.monthOperation('update',record),
-    'database:months:delete': month => state.monthOperation('delete',month),
+    'database:months:list': () => state.crud.months.list(),
+    'database:months:range': payload => state.crud.months.range(payload),
+    'database:months:save': payload => state.crud.months.save(payload),
+    'database:months:remove': payload => state.crud.months.delete(payload),
+    'database:status': () => state.crud.status(),
+    'database:settings:list': () => state.crud.settings.list(),
+    'database:settings:set': payload => state.crud.settings.set(payload),
+    'database:tracking:metadata': () => state.crud.trackingMetadata(),
+    'database:history:list': payload => state.crud.history.list(payload),
+    'database:history:append': payload => state.crud.history.append(payload),
+    'database:history:cleanup': payload => state.crud.history.cleanup(payload),
+    'database:category:remove': payload => state.crud.deleteCategory(payload),
+    'database:months:get': month => state.crud.months.get(month),
   };
-  for (const action of ['list','get','create','update','delete','reorder']) {
-    methods[`database:entries:${action}`] = payload => state.entryOperation(action,payload);
+  for (const action of ['list','get','create','update','delete','reorder','replace']) {
+    methods[`database:entries:${action}`] = payload => state.crud.entries(action,payload);
     for(const collection of ['expenseCategories','fixCosts','budgets','trackedCategories']) {
-      methods[`database:${collection}:${action}`] = payload => state.collectionOperation(collection,action,payload);
+      methods[`database:${collection}:${action}`] = payload => state.crud.collection(collection,action,payload);
     }
   }
   function authorize(event) {

@@ -1,5 +1,5 @@
 import { calculateMonth } from '../../utils/month-calculation';
-import { SessionStore } from '../../storage/app-storage';
+import { SessionStore } from '../../storage/session-store';
 import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';

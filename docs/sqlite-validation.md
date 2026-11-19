@@ -1,5 +1,6 @@
 # SQLite migration validation
 
+> Historical record: experimental SQLite upgrade support was removed; released LocalStorage-to-SQLite migration remains required. See [current storage documentation](storage.md).
 Validation date: 19 November 2026. Application version: 2.0.4.
 
 ## Source and database checks

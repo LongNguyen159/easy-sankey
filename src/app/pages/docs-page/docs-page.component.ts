@@ -1,4 +1,4 @@
-import { AppStorage } from '../../storage/app-storage';
+import { BackupRepository } from '../../storage/repositories';
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { UserManualComponent } from '../../components/user-manual/user-manual.component';
 import { NavbarComponent } from "../../components/navbar/navbar.component";
@@ -18,7 +18,7 @@ import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
     styleUrl: './docs-page.component.scss'
 })
 export class DocsPageComponent {
-  private readonly storage = inject(AppStorage);
+  private readonly storage = inject(BackupRepository);
   private _snackBar = inject(MatSnackBar);
 
 

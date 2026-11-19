@@ -1,5 +1,6 @@
 # Agent execution plan: migrate Easy Sankey to local SQLite
 
+> Historical record: experimental SQLite upgrade support was removed; released LocalStorage-to-SQLite migration remains required. See [current storage documentation](storage.md).
 ## Objective and completion rule
 
 Replace LocalStorage as the application's persistent store with a local SQLite
