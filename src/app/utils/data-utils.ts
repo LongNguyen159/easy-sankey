@@ -8,25 +8,25 @@ import { formatDateToYYYYMM } from "./utils";
  * @param singleMonthEntries The data for the selected month. Type ProcessedOutputData.
  * @param dataService Function requires dataService to process the input data.
  */
-export function onMonthChanges(selectedMonth: Date, allMonthsData: MonthlyData, singleMonthEntries: SingleMonthData , dataService: DataService) {    
+export async function onMonthChanges(selectedMonth: Date, allMonthsData: MonthlyData, singleMonthEntries: SingleMonthData , dataService: DataService) {
     if (Object.keys(allMonthsData).length == 0) {
       console.warn('month data is not ready by the time on month changes is called')
       return
     }
 
-    const monthString = formatDateToYYYYMM(selectedMonth);    
+    const monthString = formatDateToYYYYMM(selectedMonth);
     // Check if the month exists in the MonthlyData
     if (allMonthsData[monthString]) {
       // Month exists, retrieve the processed data
       const existingData = allMonthsData[monthString];
       singleMonthEntries = existingData; // Update processed output data
-      dataService.processInputData(existingData.rawInput, monthString);
-      
+      await dataService.processInputData(existingData.rawInput, monthString);
+
     } else {
       // Month does not exist, create a new empty entry
       singleMonthEntries = initializeEmptyData(monthString); // Initialize empty data
       allMonthsData[monthString] = singleMonthEntries; // Add to the monthlyData
-      dataService.processInputData([], monthString);
+      await dataService.processInputData([], monthString);
     }
 }
 

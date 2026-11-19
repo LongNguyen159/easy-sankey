@@ -1,8 +1,13 @@
 const { spawnSync } = require('node:child_process');
 
 const args = process.argv.slice(2);
+if (args.includes('--x64') || args.includes('--universal')) {
+  console.error('Mac builds support Apple Silicon (arm64) only.');
+  process.exit(1);
+}
 const enableDevTools = args.includes('--devtools');
 const builderArgs = args.filter(arg => arg !== '--devtools');
+if (!builderArgs.includes('--arm64')) builderArgs.push('--arm64');
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'inherit' });

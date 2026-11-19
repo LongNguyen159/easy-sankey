@@ -6,19 +6,23 @@
   "main": "main.js",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node scripts/start-dev.cjs",
     "start-server": "node server.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "electron": "electron .",
-    "electron-build": "ng build --prod && electron .",
+    "electron-build": "npm run build && electron .",
     "spell-check": "cspell \"src/**/*.ts\" \"src/**/*.html\"",
     "circular-check": "npx madge --circular --extensions ts ./",
     "deploy-mac": "node scripts/deploy-mac.js",
     "deploy-win": "ng build && electron-builder --win",
-    "test:database": "node --test electron/storage/*.test.js",
-    "rebuild:electron": "electron-builder install-app-deps"
+    "test:database": "node scripts/test-database.cjs",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "test:packaged": "node scripts/smoke-packaged.cjs",
+    "postinstall": "electron-builder install-app-deps",
+    "prebuild": "node scripts/sync-default-categories.cjs",
+    "dev:serve": "ng serve --host 127.0.0.1 --port 4200"
   },
   "private": true,
   "dependencies": {
@@ -33,7 +37,7 @@
     "@angular/platform-browser-dynamic": "^22.2.6",
     "@angular/router": "^22.2.6",
     "arima": "^0.2.5",
-    "better-sqlite3": "^13.2.0",
+    "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
     "echarts": "^5.5.1",
     "electron-updater": "^6.3.9",
@@ -84,14 +88,20 @@
       "main.js",
       "preload.js",
       "electron/storage/**/*.js",
-      "!electron/storage/**/*.test.js"
+      "!electron/storage/**/*.test.js",
+      "electron/storage/*.json"
     ],
     "directories": {
       "output": "releases/v${version}/${platform}/${arch}"
     },
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "icon": "resources/icons/mac/easy-sankey-512-3d.icns"
     },

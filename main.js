@@ -4,6 +4,27 @@ const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { version, enableDevTools } = require('./package.json');
 const path = require('path');
+const development = !app.isPackaged;
+const liveDevelopment = development && process.argv.includes('--dev');
+const developmentURL = liveDevelopment ? 'http://127.0.0.1:4200/' : undefined;
+const storageSmoke = process.argv.includes('--storage-smoke-test');
+if (storageSmoke) {
+  if (!process.env.EASY_SANKEY_SMOKE_PROFILE) throw new Error('Smoke tests require an isolated profile');
+  require('node:fs').mkdirSync(process.env.EASY_SANKEY_SMOKE_PROFILE, { recursive: true });
+  app.setPath('userData', process.env.EASY_SANKEY_SMOKE_PROFILE);
+}
+
+if (development && !storageSmoke) {
+  const localData=path.join(app.getAppPath(), '.local');
+  require('node:fs').mkdirSync(localData,{recursive:true});
+  app.setPath('userData',localData);
+  console.log(`Development database: ${path.join(localData,'finance.sqlite')}`);
+}
+
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', () => { if(win) { if(win.isMinimized()) win.restore(); win.focus(); } });
+
+const smokeLegacySeed=storageSmoke && !require('node:fs').existsSync(path.join(app.getPath('userData'),'finance.sqlite'));
 
 //#region Server Setup
 /** Set up server to host the Machine Learning model. */
@@ -12,7 +33,7 @@ const Arima = require('arima');
 const cors = require('cors');
 const server = express();
 const isArray = require('mathjs').isArray;
-const port = 3223;
+const port = storageSmoke ? 0 : 3223;
 
 
 server.use(cors()); // Add this line before your routes
@@ -45,6 +66,9 @@ server.post('/predict', (req, res) => {
 // Start the server
 const serverInstance = server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+});
+serverInstance.on('error', error => {
+  console.error('Prediction service could not start:', error.message);
 });
 //#endregion
 
@@ -81,8 +105,15 @@ let win;
 function isAppClipboardRequest(event) {
   return event.sender === win?.webContents
     && event.senderFrame === win.webContents.mainFrame
-    && event.senderFrame?.url.startsWith('file:');
+    && (developmentURL
+      ? [developmentURL,new URL('index.html',developmentURL).href].includes(event.senderFrame?.url.split(/[?#]/)[0])
+      : event.senderFrame?.url.startsWith('file:'));
 }
+
+ipcMain.handle('application:restart', event => {
+  if(!isAppClipboardRequest(event)) throw new Error('Unauthorized restart request');
+  app.relaunch(); app.quit();
+});
 
 ipcMain.handle('month-clipboard:read', event => {
   if (!isAppClipboardRequest(event)) {
@@ -109,19 +140,28 @@ function createWindow() {
     minHeight: 300,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: smokeLegacySeed ? ['--storage-smoke-legacy=' + encodeURIComponent(JSON.stringify({
+        firstTime:'false',appVersion:version,selectedCurrency:'USD',budgetView:'list',
+        monthlyData:JSON.stringify({'2024-01':{month:'2024-01',lastUpdated:'2024-01-15T12:00:00.000Z',
+          rawInput:[{id:'income',type:'income',target:'Legacy salary',value:1000,lastEditedAt:1234},
+            {id:'expense',type:'expense',target:'Legacy rent',source:'Housing@__system/category__',value:123.45}],
+          sankeyData:{nodes:[],links:[]},pieData:[{name:'stale chart',value:999}],treeMapData:[],totalExpenses:999}})
+      }))] : [],
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: enableDevTools === true,
+      devTools: development || enableDevTools === true,
     },
     frame: true,         // Show the window frame (this allows you to drag and resize the window)
     resizable: true,     // Allow resizing the window (optional)
   });
 
   // Load the Angular app (dist folder)
-  win.loadFile(path.join(__dirname, 'dist/easy-sankey/browser/index.html'));
+  if(developmentURL) win.loadURL(developmentURL);
+  else win.loadFile(path.join(__dirname, 'dist/easy-sankey/browser/index.html'));
 
-  // Open the DevTools for debugging.
-  // win.webContents.openDevTools();
+  if (development && !storageSmoke) {
+    win.webContents.openDevTools({ mode: 'detach' });
+  }
 
   // Register a shortcut listener
   win.webContents.on('before-input-event', (event, input) => {
@@ -183,18 +223,22 @@ function setupAutoUpdater() {
 let databaseApi;
 app.on('ready', () => {
   try {
-    databaseApi = registerDatabaseApi({ app, ipcMain, getWindow: () => win });
+    databaseApi = registerDatabaseApi({ app, ipcMain, getWindow: () => win, developmentURL });
   } catch (error) {
-    dialog.showErrorBox('Database could not be opened', error.message);
+    console.error('Database could not be opened', error);
+    if (!storageSmoke) dialog.showErrorBox('Database could not be opened', error.message);
     app.quit();
     return;
   }
   createWindow();
+  if (storageSmoke) {
+    require('./electron/storage/smoke').runSmoke(win, app).then(() => app.exit(0)).catch(error => { console.error(error); app.exit(1); });
+  }
   // setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' || liveDevelopment) {
 
     serverInstance.close(() => {
       console.log('Express server closed');

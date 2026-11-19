@@ -130,7 +130,7 @@ export class InsertExpenseDialogComponent extends BasePageComponent implements O
   }
 
   /** Submit form, refactored version, not modifying original `rawInput` array. */
-  submitForm() {
+  async submitForm() {
     if (!this.form.valid) {
       return;
     }
@@ -154,7 +154,7 @@ export class InsertExpenseDialogComponent extends BasePageComponent implements O
     this.entryToUpdate.value = this.calculatedAmount;
 
     /** Update log */
-    this.logService.setLog(this.userSingleMonthEntries.month, this.entryToUpdate.id, this.newValueUpdated)
+    await this.logService.setLog(this.userSingleMonthEntries.month, this.entryToUpdate.id, this.newValueUpdated);
 
 
     // Create a new array with the updated entry
@@ -165,7 +165,7 @@ export class InsertExpenseDialogComponent extends BasePageComponent implements O
     ];
 
     // Send the updated array to the service
-    this.dataService.processInputData(updatedRawInput, this.userSingleMonthEntries.month, { showSnackbarWhenDone: true });
+    await this.dataService.processInputData(updatedRawInput, this.userSingleMonthEntries.month, { showSnackbarWhenDone: true });
   }
 
   toggleHistory() {

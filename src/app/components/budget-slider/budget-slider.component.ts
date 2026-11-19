@@ -403,19 +403,19 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   }
 
   /** Save essential categories selection on user checkbox change. */
-  onEssentialCategoriesChange(event: MatSelectionListChange): void {
-    this.saveEssentialCategories(event.source.selectedOptions.selected);
+  async onEssentialCategoriesChange(event: MatSelectionListChange): Promise<void> {
+    await this.saveEssentialCategories(event.source.selectedOptions.selected);
   }
 
   onNonEssentialCategoriesChange(event: MatSelectionListChange): void {
     this.saveNonEssentialCategories(event.source.selectedOptions.selected);
   }
   
-  saveEssentialCategories(categories: MatListOption[]): void {
+  async saveEssentialCategories(categories: MatListOption[]): Promise<void> {
     this.essentialCategories = categories.map(c => c.value);
   
     // Save essential categories to local storage
-    this.storage.write('essentialCategories', this.essentialCategories);
+    await this.storage.write('essentialCategories', this.essentialCategories);
   
     // Create essential sliders and update master sliders with the correct flag
     this.essentialSliders = this.essentialCategories.map(category => this.createSlider(category, true));
@@ -778,7 +778,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   }
 
   /** Method to track selected sliders */
-  trackSliders(showNoti: boolean = true, noti: string = `Plan Saved! You can view them in 'View Tracked Plan'`) {
+  async trackSliders(showNoti: boolean = true, noti: string = `Plan Saved! You can view them in 'View Tracked Plan'`) {
     
     // Track only the selected categories
     const trackingData: Tracker[] = this.masterSliders.filter(slider => this.categoriesToTrack.includes(slider.name)).map(slider => {
@@ -796,7 +796,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     });
 
     // Save the tracking data to a service
-    this.trackingService.saveTrackingData(trackingData, (this.averageIncome - this.totalExpenses), this.averageIncome);
+    await this.trackingService.saveTrackingData(trackingData, (this.averageIncome - this.totalExpenses), this.averageIncome);
 
     if (showNoti) {
       this.uiService.showSnackBar(noti, "Ok", 5000);
@@ -805,7 +805,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
 
 
   /** Save highlighted categories to budgets. */
-  saveToBudgets() {
+  async saveToBudgets() {
     const budgetsToAdd: Budget[] = this.visibleSliders.map(item => ({
       category: item.name,
       value: Math.round((item.value) * 100) / 100
@@ -814,7 +814,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
 
     const mergedBudgets = this.combineBudgets(allBudgets, budgetsToAdd)
 
-    this.budgetService.saveBudgets(mergedBudgets)
+    await this.budgetService.saveBudgets(mergedBudgets);
 
     this.uiService.showSnackBar("Budgets saved!", "Ok");
   }
@@ -834,11 +834,11 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     // Open the dialog and subscribe to the results
     const afterClosed$ = this.dialogService.openTrackerSelectorDialog()
 
-    afterClosed$.subscribe((dialogResults: string[]) => {
+    afterClosed$.subscribe(async (dialogResults: string[]) => {
       // Selected Categories
       if (dialogResults) {
         this.categoriesToTrack = dialogResults
-        this.trackSliders()
+        await this.trackSliders();
       }
     })
   }

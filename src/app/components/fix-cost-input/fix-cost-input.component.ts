@@ -63,10 +63,10 @@ export class FixCostInputComponent extends InputListComponent {
       this.linkArray.push(this._createLinkGroup({ ...link, isFixCost: true }), { emitEvent: false });
     }
 
-    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(() => {
+    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(async () => {
      
       if (this.linkForm.valid) {
-        this.saveToLocalStorage()
+        await this.saveToLocalStorage();
       }
     })    
   }
@@ -76,13 +76,13 @@ export class FixCostInputComponent extends InputListComponent {
     this.newEntries.delete(this.linkArray.at(-1));
   }
 
-  protected override updateSavedFormValuesOnFormChanges(): void {
-    this.saveToLocalStorage();
+  protected override async updateSavedFormValuesOnFormChanges(): Promise<void> {
+    await this.saveToLocalStorage();
   }
 
-  protected setSort(order: AmountSort): void {
+  protected async setSort(order: AmountSort): Promise<void> {
     this.sortOrder = order;
-    this.storage.write('fixCostSort', order);
+    await this.storage.write('fixCostSort', order);
   }
 
   protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
@@ -95,13 +95,13 @@ export class FixCostInputComponent extends InputListComponent {
     this.editingAmount = { row, value: Number(row.get('value')?.value) || 0 };
   }
 
-  protected finishAmountEdit(): void {
+  protected async finishAmountEdit(): Promise<void> {
     this.editingAmount = undefined;
-    this.updateInput();
+    await this.updateInput();
   }
 
   
-  override updateInput() {
+  override async updateInput() {
     if (!this.linkForm.valid) return;
   
     const formData: UserDefinedLink[] = this.linkForm.value.links;
@@ -118,27 +118,27 @@ export class FixCostInputComponent extends InputListComponent {
     }
     
     this.taxNodeExists = this._hasTaxNode(formData);
-    this.saveToLocalStorage()
+    await this.saveToLocalStorage();
 
     // After processing, update the initial form state to the new one
     this.initialFormState = [...formData]; // Update the stored form state
   }
 
 
-  override removeLink(index: number): void {
+  override async removeLink(index: number): Promise<void> {
     if (index < 0) return;
     this.linkArray.removeAt(index, { emitEvent: false });
-    this.saveToLocalStorage()
+    await this.saveToLocalStorage();
   }
 
 
-  saveToLocalStorage() {
+  async saveToLocalStorage() {
     if (!this.linkForm.valid) return;
     const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
-    this.storage.write('fixCosts', this.categoryService.clearMissingSources(links));
+    await this.storage.write('fixCosts', this.categoryService.clearMissingSources(links));
   }
 
-  override ngOnDestroy(): void {
+  override async ngOnDestroy(): Promise<void> {
     this.componentDestroyed$.next();
     this.componentDestroyed$.complete();
 
@@ -147,7 +147,7 @@ export class FixCostInputComponent extends InputListComponent {
     }
 
     if (this.linkForm.valid) {
-      this.saveToLocalStorage()
+      await this.saveToLocalStorage();
     }
   }
 }

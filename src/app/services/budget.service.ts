@@ -20,10 +20,10 @@ export class BudgetService {
     return this.storage.read(this.storageKey) ?? [];
   }
 
-  saveBudgets(budgets: Budget[]) {
+  async saveBudgets(budgets: Budget[]) {
     // Filter out budgets with no value or value <= 0
     const validBudgets = budgets.filter((budget: Budget) => budget.value && budget.value > 0);
-    this.storage.write(this.storageKey, validBudgets);
+    await this.storage.write(this.storageKey, validBudgets);
     this.budget.set(validBudgets);
   }
 }

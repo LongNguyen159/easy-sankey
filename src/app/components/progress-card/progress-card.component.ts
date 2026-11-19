@@ -49,11 +49,11 @@ export class ProgressCardComponent extends BasePageComponent implements OnInit {
 
 
   ngOnInit(): void {
-    this.dataService.getAllMonthsData().pipe(takeUntil(this.componentDestroyed$)).subscribe(allMonthsData => {
+    this.dataService.getAllMonthsData().pipe(takeUntil(this.componentDestroyed$)).subscribe(async allMonthsData => {
       const aggregatedCategoriesOfCurrentYear = getCurrentYearMetrics(allMonthsData)
       
       this.trackingService.cleanupTrackingCategories(aggregatedCategoriesOfCurrentYear) // Cleanup data for categories that are no longer present in the current year
-      this.trackingService.updateMultipleCurrentSpendings(aggregatedCategoriesOfCurrentYear) // Update current spending for all categories
+      await this.trackingService.updateMultipleCurrentSpendings(aggregatedCategoriesOfCurrentYear); // Update current spending for all categories
     })
 
     this.trackingService.trackingCategories$.pipe(takeUntil(this.componentDestroyed$)).subscribe(trackingCategories => {
@@ -98,9 +98,9 @@ export class ProgressCardComponent extends BasePageComponent implements OnInit {
     }
     const dialogRef = this.uiService.openConfirmDialog(dialogData)
 
-    dialogRef.subscribe(result => {
+    dialogRef.subscribe(async result => {
       if (result == true) {
-        this.trackingService.removeTrackingData(category);
+        await this.trackingService.removeTrackingData(category);
       }
     })
     

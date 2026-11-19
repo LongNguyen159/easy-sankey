@@ -100,7 +100,7 @@ export class CategoryService {
     return darkMode ? category?.colorDark : category?.colorLight;
   }
 
-  save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string): ExpenseCategoryDetails {
+  async save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string): Promise<ExpenseCategoryDetails> {
     const category = {
       label: label.trim(),
       value: id ?? `${uuid()}@${SYSTEM_PREFIX}`,
@@ -109,13 +109,13 @@ export class CategoryService {
       colorDark: color.colorDark,
     };
     const categories = this.categories();
-    this.persist(id
+    ;(await this.persist(id
       ? categories.map(existing => existing.value === id ? category : existing)
-      : [...categories, category]);
+      : [...categories, category]));
     return category;
   }
 
-  move(id: string, toIndex: number): boolean {
+  async move(id: string, toIndex: number): Promise<boolean> {
     const categories = this.categories();
     const fromIndex = categories.findIndex(category => category.value === id);
     if (fromIndex < 0 || fromIndex === toIndex || !Number.isInteger(toIndex) || toIndex < 0 || toIndex >= categories.length) {
@@ -125,12 +125,12 @@ export class CategoryService {
     const reordered = [...categories];
     const [category] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, category);
-    this.persist(reordered);
+    await this.persist(reordered);
     return true;
   }
 
-  remove(id: string): void {
-    this.persist(this.categories().filter(category => category.value !== id));
+  async remove(id: string): Promise<void> {
+    await this.persist(this.categories().filter(category => category.value !== id));
   }
 
   /** Clear references from old copies or forms that were opened before a deletion. */
@@ -165,8 +165,8 @@ export class CategoryService {
     return Object.values(expenseCategoryDetails);
   }
 
-  private persist(categories: ExpenseCategoryDetails[]): void {
-    this.storage.write(categoryStorageKey, categories);
+  private async persist(categories: ExpenseCategoryDetails[]): Promise<void> {
+    await this.storage.write(categoryStorageKey, categories);
     this.definitions.set(categories);
   }
 }

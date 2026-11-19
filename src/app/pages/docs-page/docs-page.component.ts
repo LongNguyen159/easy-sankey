@@ -22,8 +22,8 @@ export class DocsPageComponent {
   private _snackBar = inject(MatSnackBar);
 
 
-  clearLocalStorage() {
-    this.storage.clear();
+  async clearLocalStorage() {
+    await this.storage.clear();
     this._snackBar.open('Local storage cleared', 'Dismiss', {
       duration: 2000,
     })

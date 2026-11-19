@@ -1,3 +1,4 @@
+import { calculateMonth } from '../../utils/month-calculation';
 import { SessionStore } from '../../storage/app-storage';
 import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
@@ -152,18 +153,18 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   hasDataChanged: boolean = false;
 
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     /** Get all months data and refresh data if input changes */
-    this.dataService.getAllMonthsData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
+    this.dataService.getAllMonthsData().pipe(takeUntil(this.componentDestroyed$)).subscribe(async data => {
       this.allMonthsData = data;
       this.refreshData();
-      this.filterMonths();
+      await this.filterMonths();
     })
     
     this.refreshData();
     this.loadFormatBigNumbersState();
     this.storedYears = this.getStoredYears();
-    this.filterMonths(); // Initially filter based on the default option
+    await this.filterMonths(); // Initially filter based on the default option
 
     /** Sole purpose is to expand the panel if it matches the selected year in date picker */
     this.selectedYear = this.dataService.selectedActiveDate.getFullYear().toString();    
@@ -211,7 +212,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
   //#region Filtering
   /** This method filters the months based on the selected time frame or custom range */
-  filterMonths() {
+  async filterMonths() {
     const currentYear = this.currentDate.getFullYear();
     const currentMonth = this.currentDate.getMonth() + 1; // 1-based
   
@@ -272,7 +273,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
     this.allFilteredMonths = Object.values(this.filteredMonthsByYear).flat();
 
-    this.populateChartData(this.allFilteredMonths);
+    await this.populateChartData(this.allFilteredMonths);
   }
 
   filterMonthlyData(
@@ -317,24 +318,24 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   }
 
   /** Trigger filtering when a new option is selected from the dropdown */
-  onOptionSelected() {
+  async onOptionSelected() {
     if (this.selectedOption == 'custom-range') {
-      this.onDateChanges()
+      await this.onDateChanges();
       return
     }
     this.startMonth = '';
     this.endMonth = '';
     this.availableOptions = this.availableOptions.filter(option => option.value !== 'custom-range');
-    this.filterMonths(); // Filter the months based on selected option
+    await this.filterMonths(); // Filter the months based on selected option
   }
   
   /** Custom-Range: When user uses the calendar to choose range. */
-  onDateChanges() {
+  async onDateChanges() {
     this.selectedOption = 'custom-range';
     if (!this.availableOptions.find(option => option.value === 'custom-range')) {
       this.availableOptions.push({ value: 'custom-range', label: 'Custom' });
     }
-    this.filterMonths();
+    await this.filterMonths();
   }
 
 
@@ -379,7 +380,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
    * Populate Chart data: surplus line chart, tree map, total income-expense bar chart,
    * trend line chart, and anomalies detection.
    */
-  populateChartData(allMonths: string[] = []) {
+  async populateChartData(allMonths: string[] = []) {
     // Filter and process data
     const filteredData = this.filterMonthlyData(this.allMonthsData, allMonths);
 
@@ -387,7 +388,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     this.updateTotals(filteredData);
 
     // Aggregate yearly tree map data
-    this.treeMapData = this.aggregateYearlyTree(filteredData);
+    this.treeMapData = (await this.aggregateYearlyTree(filteredData));
 
     // Prepare sorted surplus data
     const sortedData = this.prepareSortedTrendsData(filteredData);
@@ -413,7 +414,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
 
     /** Get Anomalies Detection. Filter out months with missing data (no input from users) to ensure prediction accuracy. */
-    detectAbnormalities(this.trendsLineChartData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.predictionService, this.uiService, name => this.categoryService.label(name))
+    ;detectAbnormalities(this.trendsLineChartData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.predictionService, this.uiService, name => this.categoryService.label(name))
       .then(insights => {
         this.anomalyReports = insights;
         /** Add configs (colour, icons, etc.) for display purposes */
@@ -665,7 +666,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
   //#region Tree Map
   /** Check TreeMapData of each month: Call DataService if TreeMapData does not exist, use TreeMapData directly if it exists */
-  aggregateYearlyTree(savedData: MonthlyData): TreeNode[] {
+  async aggregateYearlyTree(savedData: MonthlyData): Promise<TreeNode[]> {
     const monthlyTrees: TreeNode[][] = [];
   
     // Iterate through each month in savedData
@@ -675,7 +676,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
         monthlyTrees.push(data.treeMapData);
       } else {
         // Generate treeMapData using processInputData if missing
-        const generatedTree = this.dataService.processInputData(data.rawInput, data.month, { emitObservable: false })?.treeMapData
+        const generatedTree = calculateMonth(data.rawInput, data.month, data.lastUpdated, id => !!this.categoryService.get(id)).treeMapData
         if (!generatedTree) {
           continue; // Skip if treeMapData is not generated
         }
@@ -893,12 +894,12 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       confirmColor: 'warn'
     }
 
-    this.uiService.openConfirmDialog(dialogData).subscribe((confirmed: boolean | undefined) => {
+    this.uiService.openConfirmDialog(dialogData).subscribe(async (confirmed: boolean | undefined) => {
       if (confirmed) {
-        this.dataService.removeMonth(key);
+        await this.dataService.removeMonth(key);
         this.uiService.showSnackBar(`"${key}" removed from local storage`);
         this.refreshData();
-        this.filterMonths(); // Re-filter after removal
+        await this.filterMonths(); // Re-filter after removal
       }
     })
   }

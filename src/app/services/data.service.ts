@@ -1,7 +1,8 @@
+import { calculateMonth } from '../utils/month-calculation';
 import { AppStorage, SessionStore } from '../storage/app-storage';
 import { MonthRepository } from '../storage/month.repository';
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
+import { EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -15,13 +16,6 @@ import { MonthTransfer } from '../utils/data-transfer';
 import { v4 as uuid } from 'uuid';
 
 
-export interface ExpenseData {
-    totalExpenses: number;
-    topLevelexpenses: any;
-    changedExpensesDuringCalculation: TreeNode[];
-    wholeTree: TreeNode[];
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -32,6 +26,7 @@ export interface ExpenseData {
  * This is the central processing part of the app. It delegates persistence to the month repository and emits observables for subscribers.
  */
 export class DataService {
+    private inputSaveQueue:Promise<unknown>=Promise.resolve();
     private readonly storage = inject(AppStorage);
     private readonly sessionStore = inject(SessionStore);
     private readonly months = inject(MonthRepository);
@@ -119,20 +114,19 @@ export class DataService {
 
 
     constructor() {
-        this.initializeData()
+        this.initializeData().catch(error => { this.UiService.showSnackBar(`Could not load data: ${error.message}`); })
     }
 
     //#region: Initialise Data
-    private initializeData(): void {
-        this.storage.removeObsoleteFinancialData(); // Remove old key from previous versions
+    private async initializeData(): Promise<void> {
     
         // Check if it's the user's first time
-        if (this.isFirstTimeUser() || this.isOldVersion()) {
+        if (!Object.keys(this.loadData()).length && (this.isFirstTimeUser() || this.isOldVersion())) {
             console.log('First time user or outdated app version. Processing demo data.');
-            this.processDemoData();
+            await this.processDemoData();
         } else {
             // Load existing data or prepare for user input
-            this.loadExistingData();
+            await this.loadExistingData();
         }
     }
     
@@ -149,15 +143,12 @@ export class DataService {
         return major < 2 || (major === 2 && minor < 0);
     }
     
-    private processDemoData(): void {
+    private async processDemoData(): Promise<void> {
         const todaysDate = new Date();
-        this.processInputData(this.demoLinks, formatDateToYYYYMM(todaysDate), { demo: true, emitObservable: true});
+        await this.processInputData(this.demoLinks, formatDateToYYYYMM(todaysDate), { demo: true, emitObservable: true});
     }
     
-    /** TODO: Refactor: Only save raw input?
-     * - On load, call processInputData with raw input.
-     */
-    private loadExistingData(): void {
+    private async loadExistingData(): Promise<void> {
         const savedData = this.loadData();
         if (savedData && Object.keys(savedData).length > 0) {
             this.monthlyData = savedData;  // Load saved data
@@ -165,7 +156,7 @@ export class DataService {
             this.multiMonthEntries$.next(this.monthlyData);  // Emit all months data
         } else {
             console.log('No saved data found.');
-            this.processInputData([], formatDateToYYYYMM(new Date()));
+            await this.processInputData([], formatDateToYYYYMM(new Date()));
         }
     }
     //#endregion
@@ -194,7 +185,14 @@ export class DataService {
      *   - emitObservable: `boolean` (default: `true`) - If `true`, emits an observable with the processed data for further actions.
      *       If `false`, only saves the processed data in local storage without emitting.
      */
-    processInputData(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
+    async processInputData(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
+        const entries=structuredClone(userDefinedLinks);
+        const operation=this.inputSaveQueue.then(()=>this.processInputDataNow(entries,month,options));
+        this.inputSaveQueue=operation.catch(()=>{});
+        return operation;
+    }
+
+    private async processInputDataNow(userDefinedLinks: UserDefinedLink[], month: string, options: { demo?: boolean, showSnackbarWhenDone?: boolean, emitObservable?: boolean } = { demo: false, showSnackbarWhenDone: false, emitObservable: true }) {
         /** Prevent overriding default value if not given.
          * e.g. `emitObservable` defaults to true, but if not provided by caller, it will be undefined.
          * This line below will set it to true if it's not provided.
@@ -203,7 +201,7 @@ export class DataService {
         userDefinedLinks = this.categories.clearMissingSources(userDefinedLinks);
 
         /** Sanitise logs on process month data. This is to remove invalid logs (Items ID has been changed, or item has been deleted). */
-        this.logService.sanitiseLogs(month, userDefinedLinks.map(item => item.id));
+
 
 
         /** Early exit if detect negative values. */
@@ -275,231 +273,29 @@ export class DataService {
         const changed = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedMonth?.rawInput);
         const lastUpdated = changed && userDefinedLinks.length ? new Date() : savedMonth?.lastUpdated || '-';
         const data = this.calculateMonth(userDefinedLinks, month, lastUpdated);
-        this.monthlyData[month] = data;
+        const updatedMonths = { ...this.monthlyData, [month]: data };
 
+        if (changed && !demo) {
+            await this.saveData(updatedMonths);
+            await this.logService.sanitiseLogs(month, userDefinedLinks.map(item => item.id));
+        }
+        this.monthlyData=updatedMonths;
         if (emitObservable) this.processedSingleMonthEntries$.next(data);
         if (showSnackbarWhenDone && !this.isDemo()) {
             this.UiService.showSnackBar('Data updated successfully!', 'OK', 3000);
         }
-        if (changed) this.saveData();
+
 
         return data;
     }
 
-    private calculateMonth(userDefinedLinks: UserDefinedLink[], month: string, lastUpdated: Date | string,
+    private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
         hasCategory = (id: string) => !!this.categories.get(id)): SingleMonthData {
-        const nodesMap = new Map<string, { value: number, type: EntryType }>(); // Map to hold unique nodes and their total values and types
-        const links: SankeyLink[] = []; // Array to hold links between nodes
-        const incomeNodes: string[] = []; // Track income nodes
-        let totalIncomeValue = 0; // Variable to store total income value
-        let totalTaxValue = 0; // Variable to store total tax value
-        let singleIncome = false; // Flag to check if there is only one income source
-        const hasTax = userDefinedLinks.some(link => link.type === EntryType.Tax); // Check if there is any tax link
-
-        // Step 1: Initialize the nodes without adding values yet
-        userDefinedLinks.forEach(link => {
-            if (!nodesMap.has(link.target)) {
-                nodesMap.set(link.target, { value: 0, type: link.type });
-            }
-
-            // Step 1.2: Process links to accumulate income, taxes, and expenses
-            if (link.type == EntryType.Income) {
-                incomeNodes.push(link.target);
-                nodesMap.get(link.target)!.value += link.value; // Add income only once
-            } else if (link.type === EntryType.Tax) {
-                nodesMap.get(link.target)!.value += link.value;
-                totalTaxValue += link.value;
-            } else if (link.type === EntryType.Expense) {
-                if (!link.source) {
-                    // Top-level expenses (those without a source)
-                    nodesMap.get(link.target)!.value += link.value;
-                } else {
-                    // Child expenses (those with a source)
-                    nodesMap.get(link.target)!.value = link.value; // Update child value
-                }
-            }
-        })
-
-        //#region: Handle Income & Taxes
-        // Step 2: Aggregate income into "Total Income" node if multiple income sources exist
-        if (incomeNodes.length > 1) {
-            // Sum up every item in incomeNodes to get total income value
-            totalIncomeValue = incomeNodes.reduce((sum, node) => sum + (nodesMap.get(node)?.value || 0), 0);
-            nodesMap.set('Total Income', { value: totalIncomeValue, type: EntryType.Income });
-
-        } else if (incomeNodes.length === 1) {
-            singleIncome = true; // Only one income source, no need for a "Total Income" node
-
-
-            // Total income value will be the value of incomeNodes[0], because there's only one anyway.
-            totalIncomeValue = nodesMap.get(incomeNodes[0])?.value || 0;
-        }
-
-        // Step 3: Handle Usable Income if there's a tax link, otherwise use the full income directly
-        const incomeSource = singleIncome ? incomeNodes[0] : 'Total Income';
-        const taxLink = userDefinedLinks.find(link => link.type == EntryType.Tax);
-
-
-
-        /** If has tax, create 'Usable Income' node and use it as source for all expenses. */
-        if (hasTax && taxLink) {
-            let usableIncome = totalIncomeValue;
-            const taxValue = nodesMap.get(taxLink.target)?.value || 0;
-            usableIncome -= taxValue; // Subtract taxes
-            nodesMap.set('Usable Income', { value: usableIncome, type: EntryType.Income }); // Set Usable Income node
-
-            // Step 4: Create links from Income to Usable Income and Taxes
-            links.push({
-                source: incomeSource,
-                target: taxLink.target,
-                value: taxLink.value
-            });
-
-            links.push({
-                source: incomeSource,
-                target: 'Usable Income',
-                value: usableIncome
-            });
-        }
-        //#endregion
-
-
-        //#region: Handle Expenses
-        
-        /** This will be the default root node for Sankey Chart. The source for all expenses to flow from. */
-        const sourceForExpenses = hasTax ? 'Usable Income' : incomeSource;
-
-        // Step 4: Create links for expenses, using default expense source.
-        userDefinedLinks.forEach(link => {
-            if (link.type == EntryType.Income) {
-                if (!singleIncome) {
-                    links.push({
-                        source: link.target,
-                        target: 'Total Income',
-                        value: link.value
-                    });
-                }
-            } else if (link.type === EntryType.Expense) {
-                let sourceNode = link.source || sourceForExpenses;
-
-                // Check if the source node exists in nodesMap or is an allowed category
-                if (!nodesMap.has(sourceNode) && hasCategory(sourceNode)) {
-                    // Create the missing source node as a new entry with 'Expense' type
-                    nodesMap.set(sourceNode, { value: 0, type: EntryType.Expense });
-
-                    // Calculate its total value by summing all links that use it as a source
-                    const sourceValue = userDefinedLinks
-                        .filter(childLink => childLink.source === sourceNode)
-                        .reduce((sum, childLink) => sum + childLink.value, 0);
-                    
-                    // Set the source node's accumulated value
-                    nodesMap.get(sourceNode)!.value = sourceValue;
-
-                    // Add a link from the new source node to its child
-                    links.push({
-                        source: sourceNode,
-                        target: link.target,
-                        value: link.value
-                    });
-
-                    // Link newly created source node to the default income node
-                    links.push({
-                        source: sourceForExpenses, // Link to default income (Total Income or single income node)
-                        target: sourceNode,
-                        value: sourceValue
-                    });
-                } else {
-                    // If the source is not found or is not in allowed categories, link directly to default income
-                    const validSource = nodesMap.has(sourceNode) ? sourceNode : sourceForExpenses;
-                    
-                    links.push({
-                        source: validSource,
-                        target: link.target,
-                        value: link.value
-                    });
-                }
-            }
-        });
-
-        //#endregion
-
-
-        //#region: Handle Return params
-
-        // Step 5: Get Links and Nodes
-
-        // Convert nodesMap to an array of nodes (including child nodes)
-        const nodes: SankeyNode[] = Array.from(nodesMap.entries()).map(([name, { value }]) => ({ name, value: value }));
-
-        // Remove duplicate links
-        const uniqueLinks: SankeyLink[] = Array.from(new Set(links.map(link => JSON.stringify(link)))).map(link => JSON.parse(link) as SankeyLink);
- 
-
-       // Step 6: Calculate return params
-
-       /** Pie data will be generated based on Tree Structure generated from Sankey.
-        * Not from Sankey links.
-        * 
-        * Pie data will be the top level expenses only, meaning the first level in tree structure.
-        * We do this because how else would we know which items are top level or which are children of which?
-        * So we transform Sankey data (source - target - value) into a tree structure (name - value - children).
-        * 
-        * => If you want to modify pie chart data, modify tree structure.
-        */
-       let pieSeriesData: {name: string, value: number}[] = []
-
-        const { totalExpenses, topLevelexpenses: pieData, changedExpensesDuringCalculation: changedExpensesDuringCalculation, wholeTree: treeMapData } = this._getExpensesData(uniqueLinks, hasTax, incomeNodes.length);
-        const remainingBalance: number = (totalIncomeValue - totalExpenses - totalTaxValue)
-
-        // Push remaining balance number to Pie Data to show how much is left proportionally.
-        pieSeriesData = [
-            ...pieData,
-            { name: this.REMAINING_BALANCE_LABEL, value: remainingBalance },
-        ];
-
-
-        let updatedRawInput: UserDefinedLink[] = userDefinedLinks; // Default to original input
-
-        /** Update raw input if there are changes in expenses during calculation.
-         * The value of some parent will be added up to correctly reflect total value of children.
-         * Raw Input should be updated to correctly populate the form with new values.
-         */
-        if (changedExpensesDuringCalculation.length > 0) {
-            updatedRawInput = this._updateUserInput(userDefinedLinks, changedExpensesDuringCalculation);
-        }
-
-        // Update Sankey nodes and links based on updatedRawInput
-        const updatedNodes = nodes.map(node => {
-            const updatedNode = updatedRawInput.find(link => link.target === node.name);
-            return updatedNode ? { ...node, value: updatedNode.value } : node; // Update value or leave as is
-        });
-
-        const updatedLinks = links.map(link => {
-            const updatedLink = updatedRawInput.find(l => l.target === link.target);
-            return updatedLink ? { ...link, value: updatedLink.value } : link; // Update value or leave as is
-        });
-
-
-        // Add remaining balance to the tree map data        
-        treeMapData.push({ name: this.REMAINING_BALANCE_LABEL, value: remainingBalance, children: [] });
-
-        return {
-            lastUpdated,
-            sankeyData: { nodes: updatedNodes, links: updatedLinks },
-            totalUsableIncome: totalIncomeValue - totalTaxValue,
-            totalGrossIncome: totalIncomeValue,
-            totalTax: totalTaxValue,
-            totalExpenses: totalExpenses,
-            remainingBalance: remainingBalance.toLocaleString('en-US'),
-            pieData: pieSeriesData,
-            rawInput: updatedRawInput,
-            month: month,
-            treeMapData: treeMapData
-        };
+        return calculateMonth(entries, month, lastUpdated, hasCategory);
     }
 
     /** Rebuild saved projections after clearing a category from its entries. */
-    removeCategory(id: string): void {
+    async removeCategory(id: string): Promise<void> {
         if (!this.categories.get(id)) return;
         const clear = (links: UserDefinedLink[]) => links.map(link => {
             if (link.source !== id) return link;
@@ -507,6 +303,21 @@ export class DataService {
             return uncategorized;
         });
 
+        if (await this.storage.deleteCategory(id)) {
+            this.categories.reloadFromStorage();
+            this.budgets.budget.set(this.budgets.getBudgets());
+            this.tracking.reloadFromStorage();
+            this.tracking.categoriesToTrack.update(ids => ids.filter(value => value !== id));
+            this.demoLinks=clear(this.demoLinks);
+            const copied=this.retrieveCopiedLinks();
+            if(copied) this.storeCopiedLinks(clear(copied));
+            this.monthlyData=this.loadData();
+            this.multiMonthEntries$.next(this.monthlyData);
+            const active=this.processedSingleMonthEntries$.value;
+            this.processedSingleMonthEntries$.next(this.monthlyData[active.month] ??
+                this.calculateMonth(clear(active.rawInput),active.month,active.lastUpdated));
+            return;
+        }
         const active = this.processedSingleMonthEntries$.value;
         const activeWasSaved = active === this.monthlyData[active.month];
         const affectedMonths = Object.entries(this.monthlyData)
@@ -517,31 +328,31 @@ export class DataService {
             for (const [month, data] of affectedMonths) {
                 updatedMonths[month] = this.calculateMonth(clear(data.rawInput), month, data.lastUpdated);
             }
-            this.saveData(updatedMonths);
+            await this.saveData(updatedMonths);
         }
 
         this.demoLinks = clear(this.demoLinks);
         const fixed = this.retrieveFixCostsLinks();
         if (fixed.some(link => link.source === id)) {
-            this.storage.write('fixCosts', clear(fixed));
+            await this.storage.write('fixCosts', clear(fixed));
         }
         const copied = this.retrieveCopiedLinks();
         if (copied?.some(link => link.source === id)) this.storeCopiedLinks(clear(copied));
 
         const budgets = this.budgets.getBudgets();
         if (budgets.some(budget => budget.category === id)) {
-            this.budgets.saveBudgets(budgets.filter(budget => budget.category !== id));
+            await this.budgets.saveBudgets(budgets.filter(budget => budget.category !== id));
         }
         if (this.tracking.getTrackingData().some(tracker => tracker.name === id)) {
-            this.tracking.removeTrackingData(id);
+            await this.tracking.removeTrackingData(id);
         }
         this.tracking.categoriesToTrack.update(ids => ids.filter(category => category !== id));
 
         const essentials: string[] = this.storage.read('essentialCategories') ?? [];
         if (essentials.includes(id)) {
-            this.storage.write('essentialCategories', essentials.filter(category => category !== id));
+            await this.storage.write('essentialCategories', essentials.filter(category => category !== id));
         }
-        this.categories.remove(id);
+        await this.categories.remove(id);
 
         if (active.rawInput.some(link => link.source === id)) {
             const rawInput = clear(active.rawInput);
@@ -579,21 +390,12 @@ export class DataService {
      * 
      * @returns The updated input data with parent values updated to reflect the sum of their children.
      */
-    private _updateUserInput(oldInput: UserDefinedLink[], changedExpenses: TreeNode[]): UserDefinedLink[] {
-        return oldInput.map(link => {
-            // Check if the current link's target matches any of the changed expenses
-            const updatedExpense = changedExpenses.find(node => node.name === link.target);
-            // If it matches, return a new link object with the updated value; otherwise, return the original link
-            return updatedExpense ? { ...link, value: updatedExpense.value } : link;
-        });
-    }
-
     //#endregion
 
 
     //#region Local Storage
-    /** Save user data in localStorage. Data will be retrieved on app Init. */
-    private saveData(monthlyData = this.monthlyData) {
+    /** Commit source records through SQLite before notifying subscribers. */
+    private async saveData(monthlyData = this.monthlyData) {
         const nonEmptyMonthlyData = Object.keys(monthlyData).reduce((result, month) => {
             const data = monthlyData[month];
             // Check if the data contains meaningful entries (you can adjust conditions as needed)
@@ -604,7 +406,7 @@ export class DataService {
         }, {} as MonthlyData);
     
         // The repository owns persistence; these objects also remain the runtime view model.
-        this.months.replaceAll(nonEmptyMonthlyData);
+        await this.months.replaceAll(nonEmptyMonthlyData);
         this.monthlyData = monthlyData;
 
         // Emit all months data
@@ -621,18 +423,20 @@ export class DataService {
     }
 
     /** Delete persisted entries, then update the runtime views. */
-    removeMonth(month: string): void {
-        if (!this.months.delete(month)) return;
-        delete this.monthlyData[month];
-        this.logService.removeMonthLogs(month);
-        this.processInputData([], month);
-        this.multiMonthEntries$.next(this.months.list());
+    async removeMonth(month: string): Promise<void> {
+        if (!(await this.months.delete(month))) return;
+        this.logService.reloadFromStorage();
+        const empty=this.calculateMonth([],month,'-');
+        this.monthlyData={...this.loadData(),[month]:empty};
+        this.processedSingleMonthEntries$.next(empty);
+        this.multiMonthEntries$.next(this.loadData());
+        this.dataSaved$.next(true);
     }
     //#endregion
 
 
     //#region Copy & Paste Links
-    importMonth(month: string, { entries, categories }: MonthTransfer): void {
+    async importMonth(month: string, { entries, categories }: MonthTransfer): Promise<void> {
         const currentCategories = this.categories.categories();
         const definitions = new Map(currentCategories.map(category => [category.value, category]));
         const sources = new Set(entries.map(entry => entry.source));
@@ -668,10 +472,10 @@ export class DataService {
         const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
         const savedMonths = { ...this.loadData(), [month]: data };
         const addedCategories = definitions.size > currentCategories.length;
-        this.months.importMonth(data, addedCategories ? [...definitions.values()] : undefined);
+        await this.months.importMonth(data, addedCategories ? [...definitions.values()] : undefined);
 
         if (addedCategories) this.categories.reloadFromStorage();
-        this.logService.removeMonthLogs(month);
+        this.logService.reloadFromStorage();
         this.monthlyData = { ...this.monthlyData, ...savedMonths };
         this.isDemo.set(false);
         this.hasDataCycle.set(false);
@@ -700,154 +504,6 @@ export class DataService {
 
 
 
-
-    //#region Create Tree from Sankey
-    /** Helper function to determine root node of sankey.
-     * Root node will be the income node.
-     * Root node will be used as the starting point to build the expense tree.
-     */
-    private _determineRootNode(links: SankeyLink[], hasTax: boolean, incomeSources: number): string {
-        if (hasTax) {
-            return "Usable Income";
-        } else if (!hasTax && incomeSources === 1) {
-            // Find the node that only appears as a source, never as a target
-            const sourceNodes = new Set(links.map(link => link.source));
-            const targetNodes = new Set(links.map(link => link.target));
-    
-            for (const source of sourceNodes) {
-                if (!targetNodes.has(source)) {
-                    return source;
-                }
-            }
-        } else if (!hasTax && incomeSources > 1) {
-            return "Total Income";
-        }
-        return '';
-    }
-
-    /** Function to generate a tree structure from Sankey data (source, target, value) => Tree with name, value and children */
-    private _buildTree(links: SankeyLink[], rootNodeName: string): TreeNode {
-        const nodeMap = new Map<string, TreeNode>();
-    
-        // Create nodes for all source and target in the links
-        links.forEach(link => {
-            if (!nodeMap.has(link.source)) {
-                nodeMap.set(link.source, { name: link.source, value: 0, children: [], isValueChangedDuringCalc: false });
-            }
-            if (!nodeMap.has(link.target)) {
-                nodeMap.set(link.target, { name: link.target, value: link.value, children: [], isValueChangedDuringCalc: false });
-            }
-    
-            // Add the target node as a child of the source node
-            const sourceNode = nodeMap.get(link.source)!;
-            const targetNode = nodeMap.get(link.target)!;
-            sourceNode.children.push(targetNode);
-        });
-    
-        // Return the root node as the entry point to the tree
-        return nodeMap.get(rootNodeName)!;
-    }
-
-    //#endregion
-
-
-    //#region Calculate Total Expenses
-    /** This function uses the tree structure to recursively calculate the total expenses.
-     * It compares the value of each node to the sum of its children, and returns the higher value.
-     */
-    private _calculateNodeExpense(node: TreeNode, isRoot: boolean = false): number {
-        // If the node has no children, it's a leaf node, so we return its value directly
-        if (node.children.length === 0) {
-            return node.value;
-        }
-    
-        // Otherwise, recursively calculate the total of all child nodes
-        const childrenSum: number = node.children.reduce((sum, child) => {
-            return sum + this._calculateNodeExpense(child);
-        }, 0);
-    
-        
-        // If this is the root node (income), we only consider the children and ignore the root value
-        if (isRoot) {
-            return childrenSum;
-        }
-    
-        // For non-root nodes, compare the current node's value to the sum of its children
-        const maxExpense: number = Math.max(node.value, childrenSum);
-
-        if (maxExpense !== node.value) {
-            node.isValueChangedDuringCalc = true; // Mark as changed
-        } else {
-            node.isValueChangedDuringCalc = false; // Mark as unchanged
-        }
-
-        node.value = maxExpense; // Update the parent node if children's total is higher.
-
-        return maxExpense;
-    }
-
-
-    private _getExpensesData(links: SankeyLink[], hasTax: boolean, incomeSources: number): ExpenseData {
-        // Step 1: Determine the root node based on the conditions
-        const rootNodeName: string = this._determineRootNode(links, hasTax, incomeSources);
-
-        if (!rootNodeName) {
-            return {
-                totalExpenses: 0,
-                topLevelexpenses: [],
-                changedExpensesDuringCalculation: [],
-                wholeTree: []
-            }
-        }
-    
-        // Step 2: Build the tree from the root node
-        let treeFromRootNode: TreeNode = this._buildTree(links, rootNodeName);
-
-        /** Tree might be modified during calculations. So if you want to use the tree structure, write code after these lines. */
-        const totalExpenses: number = this._calculateNodeExpense(treeFromRootNode, true);
-        const changedNodes: TreeNode[] = this._getChangedNodes(treeFromRootNode);
-
-        
-        /** Tree is in recursive structure, but we only care about Top-level expense for pie data.
-         * So only iterate through children of root node to get top level expenses.
-         */
-        const pieData = treeFromRootNode.children.map(child => {
-            return {
-                name: child.name,
-                value: child.value
-            }
-        })
-
-        return {
-            totalExpenses: totalExpenses,
-            topLevelexpenses: pieData,
-            changedExpensesDuringCalculation: changedNodes,
-            wholeTree: treeFromRootNode.children
-        }
-    }
-
-    /** Recursively transverse the tree to find the modified nodes.
-     * @param node - The current node to check for changes. Or the starting node.
-     * It will recursively check all children of the node.
-     * @param changedNodes - The array to store the changed nodes. Default to empty array, will be used in recursion to push in changed nodes.
-     * 
-     * @returns An array of changed nodes.
-     */
-    private _getChangedNodes(node: TreeNode, changedNodes: TreeNode[] = []): TreeNode[] {    
-        // Check if the node has been modified
-        if (node.isValueChangedDuringCalc) {
-            changedNodes.push(node); // Add node to changed nodes array
-        }
-    
-        // Recursively check each child
-        node.children.forEach(child => {
-            this._getChangedNodes(child, changedNodes); // Recursively collect changed nodes
-        });
-    
-        return changedNodes;
-    }
-
-    //#endregion
 
     //#region Dialogs
 

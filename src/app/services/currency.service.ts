@@ -27,7 +27,7 @@ export class CurrencyService {
       return this.currencySymbols[currency] || '';
   }
 
-  setSelectedCurrency(currency: string): void {
-      this.storage.write(this.currencyKey, currency);
+  async setSelectedCurrency(currency: string): Promise<void> {
+      await this.storage.write(this.currencyKey, currency);
   }
 }

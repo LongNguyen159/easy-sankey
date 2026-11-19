@@ -58,18 +58,10 @@ function isTreeNode(value: unknown): boolean {
 
 function isSavedMonth(value: unknown, month: string): boolean {
   if (!isObject(value)) return false;
-  const sankey = value['sankeyData'];
   const updated = value['lastUpdated'];
   return value['month'] === month
     && isString(updated) && (updated === '-' || Number.isFinite(Date.parse(updated)))
-    && arrayOf(value['rawInput'], isEntry)
-    && ['totalUsableIncome', 'totalGrossIncome', 'totalTax', 'totalExpenses'].every(key => isNumber(value[key]))
-    && isString(value['remainingBalance'])
-    && arrayOf(value['pieData'], isChartNode)
-    && arrayOf(value['treeMapData'], isTreeNode)
-    && isObject(sankey) && arrayOf(sankey['nodes'], isChartNode)
-    && arrayOf(sankey['links'], link => isObject(link)
-      && isString(link['source']) && isString(link['target']) && isNumber(link['value']));
+    && arrayOf(value['rawInput'], isEntry);
 }
 
 const storageValidators: Record<string, Validator> = {
@@ -81,9 +73,9 @@ const storageValidators: Record<string, Validator> = {
     && isString(budget['category']) && isNumber(budget['value'])),
   budgetManualOrder: value => arrayOf(value, isString),
   trackedCategories: value => isObject(value)
-    && isNumber(value['targetSurplus']) && isNumber(value['avgIncome'])
+    && isNumber(value['targetSurplus']) && (value['avgIncome'] == null || isNumber(value['avgIncome']))
     && arrayOf(value['trackingCategories'], tracker => isObject(tracker) && isString(tracker['name'])
-      && ['currentSpending', 'targetSpending', 'percentageSpent'].every(key => isNumber(tracker[key]))),
+      && isNumber(tracker['targetSpending'])),
   essentialCategories: value => arrayOf(value, isString),
   logs: value => isObject(value) && Object.entries(value).every(([month, entries]) =>
     monthPattern.test(month) && isObject(entries) && Object.values(entries).every(history =>
@@ -93,13 +85,14 @@ const storageValidators: Record<string, Validator> = {
     && isBoolean(value['isManualThemeSet']) && isString(value['selectedTheme']),
   selectedCurrency: isString,
   entryView: isString,
+  budgetView: isString,
   budgetSort: isAmountSort,
   fixCostSort: isAmountSort,
   firstTime: value => value === 'true' || value === 'false',
   appVersion: isString,
 };
 
-const textKeys = new Set(['selectedCurrency', 'entryView', 'budgetSort', 'fixCostSort', 'firstTime', 'appVersion']);
+const textKeys = new Set(['selectedCurrency', 'entryView', 'budgetView', 'budgetSort', 'fixCostSort', 'firstTime', 'appVersion']);
 
 export function exportBackup(storage: Storage): string {
   const data: JsonObject = {};
@@ -112,7 +105,7 @@ export function exportBackup(storage: Storage): string {
 
 function readTransfer(text: string, type: 'full' | 'month'): JsonObject {
   const payload: unknown = JSON.parse(text);
-  if (!isObject(payload) || payload['app'] !== app || payload['version'] !== version || payload['type'] !== type) {
+  if (!isObject(payload) || payload['app'] !== app || ![1, 2].includes(payload['version'] as number) || payload['type'] !== type) {
     throw new Error('Unsupported data transfer format.');
   }
   return payload;

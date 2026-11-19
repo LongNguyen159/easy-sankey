@@ -27,19 +27,19 @@ describe('expense categories', () => {
         DataService,
         BudgetService,
         TrackingService,
-        { provide: LogsService, useValue: { sanitiseLogs: () => {}, removeMonthLogs: () => {} } },
+        { provide: LogsService, useValue: { sanitiseLogs: () => {}, removeMonthLogs: () => {}, reloadFromStorage: () => {} } },
         { provide: UiService, useValue: { showSnackBar: () => {}, openConfirmDialog: () => {} } },
       ],
     });
   }
 
-  function seedMonth(month: string, categoryId: string) {
+  async function seedMonth(month: string, categoryId: string) {
     const links: UserDefinedLink[] = [
       { id: 'income', type: EntryType.Income, target: 'Salary', value: 1000 },
       { id: 'expense', type: EntryType.Expense, target: 'Supplies', value: 80, source: categoryId },
       { id: 'other', type: EntryType.Expense, target: 'Rent', value: 200, source: ExpenseCategory.Housing },
     ];
-    data.processInputData(links, month);
+    (await data.processInputData(links, month));
     return links;
   }
 
@@ -61,11 +61,11 @@ describe('expense categories', () => {
     data = injector.get(DataService);
   });
 
-  it('persists custom categories and edits existing categories using the original reference', () => {
-    seedMonth('2025-04', ExpenseCategory.Groceries);
+  it('persists custom categories and edits existing categories using the original reference', async () => {
+    (await seedMonth('2025-04', ExpenseCategory.Groceries));
 
-    categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries);
-    categories.save('Pets', 'pets', CATEGORY_COLORS[1]);
+    (await categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries));
+    (await categories.save('Pets', 'pets', CATEGORY_COLORS[1]));
 
     const reopened = createInjector();
     const savedCategories = reopened.get(CategoryService);
@@ -77,12 +77,12 @@ describe('expense categories', () => {
     expect(savedCategories.categories().some(category => category.label === 'Pets')).toBeTrue();
   });
 
-  it('persists category order without changing which category a saved entry references', () => {
-    seedMonth('2025-04', ExpenseCategory.Groceries);
+  it('persists category order without changing which category a saved entry references', async () => {
+    (await seedMonth('2025-04', ExpenseCategory.Groceries));
     const originalIds = categories.categories().map(category => category.value);
 
-    expect(categories.move(ExpenseCategory.Groceries, 0)).toBeTrue();
-    expect(categories.move(ExpenseCategory.Groceries, -1)).toBeFalse();
+    expect((await categories.move(ExpenseCategory.Groceries, 0))).toBeTrue();
+    expect((await categories.move(ExpenseCategory.Groceries, -1))).toBeFalse();
 
     const reopened = createInjector();
     expect(reopened.get(CategoryService).categories().map(category => category.value)).toEqual([
@@ -92,16 +92,16 @@ describe('expense categories', () => {
     expect(reopened.get(DataService).loadSingleMonth('2025-04')?.rawInput[1].source).toBe(ExpenseCategory.Groceries);
   });
 
-  it('clears a deleted category across months, templates and copies while retaining entries and totals', () => {
-    categories.save('Tools', 'build', CATEGORY_COLORS[0]);
+  it('clears a deleted category across months, templates and copies while retaining entries and totals', async () => {
+    (await categories.save('Tools', 'build', CATEGORY_COLORS[0]));
     const id = categories.categories().find(category => category.label === 'Tools')!.value;
-    const april = seedMonth('2025-04', id);
-    seedMonth('2025-05', id);
+    const april = (await seedMonth('2025-04', id));
+    (await seedMonth('2025-05', id));
     localStorage.setItem('fixCosts', JSON.stringify([{ ...april[1], isFixCost: true }]));
     data.storeCopiedLinks(april);
-    injector.get(BudgetService).saveBudgets([{ category: id, value: 100 }]);
+    (await injector.get(BudgetService).saveBudgets([{ category: id, value: 100 }]));
 
-    data.removeCategory(id);
+    (await data.removeCategory(id));
 
     expect(categories.get(id)).toBeUndefined();
     for (const month of ['2025-04', '2025-05']) {
@@ -119,22 +119,22 @@ describe('expense categories', () => {
     expect(createInjector().get(CategoryService).get(id)).toBeUndefined();
 
     // A copy taken before deletion can still be pasted without reviving the reference.
-    expect(data.processInputData(april, '2025-06')?.rawInput[1].source).toBeUndefined();
+    expect((await data.processInputData(april, '2025-06'))?.rawInput[1].source).toBeUndefined();
   });
 
-  it('imports a copied month into a separate data set, keeping its category and replacing only the selected month', () => {
-    const custom = categories.save('Tools', 'build', CATEGORY_COLORS[0]);
-    const april = seedMonth('2025-04', custom.value);
+  it('imports a copied month into a separate data set, keeping its category and replacing only the selected month', async () => {
+    const custom = (await categories.save('Tools', 'build', CATEGORY_COLORS[0]));
+    const april = (await seedMonth('2025-04', custom.value));
     const copied = readMonth(exportMonth(april, categories.categories()));
     localStorage.removeItem('expenseCategories');
     localStorage.removeItem('monthlyData');
     injector = createInjector();
     categories = injector.get(CategoryService);
     data = injector.get(DataService);
-    seedMonth('2025-06', ExpenseCategory.Groceries);
-    const july = seedMonth('2025-07', ExpenseCategory.Housing);
+    (await seedMonth('2025-06', ExpenseCategory.Groceries));
+    const july = (await seedMonth('2025-07', ExpenseCategory.Housing));
 
-    data.importMonth('2025-06', copied);
+    (await data.importMonth('2025-06', copied));
 
     const june = data.loadSingleMonth('2025-06')!;
     expect(june.totalExpenses).toBe(280);
@@ -145,25 +145,25 @@ describe('expense categories', () => {
     expect(data.loadSingleMonth('2025-04')).toBeNull();
   });
 
-  it('leaves the destination untouched when a copied month has an expense cycle', () => {
-    seedMonth('2025-06', ExpenseCategory.Groceries);
+  it('leaves the destination untouched when a copied month has an expense cycle', async () => {
+    (await seedMonth('2025-06', ExpenseCategory.Groceries));
     const before = localStorage.getItem('monthlyData');
     const entries = [
       { id: 'a', type: EntryType.Expense, target: 'A', value: 1, source: 'B' },
       { id: 'b', type: EntryType.Expense, target: 'B', value: 1, source: 'A' },
     ];
 
-    expect(() => data.importMonth('2025-06', { entries, categories: [] })).toThrowError(/cycle/);
+    await expectAsync(data.importMonth('2025-06', { entries, categories: [] })).toBeRejectedWithError(/cycle/);
     expect(localStorage.getItem('monthlyData')).toBe(before);
   });
 
-  it('deletes a month from persistence and published views while retaining other months', () => {
-    seedMonth('2025-04', ExpenseCategory.Groceries);
-    const may = seedMonth('2025-05', ExpenseCategory.Housing);
+  it('deletes a month from persistence and published views while retaining other months', async () => {
+    (await seedMonth('2025-04', ExpenseCategory.Groceries));
+    const may = (await seedMonth('2025-05', ExpenseCategory.Housing));
     let published: Record<string, unknown> = {};
     const subscription = data.getAllMonthsData().subscribe(value => { published = value; });
 
-    data.removeMonth('2025-04');
+    (await data.removeMonth('2025-04'));
 
     expect(data.loadSingleMonth('2025-04')).toBeNull();
     expect(data.loadSingleMonth('2025-05')?.rawInput).toEqual(may);
@@ -172,12 +172,12 @@ describe('expense categories', () => {
     subscription.unsubscribe();
   });
 
-  it('restores a full backup and removes app data absent from the backup', () => {
-    const custom = categories.save('Tools', 'build', CATEGORY_COLORS[0]);
-    const april = seedMonth('2025-04', custom.value);
+  it('restores a full backup and removes app data absent from the backup', async () => {
+    const custom = (await categories.save('Tools', 'build', CATEGORY_COLORS[0]));
+    const april = (await seedMonth('2025-04', custom.value));
     localStorage.setItem('selectedCurrency', 'USD');
     const backup = readBackup(exportBackup(localStorage));
-    seedMonth('2025-05', ExpenseCategory.Groceries);
+    (await seedMonth('2025-05', ExpenseCategory.Groceries));
     localStorage.setItem('budgets', JSON.stringify([{ category: custom.value, value: 100 }]));
     localStorage.setItem('selectedCurrency', 'EUR');
 
@@ -191,8 +191,8 @@ describe('expense categories', () => {
     expect(localStorage.getItem('selectedCurrency')).toBe('USD');
   });
 
-  it('rejects invalid backups before replacing storage and restores the original values if a write fails', () => {
-    const april = seedMonth('2025-04', ExpenseCategory.Groceries);
+  it('rejects invalid backups before replacing storage and restores the original values if a write fails', async () => {
+    const april = (await seedMonth('2025-04', ExpenseCategory.Groceries));
     const before = localStorage.getItem('monthlyData');
     const invalid = JSON.parse(exportBackup(localStorage));
     invalid.data.monthlyData['2025-04'].rawInput = null;

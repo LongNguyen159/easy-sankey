@@ -83,7 +83,7 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   isShowInsights: boolean = true
 
   viewTreeMap: boolean = false
-  
+
   constructor() {
     super();
     effect(() => {
@@ -92,9 +92,9 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   }
   ngOnInit(): void {
     this.budgets = this.budgetService.getBudgets()
-    
+
     /** Get all months data to show the orange dot under the months that has entries.
-     * 
+     *
      * TODO: Optimise this, reading all months data might not be efficient.
      * Maybe all months of one year? Then as user navigates through years, get the data for that year.
      */
@@ -107,7 +107,7 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
         }
           return result;
       }, {} as MonthlyData);
-      
+
       this.monthlyData = filteredMonthlyData;
       this.highlightMonths = Object.keys(filteredMonthlyData); // Get keys of filtered data
     })
@@ -124,14 +124,14 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
         this.getBudgetData()
 
         this.getMonthInsights(data.month, getLastMonth(data.month))
-  
+
         if (this.entriesOfOneMonth.totalTax == 0) {
           this.showGrossIncomePieChart = false
-  
+
           this.pieChartDataBrutto = this.pieChartDataNetto
         } else {
           this.showGrossIncomePieChart = true
-  
+
           this.pieChartDataBrutto = [
             ...this.pieChartDataNetto,
             {name: 'Taxes', value: this.entriesOfOneMonth.totalTax}
@@ -200,8 +200,8 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   }
 
 
-  onMonthChanges(selectedMonth: DateChanges) {    
-    onMonthChanges(selectedMonth.currentMonth, this.monthlyData, this.entriesOfOneMonth, this.dataService)
+  async onMonthChanges(selectedMonth: DateChanges) {
+    await onMonthChanges(selectedMonth.currentMonth, this.monthlyData, this.entriesOfOneMonth, this.dataService);
   }
 
   toggleLayout() {

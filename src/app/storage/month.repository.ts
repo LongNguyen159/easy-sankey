@@ -16,42 +16,44 @@ export class MonthRepository {
     return Object.hasOwn(months, month) ? months[month] : null;
   }
 
-  create(data: SingleMonthData): void {
+  async create(data: SingleMonthData): Promise<void> {
     const months = this.list();
     if (Object.hasOwn(months, data.month)) throw new Error(`Month ${data.month} already exists.`);
-    this.replaceAll({ ...months, [data.month]: data });
+    await this.replaceAll({ ...months, [data.month]: data });
   }
 
-  update(data: SingleMonthData): void {
+  async update(data: SingleMonthData): Promise<void> {
     const months = this.list();
     if (!Object.hasOwn(months, data.month)) throw new Error(`Month ${data.month} does not exist.`);
-    this.replaceAll({ ...months, [data.month]: data });
+    await this.replaceAll({ ...months, [data.month]: data });
   }
 
-  upsert(data: SingleMonthData): void {
-    this.replaceAll({ ...this.list(), [data.month]: data });
+  async upsert(data: SingleMonthData): Promise<void> {
+    await this.replaceAll({ ...this.list(), [data.month]: data });
   }
 
-  delete(month: string): boolean {
+  async delete(month: string): Promise<boolean> {
     const months = this.list();
     if (!Object.hasOwn(months, month)) return false;
     delete months[month];
-    this.replaceAll(months);
+    const logs=this.storage.read('logs') ?? {};
+    delete logs[month];
+    await this.storage.writeBatch({monthlyData:months,logs});
     return true;
   }
 
   /** Persist a copied month and its new category definitions together. */
-  importMonth(data: SingleMonthData, categories?: ExpenseCategoryDetails[]): void {
+  async importMonth(data: SingleMonthData, categories?: ExpenseCategoryDetails[]): Promise<void> {
     const months = { ...this.list(), [data.month]: data };
     this.validate(months);
-    const changes = new Map([['monthlyData', JSON.stringify(months)]]);
-    if (categories) changes.set('expenseCategories', JSON.stringify(categories));
-    this.storage.replaceLegacyItems(changes);
+    const logs=this.storage.read('logs') ?? {};
+    delete logs[data.month];
+    await this.storage.writeBatch({monthlyData:months,logs,...(categories?{expenseCategories:categories}:{})});
   }
 
-  replaceAll(months: MonthlyData): void {
+  async replaceAll(months: MonthlyData): Promise<void> {
     this.validate(months);
-    this.storage.write('monthlyData', months);
+    await this.storage.write('monthlyData', months);
   }
 
   private validate(months: MonthlyData): void {

@@ -1,3 +1,4 @@
+import { UiService } from './ui.service';
 import { AppStorage } from '../storage/app-storage';
 import { DatePipe } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
@@ -24,6 +25,7 @@ import { MonthlyData } from '../components/models';
  */
 export class LogsService {
   private readonly storage = inject(AppStorage);
+  private readonly ui = inject(UiService);
   private logs: { [month: string]: { [inputId: string]: { timestamp: string; value: string | number }[] } } = {};
   private readonly STORAGE_KEY = 'logs';
 
@@ -32,13 +34,15 @@ export class LogsService {
   }
 
 
+  reloadFromStorage():void { this.logs=this.storage.read('logs') ?? {}; }
+
   /** Write into logs (history) of given input and month.
    * 
    * @param month The month to log the change for.
    * @param inputId The ID of the input field to log the change for.
    * @param newValue The value to write into the log.
    */
-  setLog(month: string, inputId: string, newValue: string | number): void {
+  async setLog(month: string, inputId: string, newValue: string | number): Promise<void> {
     const _timestamp = new Date()
 
     /** Timestamp for the Logs */
@@ -62,7 +66,7 @@ export class LogsService {
       this.logs[month][inputId].pop(); // Remove the oldest log
     }
 
-    this.saveLogsToLocalStorage();
+    await this.saveLogsToLocalStorage();
   }
 
   /** Get logs for a specific input ID in a specific month 
@@ -75,40 +79,41 @@ export class LogsService {
   }
 
   /** [NOT IMPLEMENTED YET] Remove logs for a specific input ID in a specific month */
-  removeLogs(month: string, inputId: string): void {
+  async removeLogs(month: string, inputId: string): Promise<void> {
     if (this.logs[month]?.[inputId]) {
       delete this.logs[month][inputId];
-      this.saveLogsToLocalStorage();
+      await this.saveLogsToLocalStorage();
     }
   }
 
   /** [NOT IMPLEMENTED YET] Remove all logs for a specific month */
-  removeMonthLogs(month: string): void {
+  async removeMonthLogs(month: string): Promise<void> {
     if (this.logs[month]) {
       delete this.logs[month];
-      this.saveLogsToLocalStorage();
+      await this.saveLogsToLocalStorage();
     }
   }
 
   /** Save logs to Session Storage */
-  private saveLogsToLocalStorage(): void {
+  private async saveLogsToLocalStorage(): Promise<void> {
     try {
-      this.storage.write(this.STORAGE_KEY, this.logs);
+      await this.storage.write(this.STORAGE_KEY, this.logs);
     } catch (error) {
-      console.error('Error saving logs to Session Storage:', error);
+      this.logs=this.storage.read(this.STORAGE_KEY) ?? {};
+      throw error;
     }
   }
 
   /** Load logs from Session Storage */
-  private loadLogsFromLocalStorage(): void {
+  private async loadLogsFromLocalStorage(): Promise<void> {
     try {
       const storedLogs = this.storage.read(this.STORAGE_KEY);
       this.logs = storedLogs ? storedLogs : {};
       const monthlyData: MonthlyData = this.storage.read('monthlyData') ?? {};
-      this.cleanupLogs(monthlyData)
+      await this.cleanupLogs(monthlyData);
     } catch (error) {
-      console.error('Error loading logs from Session Storage:', error);
-      this.logs = {};
+      console.error('Could not load entry history', error);
+      this.ui.showSnackBar('Could not load or update entry history. Your saved data has been retained.');
     }
   }
 
@@ -118,7 +123,7 @@ export class LogsService {
    * This function is called only on app load.
    * 
    */
-  cleanupLogs(monthlyData: MonthlyData): void {
+  async cleanupLogs(monthlyData: MonthlyData): Promise<void> {
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
     const now = Date.now();
   
@@ -128,6 +133,7 @@ export class LogsService {
       return;
     }
   
+    let changed=false;
     for (const month in this.logs) {
       const lastUpdated = monthlyData[month]?.lastUpdated;
   
@@ -141,10 +147,11 @@ export class LogsService {
       if (now - new Date(lastUpdated).getTime() > THIRTY_DAYS_MS) {
         console.info(`Deleting logs for month: ${month}, last updated: ${lastUpdated}`);
         delete this.logs[month];
+        changed=true;
       }
     }
   
-    this.saveLogsToLocalStorage();
+    if(changed) await this.saveLogsToLocalStorage();
   }
 
 
@@ -156,7 +163,7 @@ export class LogsService {
    * 
    * This function should be called after data is processed, or on form submit.
    */
-  sanitiseLogs(month: string, validIds: string[]): void {
+  async sanitiseLogs(month: string, validIds: string[]): Promise<void> {
     if (!this.logs[month]) return;
   
     // Convert the valid IDs into a Set for faster lookups
@@ -167,6 +174,6 @@ export class LogsService {
       Object.entries(this.logs[month]).filter(([inputId]) => validIdsSet.has(inputId))
     );
 
-    this.saveLogsToLocalStorage()
+    await this.saveLogsToLocalStorage();
   }
 }

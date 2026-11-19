@@ -77,7 +77,7 @@ export class ColorService {
   /** Retrieve stored theme settings from LocalStorage to apply on app init.
    * If no settings are found, apply system's theme.
    */
-  applyStoredThemeSettings(): void {
+  async applyStoredThemeSettings(): Promise<void> {
     const settings = this.storage.read('themeSettings');
     if (settings) {
       const { isDarkMode, isManualThemeSet, selectedTheme } = settings;
@@ -89,7 +89,7 @@ export class ColorService {
       // Apply the loaded theme settings
       if (isManualThemeSet) {
         this.isDarkMode.set(isDarkMode); // Set dark mode based on saved settings
-        this.applyTheme(isDarkMode ? Theme.Dark : Theme.Light);
+        await this.applyTheme(isDarkMode ? Theme.Dark : Theme.Light);
       } else {
         this.detectAndApplySystemTheme(); // Determine the dark mode based on system preference
       }
@@ -104,7 +104,7 @@ export class ColorService {
    * - 'dark': Dark theme
    * - 'system': System theme
    */
-  applyTheme(theme: Theme) {
+  async applyTheme(theme: Theme) {
     const htmlElement = document.documentElement;
 
     // Remove existing theme classes
@@ -113,38 +113,38 @@ export class ColorService {
 
     if (theme === Theme.Light) {
         this.renderer.addClass(htmlElement, 'light-theme');
-        this._setManualTheme(false);
+        await this._setManualTheme(false);
     } else if (theme === Theme.Dark) {
         this.renderer.addClass(htmlElement, 'dark-theme');
-        this._setManualTheme(true);
+        await this._setManualTheme(true);
     } else {
         // For 'system', rely on media query behavior
-        this._setSystemTheme()
+        await this._setSystemTheme();
     }
   }
 
 
-  private _setManualTheme(isDark: boolean) {
+  private async _setManualTheme(isDark: boolean) {
     this.isDarkMode.set(isDark);
     this.isManualThemeSet.set(true); // Mark that a manual theme is set
     this.selectedTheme = 'manual'; // Track manual theme
-    this._saveThemeSettings(); // Save to LocalStorage
+    await this._saveThemeSettings(); // Save to LocalStorage
   }
 
-  private _setSystemTheme() {
+  private async _setSystemTheme() {
     this.isManualThemeSet.set(false); // Reset manual theme state
     this.selectedTheme = 'system'; // Track system theme
     this.detectAndApplySystemTheme(); // Check the system's color scheme
-    this._saveThemeSettings(); // Save to LocalStorage
+    await this._saveThemeSettings(); // Save to LocalStorage
   }
 
-  private _saveThemeSettings(): void {
+  private async _saveThemeSettings(): Promise<void> {
     const settings = {
       isDarkMode: this.isDarkMode(),
       isManualThemeSet: this.isManualThemeSet(),
       selectedTheme: this.selectedTheme // Save selected theme
     };
-    this.storage.write('themeSettings', settings);
+    await this.storage.write('themeSettings', settings);
   }
 
 

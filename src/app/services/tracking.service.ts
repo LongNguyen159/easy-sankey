@@ -24,7 +24,7 @@ export class TrackingService {
   constructor() { }
 
   /** Save tracking data to local storage and notify subscribers */
-  saveTrackingData(newData: Tracker[], targetSurplus: number, avgIncome: number, mergeNewIntoExisting: boolean = false): void {
+  async saveTrackingData(newData: Tracker[], targetSurplus: number, avgIncome: number, mergeNewIntoExisting: boolean = false): Promise<void> {
     // Filter out any categories where the target spending is 0
     const validData = newData.filter(item => item.targetSpending !== 0);
 
@@ -71,7 +71,7 @@ export class TrackingService {
       avgIncome
     };
 
-    this.storage.write(this.localStorageKey, dataToSave);
+    await this.storage.write(this.localStorageKey, dataToSave);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(finalData);
@@ -88,7 +88,7 @@ export class TrackingService {
 
 
   /** Update the current spending for multiple categories */
-  updateMultipleCurrentSpendings(updates: { name: string; totalValue: number }[]): void {
+  async updateMultipleCurrentSpendings(updates: { name: string; totalValue: number }[]): Promise<void> {
     // Get the current tracking data
     const currentData = this.getTrackingData();
 
@@ -105,18 +105,6 @@ export class TrackingService {
       return item; // Return unchanged item if no update matches
     });
 
-    // Retrieve existing targetSurplus and avgIncome
-    const { targetSurplus, avgIncome } = this.getAdditionalData();
-
-    // Save updated data back to local storage
-    const dataToSave = {
-      trackingCategories: updatedData,
-      targetSurplus,
-      avgIncome
-    };
-
-    this.storage.write(this.localStorageKey, dataToSave);
-
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(updatedData);
   }
@@ -128,9 +116,9 @@ export class TrackingService {
     const trackedCategories = this.getTrackingData();
     const categoriesOfCurrentYearNames = categoriesOfCurrentYear.map(category => category.name);
 
-    trackedCategories.forEach(trackedCategory => {
+    trackedCategories.forEach(async trackedCategory => {
       if (!categoriesOfCurrentYearNames.includes(trackedCategory.name)) {
-        this.updateMultipleCurrentSpendings([{ name: trackedCategory.name, totalValue: 0 }]);
+        await this.updateMultipleCurrentSpendings([{ name: trackedCategory.name, totalValue: 0 }]);
       }
     })
   }
@@ -138,7 +126,7 @@ export class TrackingService {
 
 
   /** Remove tracking data by name */
-  removeTrackingData(name: string): void {
+  async removeTrackingData(name: string): Promise<void> {
     const currentData = this.getTrackingData();
 
     // Filter out the category with the matching name
@@ -154,7 +142,7 @@ export class TrackingService {
       avgIncome
     };
 
-    this.storage.write(this.localStorageKey, dataToSave);
+    await this.storage.write(this.localStorageKey, dataToSave);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(updatedData);
@@ -163,6 +151,7 @@ export class TrackingService {
 
   /** Retrieve tracking data from local storage */
   getTrackingData(): Tracker[] {
+    if(this.trackingDataSubject) return structuredClone(this.trackingDataSubject.value);
     try {
       const savedData = this.storage.read(this.localStorageKey);
       if (savedData) {
@@ -192,9 +181,14 @@ export class TrackingService {
     return { targetSurplus: 0, avgIncome: 0 };
   }
 
+  reloadFromStorage():void {
+    this.trackingDataSubject.next(this.storage.read(this.localStorageKey)?.trackingCategories ?? []);
+    this.trackingMetaDataSubject.next(this.getAdditionalData());
+  }
+
   /** Clear tracking data from local storage and notify subscribers */
-  clearTrackingData(): void {
-    this.storage.delete(this.localStorageKey);
+  async clearTrackingData(): Promise<void> {
+    await this.storage.delete(this.localStorageKey);
     this.trackingDataSubject.next([]); // Notify subscribers about the change
     this.trackingMetaDataSubject.next({ targetSurplus: 0, avgIncome: 0 }); // Notify subscribers about the change
     console.log('Tracking data cleared from local storage.');

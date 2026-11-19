@@ -1,0 +1,100 @@
+[
+  {
+    "label": "Housing",
+    "value": "Housing@__system/category__",
+    "icon": "home",
+    "colorLight": "#1976d2",
+    "colorDark": "#90caf9"
+  },
+  {
+    "label": "Groceries & Essentials",
+    "value": "Groceries & Essentials@__system/category__",
+    "icon": "grocery",
+    "colorLight": "#4caf50",
+    "colorDark": "#a5d6a7"
+  },
+  {
+    "label": "Restaurants",
+    "value": "Restaurants@__system/category__",
+    "icon": "restaurant",
+    "colorLight": "#ff9800",
+    "colorDark": "#ffcc80"
+  },
+  {
+    "label": "Shopping",
+    "value": "Shopping@__system/category__",
+    "icon": "shopping_cart",
+    "colorLight": "#9c27b0",
+    "colorDark": "#e1bee7"
+  },
+  {
+    "label": "Entertainment",
+    "value": "Entertainment@__system/category__",
+    "icon": "movie",
+    "colorLight": "#3f51b5",
+    "colorDark": "#c5cae9"
+  },
+  {
+    "label": "Transportation",
+    "value": "Transportation@__system/category__",
+    "icon": "directions_car",
+    "colorLight": "#1976d2",
+    "colorDark": "#90caf9"
+  },
+  {
+    "label": "Hobbies",
+    "value": "Hobbies@__system/category__",
+    "icon": "palette",
+    "colorLight": "#ff9800",
+    "colorDark": "#ffcc80"
+  },
+  {
+    "label": "Education",
+    "value": "Education@__system/category__",
+    "icon": "school",
+    "colorLight": "#f44336",
+    "colorDark": "#ef5350"
+  },
+  {
+    "label": "Health & Fitness",
+    "value": "Health & Fitness@__system/category__",
+    "icon": "fitness_center",
+    "colorLight": "#ff5722",
+    "colorDark": "#ffccbc"
+  },
+  {
+    "label": "Savings & Investments",
+    "value": "Savings & Investments@__system/category__",
+    "icon": "savings",
+    "colorLight": "#4caf50",
+    "colorDark": "#a5d6a7"
+  },
+  {
+    "label": "Travelling",
+    "value": "Travelling@__system/category__",
+    "icon": "flight",
+    "colorLight": "#1976d2",
+    "colorDark": "#90caf9"
+  },
+  {
+    "label": "Special Occasions",
+    "value": "Special Occasions@__system/category__",
+    "icon": "cake",
+    "colorLight": "#f44336",
+    "colorDark": "#ef5350"
+  },
+  {
+    "label": "Utilities",
+    "value": "Utilities@__system/category__",
+    "icon": "build",
+    "colorLight": "#607d8b",
+    "colorDark": "#b0bec5"
+  },
+  {
+    "label": "Other",
+    "value": "Other@__system/category__",
+    "icon": "more_horiz",
+    "colorLight": "#9e9e9e",
+    "colorDark": "#e0e0e0"
+  }
+]

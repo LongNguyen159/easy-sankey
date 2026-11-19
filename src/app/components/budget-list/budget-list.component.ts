@@ -63,14 +63,14 @@ export class BudgetListComponent implements OnInit{
     }
   }
 
-  protected setView(view: 'cards' | 'list'): void {
+  protected async setView(view: 'cards' | 'list'): Promise<void> {
     this.view = view;
-    this.storage.write('budgetView', view);
+    await this.storage.write('budgetView', view);
   }
 
-  protected setSort(order: AmountSort): void {
+  protected async setSort(order: AmountSort): Promise<void> {
     this.sortOrder = order;
-    this.storage.write('budgetSort', order);
+    await this.storage.write('budgetSort', order);
   }
 
   protected get orderedCategories(): ExpenseCategoryDetails[] {
@@ -82,21 +82,21 @@ export class BudgetListComponent implements OnInit{
     return sortByAmount(categories, this.sortOrder, category => amounts.get(category.value) ?? 0);
   }
 
-  protected dropBudget(event: CdkDragDrop<ExpenseCategoryDetails[]>): void {
+  protected async dropBudget(event: CdkDragDrop<ExpenseCategoryDetails[]>): Promise<void> {
     if (event.isPointerOverContainer) {
-      this.moveBudget(event.container.data, event.previousIndex, event.currentIndex);
+      await this.moveBudget(event.container.data, event.previousIndex, event.currentIndex);
     }
   }
 
-  protected moveBudgetWithKeyboard(event: Event, from: number, to: number): void {
+  protected async moveBudgetWithKeyboard(event: Event, from: number, to: number): Promise<void> {
     event.preventDefault();
     const handle = event.currentTarget as HTMLButtonElement;
-    if (this.moveBudget(this.orderedCategories, from, to)) {
+    if ((await this.moveBudget(this.orderedCategories, from, to))) {
       afterNextRender(() => handle.focus(), { injector: this.injector });
     }
   }
 
-  private moveBudget(categories: ExpenseCategoryDetails[], from: number, to: number): boolean {
+  private async moveBudget(categories: ExpenseCategoryDetails[], from: number, to: number): Promise<boolean> {
     if (this.sortOrder !== 'manual' || from === to || from < 0 || from >= categories.length || to < 0 || to >= categories.length) {
       return false;
     }
@@ -104,7 +104,7 @@ export class BudgetListComponent implements OnInit{
     const order = categories.map(category => category.value);
     moveItemInArray(order, from, to);
     this.manualOrder = order;
-    this.storage.write('budgetManualOrder', order);
+    await this.storage.write('budgetManualOrder', order);
     void this.announcer.announce(`${categories[from].label} moved to position ${to + 1} of ${order.length}.`);
     return true;
   }
@@ -120,9 +120,9 @@ export class BudgetListComponent implements OnInit{
       data: { categoryLabel: this.categoryService.label(category), value: currentBudget }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe(async result => {
       if (result !== undefined) {
-        this.updateBudget(category, result);
+        await this.updateBudget(category, result);
       }
     });
   }
@@ -150,7 +150,7 @@ export class BudgetListComponent implements OnInit{
    * @param category Category to update budget for
    * @param value New budget value
    */
-  updateBudget(category: string, value: number) {
+  async updateBudget(category: string, value: number) {
     const budgetIndex = this.budgets.findIndex(budget => budget.category === category);
 
     if (budgetIndex >= 0) {
@@ -159,7 +159,7 @@ export class BudgetListComponent implements OnInit{
       this.budgets.push({ category, value });
     }
 
-    this.budgetService.saveBudgets(this.budgets);
+    await this.budgetService.saveBudgets(this.budgets);
     if (value === 0 || value == null) {
       this.uiService.showSnackBar(`Removed budget for ${this.categoryService.label(category)}`, 'OK', 3000);
     } else {

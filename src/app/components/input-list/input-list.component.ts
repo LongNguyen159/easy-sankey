@@ -421,20 +421,20 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
 
   //#region Month Changes
-  onMonthChanges(selectedMonth: DateChanges) {
+  async onMonthChanges(selectedMonth: DateChanges) {
     const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
     const prevMonth = formatDateToYYYYMM(selectedMonth.previousMonth)
     const previousFormValid = this.linkForm.valid;
 
     /** This will trigger subscription onInit of this component. No need to update global variables here as we already did it in the subscription. */
-    onMonthChanges(selectedMonth.currentMonth, this.allMonthsData, this.singleMonthData, this.dataService)
+    await onMonthChanges(selectedMonth.currentMonth, this.allMonthsData, this.singleMonthData, this.dataService);
 
     /** Only process previous months if there are changes in the form detected by the boolean flag `hasChanges`.
      * Else it would process every previous months on month changes.
      */
     if (currentMonth !== prevMonth && this.hasChanges) {
       if (previousFormValid) {
-        this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues);
+        await this.processMonthBeforeMonthChanges(prevMonth, this.savedFormValues);
       }
       
       // Reset has changes flag after processing the month.
@@ -453,7 +453,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * @param previousMonthValue The previous month value
    * @param previousFormValues The previous form values
    */
-  processMonthBeforeMonthChanges(previousMonthValue: string | undefined, previousFormValues: UserDefinedLink[]) {
+  async processMonthBeforeMonthChanges(previousMonthValue: string | undefined, previousFormValues: UserDefinedLink[]) {
     /** On first change the previousMonthValue can be undefined, in that case, do nothing. */
     if (!previousMonthValue || previousFormValues.length == 0) return;
 
@@ -461,7 +461,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     /** If process Input data, remember NOT to emit, because we only want to save it, if we emit,
      * the current month will be overridden from the data of previous month.
      */
-    this.dataService.processInputData(previousFormValues, previousMonthValue, { showSnackbarWhenDone: true, emitObservable: false})
+    await this.dataService.processInputData(previousFormValues, previousMonthValue, { showSnackbarWhenDone: true, emitObservable: false});
   }
   //#endregion
 
@@ -475,7 +475,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * 
    * INLINE CALCULATOR feature is implemented here. This function will be triggered when user blur input field.
    */
-  updateInput(linkGroup?: AbstractControl) {
+  async updateInput(linkGroup?: AbstractControl) {
     
     
     // Used to early exit the function. If function is valid, use 'updatedFormData' below to access the form data.
@@ -516,7 +516,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     const id: string = linkGroup?.get('id')?.value;
     const value = addImplicitPlusSigns(linkGroup?.get('value')?.value || '0')
     /** Save value changes into logs to keep track of value's history changes. */
-    this.logService.setLog(this.dataMonth, id, value)
+    await this.logService.setLog(this.dataMonth, id, value);
 
 
     linkGroup?.setValue({ ...linkGroup.value, value: sum, source: linkGroup.value.source ?? '' });
@@ -543,7 +543,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     
     if (!this.linkForm.valid || this.updateFromService) return; // Exit function here, don't process input if not valid.
 
-    this.dataService.processInputData(updatedFormData, this.dataMonth);
+    await this.dataService.processInputData(updatedFormData, this.dataMonth);
   
     // After processing, update the initial form state to the new one
     this.initialFormState = [...updatedFormData]; // Update the stored form state
@@ -631,10 +631,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       }
       return;
     }
-    this.applyMonthTransfer(transfer, month);
+    await this.applyMonthTransfer(transfer, month);
   }
 
-  protected pasteMonthText(text: string, month: string): boolean {
+  protected async pasteAndClose(month:string, dialog:{close():void}, text?:string):Promise<void> {
+    const saved=text===undefined ? await this.pasteMonthFromTab(month) : await this.pasteMonthText(text,month);
+    if(saved) dialog.close();
+  }
+
+  protected async pasteMonthText(text: string, month: string): Promise<boolean> {
     let transfer: MonthTransfer;
     try {
       transfer = readMonth(text);
@@ -642,22 +647,22 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       this.uiService.showSnackBar('Copy a month from Easy Sankey first.');
       return false;
     }
-    return this.applyMonthTransfer(transfer, month);
+    return (await this.applyMonthTransfer(transfer, month));
   }
 
   protected get lastMonthCopiedInTab(): UserDefinedLink[] | null {
     return this.dataService.retrieveCopiedLinks();
   }
 
-  protected pasteMonthFromTab(month: string): boolean {
+  protected async pasteMonthFromTab(month: string): Promise<boolean> {
     const entries = this.lastMonthCopiedInTab;
-    return !!entries?.length && this.applyMonthTransfer({ entries, categories: [] }, month);
+    return !!entries?.length && (await this.applyMonthTransfer({ entries, categories: [] }, month));
   }
 
-  private applyMonthTransfer(transfer: MonthTransfer, month: string): boolean {
+  private async applyMonthTransfer(transfer: MonthTransfer, month: string): Promise<boolean> {
     if (this.destroyRef.destroyed || month !== this.dataMonth || !month) return false;
     try {
-      this.dataService.importMonth(month, transfer);
+      await this.dataService.importMonth(month, transfer);
       this.savedFormValues = this.linkArray.value.slice();
       this.hasChanges = false;
       this.uiService.showSnackBar(`Entries pasted into ${month}.`);
@@ -670,7 +675,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     }
   }
 
-  pasteFixCosts() {
+  async pasteFixCosts() {
     if (this.fixedLinks.length == 0) {
       this.uiService.showSnackBar('No fix costs found', 'Dismiss');
       return;
@@ -706,7 +711,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       /** Update saved form values. */
       this.updateSavedFormValuesOnFormChanges();
   
-      this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
+      await this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
       this.hasChanges = true;
       this.uiService.showSnackBar('Fix costs updated!', 'Ok');
     }
@@ -886,12 +891,12 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   /********** Filter/Add/Remove Links **********/
 
-  protected toggleEntryView(): void {
+  protected async toggleEntryView(): Promise<void> {
     this.groupByCategory = !this.groupByCategory;
-    this.storage.write('entryView', this.groupByCategory ? 'category' : 'costType');
+    await this.storage.write('entryView', this.groupByCategory ? 'category' : 'costType');
   }
 
-  protected sortEntriesByRecentlyEdited(): void {
+  protected async sortEntriesByRecentlyEdited(): Promise<void> {
     const editTime = (row: FormGroup): number => {
       const timestamp = row.get('lastEditedAt')?.value;
       return typeof timestamp === 'number' && Number.isFinite(timestamp) ? timestamp : 0;
@@ -901,7 +906,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.clear({ emitEvent: false });
     this.linkArray.push(controls, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges();
-    this.saveEntryOrder();
+    await this.saveEntryOrder();
     this.uiService.showSnackBar('Entries sorted by most recently edited.');
     void this.announcer.announce('Entries sorted by most recently edited. You can continue reordering them.');
   }
@@ -910,10 +915,10 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (!this.collapsedCategories.delete(id)) this.collapsedCategories.add(id);
   }
 
-  private saveEntryOrder(): void {
+  private async saveEntryOrder(): Promise<void> {
     if (!this.linkForm.valid) return;
     // Persist without rebuilding the editor, preserving focus and draft row state.
-    this.dataService.processInputData(this.savedFormValues, this.dataMonth, { emitObservable: false });
+    await this.dataService.processInputData(this.savedFormValues, this.dataMonth, { emitObservable: false });
   }
 
   protected visibleEntries(isFixCost?: boolean): FormGroup[] {
@@ -964,21 +969,21 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     }, { injector: this.injector });
   }
 
-  protected dropEntries(event: CdkDragDrop<FormGroup[]>): void {
+  protected async dropEntries(event: CdkDragDrop<FormGroup[]>): Promise<void> {
     if (event.isPointerOverContainer) {
-      this.reorderEntries(event.container.data, event.previousIndex, event.currentIndex);
+      await this.reorderEntries(event.container.data, event.previousIndex, event.currentIndex);
     }
   }
 
-  protected moveEntryWithKeyboard(event: Event, rows: FormGroup[], from: number, to: number): void {
+  protected async moveEntryWithKeyboard(event: Event, rows: FormGroup[], from: number, to: number): Promise<void> {
     event.preventDefault();
     const handle = event.currentTarget as HTMLButtonElement;
-    if (this.reorderEntries(rows, from, to)) {
+    if ((await this.reorderEntries(rows, from, to))) {
       afterNextRender(() => handle.focus(), { injector: this.injector });
     }
   }
 
-  private reorderEntries(rows: FormGroup[], from: number, to: number): boolean {
+  private async reorderEntries(rows: FormGroup[], from: number, to: number): Promise<boolean> {
     if (from === to || from < 0 || from >= rows.length || to < 0 || to >= rows.length) return false;
     const controls = [...this.linkArray.controls];
     const slots = rows.map(row => controls.indexOf(row));
@@ -992,17 +997,17 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.push(controls, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges();
     const name = reordered[to].get('target')?.value || 'New entry';
-    this.saveEntryOrder();
+    await this.saveEntryOrder();
     void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);
     return true;
   }
 
-  protected removeEntry(row: FormGroup): void {
-    this.removeLink(this.linkArray.controls.indexOf(row));
+  protected async removeEntry(row: FormGroup): Promise<void> {
+    await this.removeLink(this.linkArray.controls.indexOf(row));
   }
 
   // Remove an input row
-  removeLink(index: number): void {
+  async removeLink(index: number): Promise<void> {
     if (index < 0) return;
     const row = this.linkArray.at(index);
     const link: UserDefinedLink = row.value;
@@ -1011,7 +1016,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.removeAt(index, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges()
     this.hasDuplicates = this._checkDuplicateName();
-    if (this.linkForm.valid) this.dataService.processInputData(this.linkForm.value.links, this.dataMonth);
+    if (this.linkForm.valid) (await this.dataService.processInputData(this.linkForm.value.links, this.dataMonth));
   }
   
   //#endregion
@@ -1049,11 +1054,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   //#endregion
 
   // Submit form and emit the data (to parent component or a service)
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (!this.linkForm.valid) return;
 
     const formData: UserDefinedLink[] = this.linkForm.value.links;
-    this.dataService.processInputData(formData, this.dataMonth)
+    await this.dataService.processInputData(formData, this.dataMonth);
   }
 
   closeAutoComplete(index: number): void {
@@ -1087,8 +1092,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
 
   
-  override ngOnDestroy(): void {
+  override async ngOnDestroy(): Promise<void> {
     super.ngOnDestroy();
-    this.onSubmit()
+    await this.onSubmit();
   }
 }

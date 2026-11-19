@@ -304,3 +304,23 @@ newer documentation into this project's older Electron runtime without checking.
 - [Electron IPC](https://www.electronjs.org/docs/latest/tutorial/ipc)
 - [Electron native module rebuilding](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules)
 - [SQLite consistent backups](https://sqlite.org/backup.html)
+
+## Implementation record
+
+The migration is implemented. See `docs/storage.md` for the resulting architecture,
+source schema, APIs, legacy migration, backup/recovery, build instructions, and
+platform verification commands. Runtime reads use a hydrated, detached snapshot;
+all database APIs and commits are asynchronous. This avoids unnecessary UI loading
+round trips while preserving awaited saves and transactional persistence.
+
+Validation is recorded in `docs/sqlite-validation.md`. Platform installer smoke
+tests are required in CI before artifacts are uploaded. Unexecuted platform checks
+must remain explicitly identified in that record.
+
+
+## Updated platform scope
+
+Per the user's final instruction, supported targets are Apple Silicon Mac (arm64)
+and Windows x64. Intel Mac support is discontinued. Do not build, publish, or
+require validation of Mac x64/universal installers; this overrides earlier Mac
+x64 requirements in this plan. Windows x64 remains supported.

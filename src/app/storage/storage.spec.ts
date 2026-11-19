@@ -52,83 +52,83 @@ describe('storage boundary', () => {
     expect(write).not.toHaveBeenCalled();
   });
 
-  it('returns detached snapshots and persists only explicit writes', () => {
-    storage.write('budgets', [{ category: 'housing', value: 100 }]);
+  it('returns detached snapshots and persists only explicit writes', async () => {
+    (await storage.write('budgets', [{ category: 'housing', value: 100 }]));
     storage.read('budgets')![0].value = 200;
     expect(storage.read('budgets')![0].value).toBe(100);
-    storage.delete('budgets');
+    (await storage.delete('budgets'));
     expect(storage.read('budgets')).toBeNull();
   });
 
-  it('creates, reads, updates and deletes a month without losing another month', () => {
-    months.create(month());
-    months.create(month('2025-05'));
+  it('creates, reads, updates and deletes a month without losing another month', async () => {
+    (await months.create(month()));
+    (await months.create(month('2025-05')));
     expect(months.get('2025-04')).toEqual(month());
-    months.update({ ...month(), totalExpenses: 40 });
+    (await months.update({ ...month(), totalExpenses: 40 }));
     expect(months.get('2025-04')?.totalExpenses).toBe(40);
-    expect(months.delete('2025-04')).toBeTrue();
-    expect(months.delete('2025-04')).toBeFalse();
+    expect((await months.delete('2025-04'))).toBeTrue();
+    expect((await months.delete('2025-04'))).toBeFalse();
     expect(months.get('2025-04')).toBeNull();
     expect(Object.keys(months.list())).toEqual(['2025-05']);
   });
 
-  it('rejects duplicate creation, missing updates and invalid month identifiers before writing', () => {
-    months.create(month());
+  it('rejects duplicate creation, missing updates and invalid month identifiers before writing', async () => {
+    (await months.create(month()));
     const before = adapter.getItem('monthlyData');
-    expect(() => months.create(month())).toThrowError(/already exists/);
-    expect(() => months.update(month('2025-05'))).toThrowError(/does not exist/);
-    expect(() => months.upsert(month('2025-13'))).toThrowError(/Invalid month/);
-    expect(() => months.replaceAll({ '2025-05': month() })).toThrowError(/Invalid month/);
+    await expectAsync(months.create(month())).toBeRejectedWithError(/already exists/);
+    await expectAsync(months.update(month('2025-05'))).toBeRejectedWithError(/does not exist/);
+    await expectAsync(months.upsert(month('2025-13'))).toBeRejectedWithError(/Invalid month/);
+    await expectAsync(months.replaceAll({ '2025-05': month() })).toBeRejectedWithError(/Invalid month/);
     expect(adapter.getItem('monthlyData')).toBe(before);
   });
 
-  it('supports upsert and explicit replacement of all months', () => {
-    months.upsert(month());
-    months.upsert({ ...month(), totalExpenses: 30 });
+  it('supports upsert and explicit replacement of all months', async () => {
+    (await months.upsert(month()));
+    (await months.upsert({ ...month(), totalExpenses: 30 }));
     expect(months.get('2025-04')?.totalExpenses).toBe(30);
-    months.replaceAll({ '2025-05': month('2025-05') });
+    (await months.replaceAll({ '2025-05': month('2025-05') }));
     expect(Object.keys(months.list())).toEqual(['2025-05']);
   });
 
-  it('propagates failed writes without changing the saved month', () => {
-    months.create(month());
+  it('propagates failed writes without changing the saved month', async () => {
+    (await months.create(month()));
     spyOn(adapter, 'setItem').and.throwError('Disk full');
-    expect(() => months.update({ ...month(), totalExpenses: 50 })).toThrowError('Disk full');
+    await expectAsync(months.update({ ...month(), totalExpenses: 50 })).toBeRejectedWithError('Disk full');
     expect(months.get('2025-04')?.totalExpenses).toBe(20);
   });
 
-  it('rolls back a copied month when its category definitions cannot be saved', () => {
-    months.create(month());
+  it('rolls back a copied month when its category definitions cannot be saved', async () => {
+    (await months.create(month()));
     const original = adapter.setItem.bind(adapter);
     spyOn(adapter, 'setItem').and.callFake((key, value) => {
       if (key === 'expenseCategories') throw new Error('Disk full');
       original(key, value);
     });
-    expect(() => months.importMonth(month('2025-05'), [])).toThrowError('Disk full');
+    await expectAsync(months.importMonth(month('2025-05'), [])).toBeRejectedWithError('Disk full');
     expect(Object.keys(months.list())).toEqual(['2025-04']);
     expect(storage.read('expenseCategories')).toBeNull();
   });
 
-  it('restores legacy backups and rejects malformed backups without changing data', () => {
-    months.create(month());
-    storage.write('selectedCurrency', 'USD');
-    const backup = storage.exportBackup();
-    months.create(month('2025-05'));
-    storage.write('selectedCurrency', 'EUR');
-    storage.restoreBackup(backup);
+  it('restores legacy backups and rejects malformed backups without changing data', async () => {
+    (await months.create(month()));
+    (await storage.write('selectedCurrency', 'USD'));
+    const backup = (await storage.exportBackup());
+    (await months.create(month('2025-05')));
+    (await storage.write('selectedCurrency', 'EUR'));
+    (await storage.restoreBackup(backup));
     expect(Object.keys(months.list())).toEqual(['2025-04']);
     expect(storage.read('selectedCurrency')).toBe('USD');
-    expect(() => storage.restoreBackup('{"app":"other"}')).toThrow();
+    await expectAsync(storage.restoreBackup('{"app":"other"}')).toBeRejected();
     expect(Object.keys(months.list())).toEqual(['2025-04']);
   });
 
-  it('keeps session state separate and preserves the existing boolean format', () => {
+  it('keeps session state separate and preserves the existing boolean format', async () => {
     const sessions = TestBed.inject(SessionStore);
     session.setItem('isFormatBigNumbers', 'false');
     expect(sessions.read('isFormatBigNumbers')).toBeFalse();
     sessions.write('isFormatBigNumbers', true);
     expect(session.getItem('isFormatBigNumbers')).toBe('true');
-    storage.write('selectedCurrency', 'EUR');
+    (await storage.write('selectedCurrency', 'EUR'));
     sessions.clear();
     expect(sessions.read('isFormatBigNumbers')).toBeNull();
     expect(storage.read('selectedCurrency')).toBe('EUR');

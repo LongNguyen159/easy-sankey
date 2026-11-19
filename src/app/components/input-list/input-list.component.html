@@ -278,8 +278,8 @@
   <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
     @if (lastMonthCopiedInTab?.length) {
-      <button mat-button (click)="pasteMonthFromTab(month) && dialogRef.close()">Paste from this tab</button>
+      <button mat-button (click)="pasteAndClose(month, dialogRef)">Paste from this tab</button>
     }
-    <button mat-flat-button (click)="pasteMonthText(monthJson.value, month) && dialogRef.close()">Paste</button>
+    <button mat-flat-button (click)="pasteAndClose(month, dialogRef, monthJson.value)">Paste</button>
   </mat-dialog-actions>
 </ng-template>

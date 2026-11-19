@@ -33,20 +33,20 @@ export class CategoryManagerComponent {
     this.dialog.open(CategoryEditorDialogComponent, { data: category, width: '500px' });
   }
 
-  protected drop(event: CdkDragDrop<ExpenseCategoryDetails[], ExpenseCategoryDetails[], ExpenseCategoryDetails>): void {
-    if (event.isPointerOverContainer) this.moveCategory(event.item.data, event.currentIndex);
+  protected async drop(event: CdkDragDrop<ExpenseCategoryDetails[], ExpenseCategoryDetails[], ExpenseCategoryDetails>): Promise<void> {
+    if (event.isPointerOverContainer) (await this.moveCategory(event.item.data, event.currentIndex));
   }
 
-  protected moveWithKeyboard(event: Event, category: ExpenseCategoryDetails, toIndex: number): void {
+  protected async moveWithKeyboard(event: Event, category: ExpenseCategoryDetails, toIndex: number): Promise<void> {
     event.preventDefault();
     const handle = event.currentTarget as HTMLButtonElement;
-    if (this.moveCategory(category, toIndex)) {
+    if ((await this.moveCategory(category, toIndex))) {
       afterNextRender(() => handle.focus(), { injector: this.injector });
     }
   }
 
-  private moveCategory(category: ExpenseCategoryDetails, toIndex: number): boolean {
-    if (!this.categoryService.move(category.value, toIndex)) return false;
+  private async moveCategory(category: ExpenseCategoryDetails, toIndex: number): Promise<boolean> {
+    if (!(await this.categoryService.move(category.value, toIndex))) return false;
     void this.announcer.announce(`${category.label} moved to position ${toIndex + 1} of ${this.categories().length}.`);
     return true;
   }
@@ -58,9 +58,9 @@ export class CategoryManagerComponent {
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
       confirmColor: 'warn',
-    }, '440px', 'auto').subscribe(confirmed => {
+    }, '440px', 'auto').subscribe(async confirmed => {
       if (!confirmed) return;
-      this.dataService.removeCategory(category.value);
+      await this.dataService.removeCategory(category.value);
     });
   }
 }

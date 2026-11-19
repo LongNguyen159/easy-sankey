@@ -50,25 +50,25 @@ export class SettingsDialogComponent implements OnInit{
   availableCurrencies: string[] = ['USD', 'EUR', 'VND'];
   importing = false;
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.selectedTheme = this.colorService.isManualThemeSet() ? (this.colorService.isDarkMode() ? Theme.Dark : Theme.Light) : Theme.System
-    this.applySelectedTheme(this.selectedTheme);
+    await this.applySelectedTheme(this.selectedTheme);
 
 
     this.selectedCurrency = this.currencyService.getSelectedCurrency();
-    this.applySelectedCurrency(this.selectedCurrency)
+    await this.applySelectedCurrency(this.selectedCurrency);
   }
 
   /** On selection change, call apply theme */
-  applySelectedTheme(theme: Theme) {
-    this.colorService.applyTheme(theme);
+  async applySelectedTheme(theme: Theme) {
+    await this.colorService.applyTheme(theme);
     this.selectedTheme = theme;
   }
 
 
-  applySelectedCurrency(currency: string): void {
+  async applySelectedCurrency(currency: string): Promise<void> {
     this.selectedCurrency = currency;
-    this.currencyService.setSelectedCurrency(currency);
+    await this.currencyService.setSelectedCurrency(currency);
   }
 
   navigateToDataManager() {
@@ -80,10 +80,16 @@ export class SettingsDialogComponent implements OnInit{
     this.dialogRef.close()
   }
 
-  exportData(): void {
+  async exportData(): Promise<void> {
+    const desktop=(window as any).electronAPI?.database?.state;
+    if(desktop?.exportFile) {
+      try { await desktop.exportFile(); }
+      catch { this.uiService.showSnackBar('Could not export the backup.'); }
+      return;
+    }
     let json: string;
     try {
-      json = this.storage.exportBackup();
+      json = (await this.storage.exportBackup());
     } catch {
       this.uiService.showSnackBar('Could not create the backup.');
       return;
@@ -123,7 +129,7 @@ export class SettingsDialogComponent implements OnInit{
       if (!confirmed) return;
 
       try {
-        this.storage.restoreBackup(backup);
+        await this.storage.restoreBackup(backup);
       } catch {
         this.uiService.showSnackBar('Could not restore the backup.');
         return;
@@ -143,25 +149,17 @@ export class SettingsDialogComponent implements OnInit{
 
   clearLocalStorage() {
     const dialogData: ConfirmDialogData = {
-      title: 'Are you sure you want to clear Local Storage?',
+      title: 'Are you sure you want to erase all app data?',
       message: 'This will erase all your data. You will see the welcome screen next time you open the app.',
       confirmLabel: 'Delete',
       confirmColor: 'warn',
       cancelLabel: 'Cancel'
     }
-    this.uiService.openConfirmDialog(dialogData).subscribe((confirmed: boolean | undefined) => {
+    this.uiService.openConfirmDialog(dialogData).subscribe(async (confirmed: boolean | undefined) => {
       if (confirmed) {
-        this.storage.clear();
+        await this.storage.clear();
         this.sessionStore.clear();
-        this.uiService.showSnackBar('Local Storage Cleared!', 'Dismiss', 3000)
-        this.dialog.open(RestartDialogComponent, {
-          disableClose: true,
-          width: '45rem',
-          maxWidth: '60vw',
-          height: '12rem',
-          maxHeight: '60vh',
-        })
-        this.dialogRef.close()
+        location.replace(new URL('index.html', document.baseURI));
       }
     })
   }

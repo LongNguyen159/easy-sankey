@@ -1,3 +1,8 @@
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { DatePipe } from '@angular/common';
+import { provideRouter } from '@angular/router';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { PERSISTENT_STORAGE } from '../../storage/app-storage';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
@@ -14,9 +19,9 @@ import { EntryType, SingleMonthData, UserDefinedLink } from '../models';
 import { InputListComponent } from './input-list.component';
 
 class EntryListHarness extends InputListComponent {
-  sortRecentlyEdited() { this.sortEntriesByRecentlyEdited(); }
-  drop(rows: FormGroup[], from: number, to: number) {
-    this.dropEntries({ isPointerOverContainer: true, container: { data: rows }, previousIndex: from, currentIndex: to } as CdkDragDrop<FormGroup[]>);
+  async sortRecentlyEdited() { (await this.sortEntriesByRecentlyEdited()); }
+  async drop(rows: FormGroup[], from: number, to: number) {
+    (await this.dropEntries({ isPointerOverContainer: true, container: { data: rows }, previousIndex: from, currentIndex: to } as CdkDragDrop<FormGroup[]>));
   }
   rows(isFixCost?: boolean) { return this.visibleEntries(isFixCost); }
 }
@@ -31,7 +36,7 @@ describe('InputListComponent manual sorting', () => {
 
   beforeEach(() => {
     save = jasmine.createSpy('processInputData');
-    TestBed.configureTestingModule({ providers: [
+    TestBed.configureTestingModule({ providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, { provide: PERSISTENT_STORAGE, useValue: localStorage },
       { provide: DataService, useValue: { demoLinks: [], nonAllowedNames: [], isDemo: () => false,
         hasDataCycle: { set: () => {} }, processInputData: save } },
       { provide: UiService, useValue: { showSnackBar: jasmine.createSpy('showSnackBar') } },
@@ -47,25 +52,25 @@ describe('InputListComponent manual sorting', () => {
     component.dataMonth = '2026-11';
   });
 
-  afterEach(() => component.ngOnDestroy());
+  afterEach(async () => (await component.ngOnDestroy()));
 
-  it('writes a stable newest-first manual order and saves it across reopening', () => {
+  it('writes a stable newest-first manual order and saves it across reopening', async () => {
     component.populateInputFields({ rawInput: [entry('undated'), entry('older', 100), entry('newest', 200), entry('tie', 200), entry('also-undated')] } as SingleMonthData);
-    component.sortRecentlyEdited();
+    (await component.sortRecentlyEdited());
     expect(ids()).toEqual(['newest', 'tie', 'older', 'undated', 'also-undated']);
     expect(component.savedFormValues.map(row => row.id)).toEqual(ids());
     expect(component.hasChanges).toBeTrue();
     expect(save).toHaveBeenCalledWith(component.savedFormValues, '2026-11', { emitObservable: false });
-    component.onSubmit();
+    (await component.onSubmit());
     expect(save).toHaveBeenCalledWith(component.savedFormValues, '2026-11');
     component.populateInputFields({ rawInput: save.calls.mostRecent().args[0] } as SingleMonthData);
     expect(ids()).toEqual(['newest', 'tie', 'older', 'undated', 'also-undated']);
   });
 
-  it('allows dragging the sorted rows without changing edit dates or sorting again on edits', () => {
+  it('allows dragging the sorted rows without changing edit dates or sorting again on edits', async () => {
     component.populateInputFields({ rawInput: [entry('older', 100), entry('newest', 200)] } as SingleMonthData);
-    component.sortRecentlyEdited();
-    component.drop(component.rows(), 0, 1);
+    (await component.sortRecentlyEdited());
+    (await component.drop(component.rows(), 0, 1));
     expect(ids()).toEqual(['older', 'newest']);
     expect(save.calls.mostRecent().args[0].map((row: UserDefinedLink) => row.id)).toEqual(['older', 'newest']);
     expect(component.linkArray.at(0).get('lastEditedAt')?.value).toBe(100);
@@ -75,17 +80,17 @@ describe('InputListComponent manual sorting', () => {
     expect(ids()).toEqual(['older', 'newest']);
   });
 
-  it('sorts the whole month during search and keeps filtered dragging scoped to visible rows', () => {
+  it('sorts the whole month during search and keeps filtered dragging scoped to visible rows', async () => {
     const fixed = { ...entry('fixed', 250), isFixCost: true };
     component.populateInputFields({ rawInput: [entry('match-old', 100), fixed, entry('hidden', 200), entry('match-new', 300)] } as SingleMonthData);
     component.filterLinks('match');
-    component.sortRecentlyEdited();
+    (await component.sortRecentlyEdited());
     expect(ids()).toEqual(['match-new', 'fixed', 'hidden', 'match-old']);
-    component.drop(component.rows(false), 0, 1);
+    (await component.drop(component.rows(false), 0, 1));
     expect(ids()).toEqual(['match-old', 'fixed', 'hidden', 'match-new']);
   });
 
-  it('preserves dates on loading and tracks content edits without touching other entries', () => {
+  it('preserves dates on loading and tracks content edits without touching other entries', async () => {
     component.populateInputFields({ rawInput: [entry('legacy'), entry('edited', 100)] } as SingleMonthData);
     spyOn(Date, 'now').and.returnValue(500);
     const row = component.linkArray.at(0);
@@ -97,7 +102,7 @@ describe('InputListComponent manual sorting', () => {
     row.get('type')?.setValue(EntryType.Income);
     expect(row.get('lastEditedAt')?.value).toBe(500);
     expect(component.linkArray.at(1).get('lastEditedAt')?.value).toBe(100);
-    component.sortRecentlyEdited();
+    (await component.sortRecentlyEdited());
     expect(ids()).toEqual(['legacy', 'edited']);
   });
 });

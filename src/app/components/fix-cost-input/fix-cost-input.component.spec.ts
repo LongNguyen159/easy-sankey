@@ -1,7 +1,10 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DatePipe } from '@angular/common';
-import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { PERSISTENT_STORAGE } from '../../storage/app-storage';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { FixCostInputComponent } from './fix-cost-input.component';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
@@ -16,7 +19,7 @@ describe('FixCostInputComponent', () => {
     localStorage.removeItem('fixCostSort');
     await TestBed.configureTestingModule({
       imports: [FixCostInputComponent],
-      providers: [
+      providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, { provide: PERSISTENT_STORAGE, useValue: localStorage },
         DatePipe,
         provideRouter([]),
         {

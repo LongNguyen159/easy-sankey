@@ -75,7 +75,7 @@ export class CategoryEditorDialogComponent {
     return iconLabels[icon] ?? icon.replaceAll('_', ' ');
   }
 
-  protected save(): void {
+  protected async save(): Promise<void> {
     const label = this.label.trim();
     if (!label) return;
 
@@ -86,6 +86,6 @@ export class CategoryEditorDialogComponent {
       return;
     }
 
-    this.dialogRef.close(this.categories.save(label, this.icon, this.color, this.category?.value));
+    this.dialogRef.close((await this.categories.save(label, this.icon, this.color, this.category?.value)));
   }
 }

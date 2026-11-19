@@ -33,7 +33,7 @@ export class AppComponent implements OnInit {
     this.colorService.applyStoredThemeSettings()
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (window['electronAPI']) {
       window['electronAPI'].onUpdateAvailable(() => {
         alert('Update available! Downloading now...');
@@ -42,7 +42,7 @@ export class AppComponent implements OnInit {
       window['electronAPI'].onUpdateDownloaded(() => {
         const restart = confirm('Update downloaded. Restart now?');
         if (restart) {
-          window['electronAPI'].ipcRenderer.send('restart_app');
+          window['electronAPI'].restartApp();
         }
       });
     } else {
@@ -56,14 +56,14 @@ export class AppComponent implements OnInit {
 
     if (isFirstTime || this.dataService.isOldVersion()) {
       // Navigate to the welcome page and mark the user as not first-time
-      this.navigateToWelcome();
+      await this.navigateToWelcome();
     } else {
       // For non-first-time users, check for updates
-      this.checkForUpdate();
+      await this.checkForUpdate();
     }
   }
 
-  checkForUpdate() {
+  async checkForUpdate() {
     const storedVersion = this.storage.read('appVersion');
     console.log('Stored version:', storedVersion);
     console.log('Current version pulled from package.json:', this.appVersion);
@@ -72,15 +72,15 @@ export class AppComponent implements OnInit {
       this.router.navigate([RoutePath.WhatsNewPage]);
       
       // Store the new version to prevent showing the update page again
-      this.storage.write('appVersion', this.appVersion);
+      await this.storage.write('appVersion', this.appVersion);
     }
   }
 
-  navigateToWelcome() {
+  async navigateToWelcome() {
     this.router.navigate([RoutePath.WelcomePage]);
     /** Set app version on welcome to prevent showing updates on next time. */
-    this.storage.write('appVersion', this.appVersion);
+    await this.storage.write('appVersion', this.appVersion);
     // Mark the user as having seen the welcome page
-    this.storage.write('firstTime', 'false');
+    await this.storage.write('firstTime', 'false');
   }
 }
