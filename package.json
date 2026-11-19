@@ -31,6 +31,7 @@
     "@angular/platform-browser-dynamic": "^22.2.6",
     "@angular/router": "^22.2.6",
     "arima": "^0.2.5",
+    "better-sqlite3": "^13.2.0",
     "cors": "^2.8.5",
     "echarts": "^5.5.1",
     "electron-updater": "^6.3.9",
