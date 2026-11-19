@@ -7,6 +7,7 @@ export interface UserDefinedLink {
     source?: string;  // Category ID or parent node (only for expenses)
     isFixCost?: boolean;  // Optional flag to indicate fix cost
     demo?: boolean;   // Optional flag to indicate demo data
+    lastEditedAt?: number | null; // Entry edit time in milliseconds; independent of manual order
 }
 
 export enum EntryType {

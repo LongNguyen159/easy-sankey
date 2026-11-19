@@ -298,7 +298,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       ]],
       value: [link ? link.value : 0, [Validators.required, Validators.min(0)]],
       source: [link?.source === '-- None --' ? '' : link?.source ?? ''],
-      isFixCost: [link ? link.isFixCost : false]
+      isFixCost: [link ? link.isFixCost : false],
+      lastEditedAt: [link ? link.lastEditedAt ?? null : Date.now()]
     });
 
     /** Add into IDs array when a new link is created. */
@@ -356,6 +357,19 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
         /** Set type automatic to expense if category chosen */
         linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
         this.checkForCycle(value, linkGroup.get('target')?.value, linkGroup, this.linkArray.value);
+      }
+    });
+    // Track content edits only. Moving rows or rebuilding the form preserves edit times.
+    const content = () => {
+      const { type, target, value, source, isFixCost } = linkGroup.getRawValue();
+      return JSON.stringify({ type, target, value, source, isFixCost });
+    };
+    let previousContent = content();
+    linkGroup.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(() => {
+      const currentContent = content();
+      if (currentContent !== previousContent) {
+        previousContent = currentContent;
+        linkGroup.get('lastEditedAt')?.setValue(Date.now(), { emitEvent: false });
       }
     });
     return linkGroup;
@@ -875,8 +889,29 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     localStorage.setItem('entryView', this.groupByCategory ? 'category' : 'costType');
   }
 
+  protected sortEntriesByRecentlyEdited(): void {
+    const editTime = (row: FormGroup): number => {
+      const timestamp = row.get('lastEditedAt')?.value;
+      return typeof timestamp === 'number' && Number.isFinite(timestamp) ? timestamp : 0;
+    };
+    // Stable sort keeps ties and undated entries in their existing manual order.
+    const controls = [...this.linkArray.controls].sort((a, b) => editTime(b) - editTime(a));
+    this.linkArray.clear({ emitEvent: false });
+    this.linkArray.push(controls, { emitEvent: false });
+    this.updateSavedFormValuesOnFormChanges();
+    this.saveEntryOrder();
+    this.uiService.showSnackBar('Entries sorted by most recently edited.');
+    void this.announcer.announce('Entries sorted by most recently edited. You can continue reordering them.');
+  }
+
   protected toggleCategory(id: string): void {
     if (!this.collapsedCategories.delete(id)) this.collapsedCategories.add(id);
+  }
+
+  private saveEntryOrder(): void {
+    if (!this.linkForm.valid) return;
+    // Persist without rebuilding the editor, preserving focus and draft row state.
+    this.dataService.processInputData(this.savedFormValues, this.dataMonth, { emitObservable: false });
   }
 
   protected visibleEntries(isFixCost?: boolean): FormGroup[] {
@@ -955,6 +990,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.push(controls, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges();
     const name = reordered[to].get('target')?.value || 'New entry';
+    this.saveEntryOrder();
     void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);
     return true;
   }

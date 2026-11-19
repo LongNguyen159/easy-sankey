@@ -48,6 +48,11 @@
 
         <mat-divider></mat-divider>
 
+        <button mat-menu-item type="button" (click)="sortEntriesByRecentlyEdited()" [disabled]="linkArray.length < 2">
+          <mat-icon fontSet="material-symbols-outlined">sort</mat-icon>
+          <span>Sort by most recently edited</span>
+        </button>
+
         <button mat-menu-item (click)="toggleEntryView()">
           <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
           <span>{{ groupByCategory ? 'Show by cost type' : 'Group by category' }}</span>

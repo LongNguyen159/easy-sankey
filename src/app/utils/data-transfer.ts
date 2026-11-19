@@ -37,6 +37,7 @@ function isEntry(value: unknown): value is UserDefinedLink {
     && isNumber(value['value']) && value['value'] >= 0
     && (value['source'] == null || isString(value['source']))
     && (value['isFixCost'] == null || isBoolean(value['isFixCost']))
+    && (value['lastEditedAt'] == null || (isNumber(value['lastEditedAt']) && value['lastEditedAt'] >= 0))
     && (value['demo'] == null || isBoolean(value['demo']));
 }
 
