@@ -1,3 +1,4 @@
+import { AppStorage } from '../../storage/app-storage';
 import { CategoryService } from '../../services/category.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -15,7 +16,7 @@ import { BudgetDialogComponent } from '../dialogs/budget-dialog/budget-dialog.co
 import { UiService } from '../../services/ui.service';
 import { CurrencyService } from '../../services/currency.service';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
-import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sort';
+import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-sort';
 
 @Component({
     selector: 'app-budget-list',
@@ -35,6 +36,7 @@ import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sor
     styleUrl: './budget-list.component.scss'
 })
 export class BudgetListComponent implements OnInit{
+  private readonly storage = inject(AppStorage);
   colorService = inject(ColorService)
   budgetService = inject(BudgetService)
   uiService = inject(UiService)
@@ -45,8 +47,8 @@ export class BudgetListComponent implements OnInit{
 
   budgets: Budget[] = [];
 
-  protected view: 'cards' | 'list' = localStorage.getItem('budgetView') === 'list' ? 'list' : 'cards';
-  protected sortOrder = readAmountSort('budgetSort');
+  protected view: 'cards' | 'list' = this.storage.read('budgetView') === 'list' ? 'list' : 'cards';
+  protected sortOrder = resolveAmountSort(this.storage.read('budgetSort'));
   private manualOrder: string[] = [];
 
   constructor(private dialog: MatDialog) {}
@@ -54,7 +56,7 @@ export class BudgetListComponent implements OnInit{
   ngOnInit(): void {
     this.budgets = this.budgetService.getBudgets();
     try {
-      const stored: unknown = JSON.parse(localStorage.getItem('budgetManualOrder') ?? '[]');
+      const stored: unknown = this.storage.read('budgetManualOrder') ?? [];
       if (Array.isArray(stored) && stored.every(id => typeof id === 'string')) this.manualOrder = stored;
     } catch {
       // Use the category order if the saved order cannot be read.
@@ -63,12 +65,12 @@ export class BudgetListComponent implements OnInit{
 
   protected setView(view: 'cards' | 'list'): void {
     this.view = view;
-    localStorage.setItem('budgetView', view);
+    this.storage.write('budgetView', view);
   }
 
   protected setSort(order: AmountSort): void {
     this.sortOrder = order;
-    localStorage.setItem('budgetSort', order);
+    this.storage.write('budgetSort', order);
   }
 
   protected get orderedCategories(): ExpenseCategoryDetails[] {
@@ -102,7 +104,7 @@ export class BudgetListComponent implements OnInit{
     const order = categories.map(category => category.value);
     moveItemInArray(order, from, to);
     this.manualOrder = order;
-    localStorage.setItem('budgetManualOrder', JSON.stringify(order));
+    this.storage.write('budgetManualOrder', order);
     void this.announcer.announce(`${categories[from].label} moved to position ${to + 1} of ${order.length}.`);
     return true;
   }

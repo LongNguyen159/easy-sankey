@@ -1,4 +1,5 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { AppStorage } from '../storage/app-storage';
+import { computed, Injectable, signal, inject } from '@angular/core';
 import { v4 as uuid } from 'uuid';
 import { ExpenseCategoryDetails, expenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
 import { removeSystemPrefix } from '../utils/utils';
@@ -78,6 +79,7 @@ export const CATEGORY_ICON_GROUPS = [
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
+  private readonly storage = inject(AppStorage);
   private readonly definitions = signal<ExpenseCategoryDetails[]>(this.load());
   readonly categories = this.definitions.asReadonly();
 
@@ -147,24 +149,24 @@ export class CategoryService {
   }
 
   private load(): ExpenseCategoryDetails[] {
-    const stored = localStorage.getItem(categoryStorageKey);
-    if (stored) {
-      try {
-        const categories: unknown = JSON.parse(stored);
+    try {
+      const stored = this.storage.read(categoryStorageKey);
+      if (stored) {
+        const categories: unknown = stored;
         if (Array.isArray(categories)) {
           return categories.map(category => category?.icon === 'card_giftcard'
             ? { ...category, icon: 'redeem' }
             : category);
         }
-      } catch (error) {
-        console.error('Could not load expense categories', error);
       }
+    } catch (error) {
+      console.error('Could not load expense categories', error);
     }
     return Object.values(expenseCategoryDetails);
   }
 
   private persist(categories: ExpenseCategoryDetails[]): void {
-    localStorage.setItem(categoryStorageKey, JSON.stringify(categories));
+    this.storage.write(categoryStorageKey, categories);
     this.definitions.set(categories);
   }
 }

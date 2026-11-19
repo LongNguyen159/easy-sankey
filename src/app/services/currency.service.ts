@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
+import { AppStorage } from '../storage/app-storage';
+import { Injectable, inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrencyService {
+  private readonly storage = inject(AppStorage);
 
   private readonly currencyKey = 'selectedCurrency';
   private readonly defaultCurrency = 'EUR';
@@ -19,13 +21,13 @@ export class CurrencyService {
 
 
   getSelectedCurrency(): string {
-    return localStorage.getItem(this.currencyKey) || this.defaultCurrency;
+    return this.storage.read(this.currencyKey) || this.defaultCurrency;
   }
   getCurrencySymbol(currency: string = this.getSelectedCurrency()): string {
       return this.currencySymbols[currency] || '';
   }
 
   setSelectedCurrency(currency: string): void {
-      localStorage.setItem(this.currencyKey, currency);
+      this.storage.write(this.currencyKey, currency);
   }
 }

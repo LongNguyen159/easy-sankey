@@ -4,8 +4,7 @@ export function isAmountSort(value: unknown): value is AmountSort {
   return value === 'manual' || value === 'highest' || value === 'lowest';
 }
 
-export function readAmountSort(key: string): AmountSort {
-  const value = localStorage.getItem(key);
+export function resolveAmountSort(value: unknown): AmountSort {
   return isAmountSort(value) ? value : 'manual';
 }
 

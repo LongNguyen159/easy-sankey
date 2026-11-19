@@ -1,3 +1,5 @@
+import { AppStorage, SessionStore } from '../storage/app-storage';
+import { MonthRepository } from '../storage/month.repository';
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
 import { EntryType, ExpenseCategory, SankeyData, SankeyLink, SankeyNode, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
@@ -9,7 +11,7 @@ import { CategoryService } from './category.service';
 import { BudgetService } from './budget.service';
 import { TrackingService } from './tracking.service';
 import { SingleMonthData, MonthlyData } from '../components/models';
-import { categoryStorageKey, MonthTransfer, replaceStorageItems } from '../utils/data-transfer';
+import { MonthTransfer } from '../utils/data-transfer';
 import { v4 as uuid } from 'uuid';
 
 
@@ -27,9 +29,12 @@ export interface ExpenseData {
 /** This service main purpose is to handle the processing of Input Data (converting raw input data into Sankey Data with source - target - value).
  * 
  * 
- * This is the central processing part of the app. It also handles saving data into Local Storage and emit observables for the subscribers.
+ * This is the central processing part of the app. It delegates persistence to the month repository and emits observables for subscribers.
  */
 export class DataService {
+    private readonly storage = inject(AppStorage);
+    private readonly sessionStore = inject(SessionStore);
+    private readonly months = inject(MonthRepository);
     private UiService = inject(UiService)
     private logService = inject(LogsService)
     private categories = inject(CategoryService)
@@ -105,7 +110,6 @@ export class DataService {
     //#endregion
 
     /** Immutable states */
-    private readonly copiedLinksKey = 'copiedLinks';
     get nonAllowedNames(): string[] {
         return [
             'Total Income', 'Usable Income', 'Total Expenses', 'Total Tax', this.REMAINING_BALANCE_LABEL, '-- None --',
@@ -120,7 +124,7 @@ export class DataService {
 
     //#region: Initialise Data
     private initializeData(): void {
-        this.removeOldUserFinancialData(); // Remove old key from previous versions
+        this.storage.removeObsoleteFinancialData(); // Remove old key from previous versions
     
         // Check if it's the user's first time
         if (this.isFirstTimeUser() || this.isOldVersion()) {
@@ -133,12 +137,12 @@ export class DataService {
     }
     
     isFirstTimeUser(): boolean {
-        const firstTime = localStorage.getItem('firstTime');
+        const firstTime = this.storage.read('firstTime');
         return firstTime == null || firstTime === 'true' || firstTime == undefined;
     }
 
     isOldVersion(): boolean {
-        const storedVersion = localStorage.getItem('appVersion');
+        const storedVersion = this.storage.read('appVersion');
         if (!storedVersion) return true; // Treat as outdated if version is missing
     
         const [major, minor] = storedVersion.split('.').map(Number);
@@ -519,7 +523,7 @@ export class DataService {
         this.demoLinks = clear(this.demoLinks);
         const fixed = this.retrieveFixCostsLinks();
         if (fixed.some(link => link.source === id)) {
-            localStorage.setItem('fixCosts', JSON.stringify(clear(fixed)));
+            this.storage.write('fixCosts', clear(fixed));
         }
         const copied = this.retrieveCopiedLinks();
         if (copied?.some(link => link.source === id)) this.storeCopiedLinks(clear(copied));
@@ -533,9 +537,9 @@ export class DataService {
         }
         this.tracking.categoriesToTrack.update(ids => ids.filter(category => category !== id));
 
-        const essentials: string[] = JSON.parse(localStorage.getItem('essentialCategories') || '[]');
+        const essentials: string[] = this.storage.read('essentialCategories') ?? [];
         if (essentials.includes(id)) {
-            localStorage.setItem('essentialCategories', JSON.stringify(essentials.filter(category => category !== id)));
+            this.storage.write('essentialCategories', essentials.filter(category => category !== id));
         }
         this.categories.remove(id);
 
@@ -599,13 +603,8 @@ export class DataService {
             return result;
         }, {} as MonthlyData);
     
-        /** Save all months data in Local Storage.
-         * Optimise:
-         * Only write into Local Storage the processed data?
-         * Currently we are writing all months in on every save.
-         * 
-         */
-        localStorage.setItem('monthlyData', JSON.stringify(nonEmptyMonthlyData));
+        // The repository owns persistence; these objects also remain the runtime view model.
+        this.months.replaceAll(nonEmptyMonthlyData);
         this.monthlyData = monthlyData;
 
         // Emit all months data
@@ -613,108 +612,21 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    /** Retrieve existing entries from Local Storage */
-    loadData(): MonthlyData | null {
-        const saved = localStorage.getItem('monthlyData');
-        return saved ? JSON.parse(saved) as MonthlyData: null;
+    loadData(): MonthlyData {
+        return this.months.list();
     }
 
     loadSingleMonth(month: string): SingleMonthData | null {
-        const saved = localStorage.getItem('monthlyData');
-        if (saved) {
-            const data = JSON.parse(saved) as MonthlyData;
-            return data[month] || null;
-        }
-        return null;
+        return this.months.get(month);
     }
 
-    /** Return all local storage items
-     * 
-     * UNUSED: This function is not used in the current implementation. But reserved for future use.
-     */
-    getAllLocalStorageItems(): { [key: string]: any } {
-        const items: { [key: string]: any } = {};
-        
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)!;
-          const value = localStorage.getItem(key)!;
-          
-          try {
-            // Attempt to parse the value if it's in JSON format
-            items[key] = JSON.parse(value);
-          } catch (e) {
-            // If parsing fails, treat it as a string
-            items[key] = value;
-          }
-        }
-        
-        return items;
-    }
-
-    /** Get monthly data object from Local Storage.
-     * @returns All months data. Key as yyyy-mm format, value are corresponding entries.
-     */
-    getMonthlyDataFromLocalStorage(): { [key: string]: any } {
-        const monthlyData = localStorage.getItem('monthlyData');
-        if (!monthlyData) {
-            return {}
-        }
-        try {
-            return JSON.parse(monthlyData);
-        } catch (e) {
-            console.error('Failed to parse monthlyData', e);
-            return {};
-        }
-    }
-
-    setMonthlyData(monthlyData: { [key: string]: any }): void {
-        localStorage.setItem('monthlyData', JSON.stringify(monthlyData));
-    }
-
-
-    /** Remove a specific month entries from Local Storage. Used by Finance Manager,
-     * to delete all entries of a month.
-     */
-    removeMonthFromLocalStorage(key: string) {
-        // Get the current data from LocalStorage
-        const storedData = localStorage.getItem('monthlyData');
-    
-        if (storedData) {
-            // Parse the JSON data into an object
-            const data = JSON.parse(storedData);
-    
-            // Check if the key exists in the data
-            if (data[key]) {
-                // Delete the entry for the specified key
-                delete data[key];
-    
-                // Update LocalStorage with the modified data
-                localStorage.setItem('monthlyData', JSON.stringify(data));
-                this.processInputData([], key); // Process empty data to update the UI
-            }
-        }
-    }
-
-
-    /** Migrating logic: Remove old entry from older version of the app. */
-    removeOldUserFinancialData(): void {
-        localStorage.removeItem('userFinancialData');
-    }
-
-    /** Only keep data of last X years in local storage. 
-     * Local Storage limits data to 5MB.
-     */
-    private cleanUpLocalStorage() {
-        const now = new Date();
-        const threeYearsAgo = new Date(now.getFullYear() - 3, now.getMonth());
-        Object.keys(localStorage).forEach(key => {
-          if (key.match(/^\d{4}-\d{2}$/)) {  // Checks if key matches "YYYY-MM" format
-            const date = new Date(key);
-            if (date < threeYearsAgo) {
-              localStorage.removeItem(key);
-            }
-          }
-        });
+    /** Delete persisted entries, then update the runtime views. */
+    removeMonth(month: string): void {
+        if (!this.months.delete(month)) return;
+        delete this.monthlyData[month];
+        this.logService.removeMonthLogs(month);
+        this.processInputData([], month);
+        this.multiMonthEntries$.next(this.months.list());
     }
     //#endregion
 
@@ -755,13 +667,10 @@ export class DataService {
         }));
         const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
         const savedMonths = { ...this.loadData(), [month]: data };
-        const changes = new Map([['monthlyData', JSON.stringify(savedMonths)]]);
-        if (definitions.size > currentCategories.length) {
-            changes.set(categoryStorageKey, JSON.stringify([...definitions.values()]));
-        }
-        replaceStorageItems(localStorage, changes);
+        const addedCategories = definitions.size > currentCategories.length;
+        this.months.importMonth(data, addedCategories ? [...definitions.values()] : undefined);
 
-        if (changes.has(categoryStorageKey)) this.categories.reloadFromStorage();
+        if (addedCategories) this.categories.reloadFromStorage();
         this.logService.removeMonthLogs(month);
         this.monthlyData = { ...this.monthlyData, ...savedMonths };
         this.isDemo.set(false);
@@ -771,21 +680,19 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    // Store in sessionStorage
     storeCopiedLinks(links: UserDefinedLink[]) {
-        sessionStorage.setItem(this.copiedLinksKey, JSON.stringify(links));
+        this.sessionStore.write('copiedLinks', links);
     }
 
-    // Retrieve from sessionStorage
     retrieveCopiedLinks(): UserDefinedLink[] | null {
-        const data = sessionStorage.getItem(this.copiedLinksKey);
-        return data ? this.categories.clearMissingSources(JSON.parse(data)) : null;
+        const data = this.sessionStore.read('copiedLinks');
+        return data ? this.categories.clearMissingSources(data) : null;
     }
 
 
     retrieveFixCostsLinks(): UserDefinedLink[] {
-        const fixedLinks = localStorage.getItem('fixCosts')
-        return fixedLinks ? this.categories.clearMissingSources(JSON.parse(fixedLinks)) : [];
+        const fixedLinks = this.storage.read('fixCosts')
+        return fixedLinks ? this.categories.clearMissingSources(fixedLinks) : [];
     }
 
     //#endregion

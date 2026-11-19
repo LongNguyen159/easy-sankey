@@ -1,3 +1,4 @@
+import { AppStorage, SessionStore } from '../../../storage/app-storage';
 import { Component, inject, OnInit, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -16,7 +17,7 @@ import { RestartDialogComponent } from '../restart-dialog/restart-dialog.compone
 import { CurrencyService } from '../../../services/currency.service';
 import { RoutePath } from '../../models';
 import { firstValueFrom } from 'rxjs';
-import { exportBackup, readBackup, replaceStorageItems } from '../../../utils/data-transfer';
+import { readBackup } from '../../../utils/data-transfer';
 
 
 @Component({
@@ -33,6 +34,8 @@ import { exportBackup, readBackup, replaceStorageItems } from '../../../utils/da
     encapsulation: ViewEncapsulation.None
 })
 export class SettingsDialogComponent implements OnInit{
+  private readonly storage = inject(AppStorage);
+  private readonly sessionStore = inject(SessionStore);
   colorService = inject(ColorService)
   currencyService = inject(CurrencyService)
   readonly router = inject(Router)
@@ -80,7 +83,7 @@ export class SettingsDialogComponent implements OnInit{
   exportData(): void {
     let json: string;
     try {
-      json = exportBackup(localStorage);
+      json = this.storage.exportBackup();
     } catch {
       this.uiService.showSnackBar('Could not create the backup.');
       return;
@@ -101,9 +104,10 @@ export class SettingsDialogComponent implements OnInit{
     this.importing = true;
 
     try {
-      let backup: Map<string, string | null>;
+      let backup: string;
       try {
-        backup = readBackup(await file.text());
+        backup = await file.text();
+        readBackup(backup);
       } catch {
         this.uiService.showSnackBar('Choose a valid Easy Sankey full backup JSON file.');
         return;
@@ -119,14 +123,14 @@ export class SettingsDialogComponent implements OnInit{
       if (!confirmed) return;
 
       try {
-        replaceStorageItems(localStorage, backup);
+        this.storage.restoreBackup(backup);
       } catch {
         this.uiService.showSnackBar('Could not restore the backup.');
         return;
       }
 
-      sessionStorage.removeItem('copiedLinks');
-      sessionStorage.removeItem('isFormatBigNumbers');
+      this.sessionStore.delete('copiedLinks');
+      this.sessionStore.delete('isFormatBigNumbers');
       if (location.protocol === 'file:') {
         location.replace(new URL('index.html', document.baseURI));
       } else {
@@ -147,8 +151,8 @@ export class SettingsDialogComponent implements OnInit{
     }
     this.uiService.openConfirmDialog(dialogData).subscribe((confirmed: boolean | undefined) => {
       if (confirmed) {
-        localStorage.clear();
-        sessionStorage.clear();
+        this.storage.clear();
+        this.sessionStore.clear();
         this.uiService.showSnackBar('Local Storage Cleared!', 'Dismiss', 3000)
         this.dialog.open(RestartDialogComponent, {
           disableClose: true,

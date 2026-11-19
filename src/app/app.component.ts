@@ -1,3 +1,4 @@
+import { AppStorage } from './storage/app-storage';
 import { Component, inject, OnInit, Renderer2, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatMenuModule } from '@angular/material/menu';
@@ -19,6 +20,7 @@ declare const window: any;
     styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
+  private readonly storage = inject(AppStorage);
   title = 'Easy Sankey';
   appVersion = ''
   colorService = inject(ColorService)
@@ -50,7 +52,7 @@ export class AppComponent implements OnInit {
     this.appVersion = version;
 
     // Check if it's the user's first time
-    const isFirstTime = localStorage.getItem('firstTime') === null || localStorage.getItem('firstTime') === 'true';
+    const isFirstTime = this.storage.read('firstTime') === null || this.storage.read('firstTime') === 'true';
 
     if (isFirstTime || this.dataService.isOldVersion()) {
       // Navigate to the welcome page and mark the user as not first-time
@@ -62,7 +64,7 @@ export class AppComponent implements OnInit {
   }
 
   checkForUpdate() {
-    const storedVersion = localStorage.getItem('appVersion');
+    const storedVersion = this.storage.read('appVersion');
     console.log('Stored version:', storedVersion);
     console.log('Current version pulled from package.json:', this.appVersion);
     if (!storedVersion || storedVersion !== this.appVersion) {
@@ -70,15 +72,15 @@ export class AppComponent implements OnInit {
       this.router.navigate([RoutePath.WhatsNewPage]);
       
       // Store the new version to prevent showing the update page again
-      localStorage.setItem('appVersion', this.appVersion);
+      this.storage.write('appVersion', this.appVersion);
     }
   }
 
   navigateToWelcome() {
     this.router.navigate([RoutePath.WelcomePage]);
     /** Set app version on welcome to prevent showing updates on next time. */
-    localStorage.setItem('appVersion', this.appVersion);
+    this.storage.write('appVersion', this.appVersion);
     // Mark the user as having seen the welcome page
-    localStorage.setItem('firstTime', 'false');
+    this.storage.write('firstTime', 'false');
   }
 }

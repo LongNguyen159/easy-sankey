@@ -1,10 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { AppStorage } from '../storage/app-storage';
+import { Injectable, signal, inject } from '@angular/core';
 import { Budget } from '../components/models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BudgetService {
+  private readonly storage = inject(AppStorage);
   private readonly storageKey = 'budgets';
 
   budget = signal<Budget[]>(this.getBudgets());
@@ -15,13 +17,13 @@ export class BudgetService {
 
 
   getBudgets(): Budget[] {
-    return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+    return this.storage.read(this.storageKey) ?? [];
   }
 
   saveBudgets(budgets: Budget[]) {
     // Filter out budgets with no value or value <= 0
     const validBudgets = budgets.filter((budget: Budget) => budget.value && budget.value > 0);
-    this.budget.set(validBudgets) 
-    localStorage.setItem(this.storageKey, JSON.stringify(validBudgets));
+    this.storage.write(this.storageKey, validBudgets);
+    this.budget.set(validBudgets);
   }
 }

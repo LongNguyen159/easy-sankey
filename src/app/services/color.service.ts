@@ -1,5 +1,6 @@
+import { AppStorage } from '../storage/app-storage';
 
-import { Injectable, signal, effect, Renderer2, Inject, DOCUMENT } from '@angular/core';
+import { Injectable, signal, effect, Renderer2, Inject, DOCUMENT, inject } from '@angular/core';
 
 
 export enum Theme {
@@ -11,6 +12,7 @@ export enum Theme {
   providedIn: 'root'
 })
 export class ColorService {
+  private readonly storage = inject(AppStorage);
   renderer: Renderer2
   // Define a signal for dark mode
   isDarkMode = signal<boolean>(false);
@@ -76,9 +78,9 @@ export class ColorService {
    * If no settings are found, apply system's theme.
    */
   applyStoredThemeSettings(): void {
-    const settings = localStorage.getItem('themeSettings');
+    const settings = this.storage.read('themeSettings');
     if (settings) {
-      const { isDarkMode, isManualThemeSet, selectedTheme } = JSON.parse(settings);
+      const { isDarkMode, isManualThemeSet, selectedTheme } = settings;
       /** Set signals */
       this.isDarkMode.set(isDarkMode);
       this.isManualThemeSet.set(isManualThemeSet);
@@ -142,7 +144,7 @@ export class ColorService {
       isManualThemeSet: this.isManualThemeSet(),
       selectedTheme: this.selectedTheme // Save selected theme
     };
-    localStorage.setItem('themeSettings', JSON.stringify(settings));
+    this.storage.write('themeSettings', settings);
   }
 
 

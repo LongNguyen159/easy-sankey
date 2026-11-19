@@ -16,7 +16,7 @@ import { debounceTime, takeUntil } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
-import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sort';
+import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-sort';
 
 
 @Component({
@@ -43,7 +43,7 @@ import { AmountSort, readAmountSort, sortByAmount } from '../../utils/amount-sor
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
-  protected sortOrder = readAmountSort('fixCostSort');
+  protected sortOrder = resolveAmountSort(this.storage.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
 
@@ -82,7 +82,7 @@ export class FixCostInputComponent extends InputListComponent {
 
   protected setSort(order: AmountSort): void {
     this.sortOrder = order;
-    localStorage.setItem('fixCostSort', order);
+    this.storage.write('fixCostSort', order);
   }
 
   protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
@@ -135,7 +135,7 @@ export class FixCostInputComponent extends InputListComponent {
   saveToLocalStorage() {
     if (!this.linkForm.valid) return;
     const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
-    localStorage.setItem('fixCosts', JSON.stringify(this.categoryService.clearMissingSources(links)));
+    this.storage.write('fixCosts', this.categoryService.clearMissingSources(links));
   }
 
   override ngOnDestroy(): void {

@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { AppStorage } from '../storage/app-storage';
+import { Injectable, signal, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Tracker, TrackingMetaData } from '../components/models';
 
@@ -6,6 +7,7 @@ import { Tracker, TrackingMetaData } from '../components/models';
   providedIn: 'root'
 })
 export class TrackingService {
+  private readonly storage = inject(AppStorage);
 
   private readonly localStorageKey = 'trackedCategories';
 
@@ -69,7 +71,7 @@ export class TrackingService {
       avgIncome
     };
 
-    localStorage.setItem(this.localStorageKey, JSON.stringify(dataToSave));
+    this.storage.write(this.localStorageKey, dataToSave);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(finalData);
@@ -113,7 +115,7 @@ export class TrackingService {
       avgIncome
     };
 
-    localStorage.setItem(this.localStorageKey, JSON.stringify(dataToSave));
+    this.storage.write(this.localStorageKey, dataToSave);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(updatedData);
@@ -152,7 +154,7 @@ export class TrackingService {
       avgIncome
     };
 
-    localStorage.setItem(this.localStorageKey, JSON.stringify(dataToSave));
+    this.storage.write(this.localStorageKey, dataToSave);
 
     // Update the BehaviorSubject to notify subscribers
     this.trackingDataSubject.next(updatedData);
@@ -161,38 +163,38 @@ export class TrackingService {
 
   /** Retrieve tracking data from local storage */
   getTrackingData(): Tracker[] {
-    const savedData = localStorage.getItem(this.localStorageKey);
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData) as TrackingMetaData;
+    try {
+      const savedData = this.storage.read(this.localStorageKey);
+      if (savedData) {
+        const parsedData = savedData as TrackingMetaData;
         return parsedData.trackingCategories || [];
-      } catch (error) {
-        console.error('Error parsing tracking data from local storage:', error);
       }
+    } catch (error) {
+      console.error('Error parsing tracking data from local storage:', error);
     }
     return [];
   }
 
   /** Retrieve target surplus and average income */
   getAdditionalData(): { targetSurplus: number; avgIncome: number } {
-    const savedData = localStorage.getItem(this.localStorageKey);
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
+    try {
+      const savedData = this.storage.read(this.localStorageKey);
+      if (savedData) {
+        const parsedData = savedData;
         return {
           targetSurplus: parsedData.targetSurplus || 0,
           avgIncome: parsedData.avgIncome || 0
         };
-      } catch (error) {
-        console.error('Error parsing additional data from local storage:', error);
       }
+    } catch (error) {
+      console.error('Error parsing additional data from local storage:', error);
     }
     return { targetSurplus: 0, avgIncome: 0 };
   }
 
   /** Clear tracking data from local storage and notify subscribers */
   clearTrackingData(): void {
-    localStorage.removeItem(this.localStorageKey);
+    this.storage.delete(this.localStorageKey);
     this.trackingDataSubject.next([]); // Notify subscribers about the change
     this.trackingMetaDataSubject.next({ targetSurplus: 0, avgIncome: 0 }); // Notify subscribers about the change
     console.log('Tracking data cleared from local storage.');

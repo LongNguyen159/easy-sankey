@@ -1,5 +1,6 @@
+import { AppStorage } from '../storage/app-storage';
 import { DatePipe } from '@angular/common';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MonthlyData } from '../components/models';
 
 
@@ -22,6 +23,7 @@ import { MonthlyData } from '../components/models';
  * 
  */
 export class LogsService {
+  private readonly storage = inject(AppStorage);
   private logs: { [month: string]: { [inputId: string]: { timestamp: string; value: string | number }[] } } = {};
   private readonly STORAGE_KEY = 'logs';
 
@@ -91,7 +93,7 @@ export class LogsService {
   /** Save logs to Session Storage */
   private saveLogsToLocalStorage(): void {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.logs));
+      this.storage.write(this.STORAGE_KEY, this.logs);
     } catch (error) {
       console.error('Error saving logs to Session Storage:', error);
     }
@@ -100,9 +102,9 @@ export class LogsService {
   /** Load logs from Session Storage */
   private loadLogsFromLocalStorage(): void {
     try {
-      const storedLogs = localStorage.getItem(this.STORAGE_KEY);
-      this.logs = storedLogs ? JSON.parse(storedLogs) : {};
-      const monthlyData: MonthlyData = JSON.parse(localStorage.getItem('monthlyData') || '{}');
+      const storedLogs = this.storage.read(this.STORAGE_KEY);
+      this.logs = storedLogs ? storedLogs : {};
+      const monthlyData: MonthlyData = this.storage.read('monthlyData') ?? {};
       this.cleanupLogs(monthlyData)
     } catch (error) {
       console.error('Error loading logs from Session Storage:', error);

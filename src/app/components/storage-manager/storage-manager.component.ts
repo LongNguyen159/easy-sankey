@@ -1,3 +1,4 @@
+import { SessionStore } from '../../storage/app-storage';
 import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -51,6 +52,7 @@ import { PredictService } from '../../services/predict.service';
     changeDetection: ChangeDetectionStrategy.Eager
 })
 export class StorageManagerComponent extends BasePageComponent implements OnInit {
+  private readonly sessionStore = inject(SessionStore);
   dataService = inject(DataService);
   colorService = inject(ColorService);
   uiService = inject(UiService);
@@ -852,12 +854,12 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   //#region Toggle Functions
   /** Persists the state of Big Number formatting */
   loadFormatBigNumbersState(): void {
-    const savedState = sessionStorage.getItem('isFormatBigNumbers');
-    this.isFormatBigNumbers = savedState === 'true';
+    const savedState = this.sessionStore.read('isFormatBigNumbers');
+    this.isFormatBigNumbers = savedState === true;
   }
 
   saveFormatBigNumbersState(): void {
-    sessionStorage.setItem('isFormatBigNumbers', this.isFormatBigNumbers.toString());
+    this.sessionStore.write('isFormatBigNumbers', this.isFormatBigNumbers);
   }
 
   toggleFormatBigNumbers(): void {
@@ -893,7 +895,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
     this.uiService.openConfirmDialog(dialogData).subscribe((confirmed: boolean | undefined) => {
       if (confirmed) {
-        this.dataService.removeMonthFromLocalStorage(key);
+        this.dataService.removeMonth(key);
         this.uiService.showSnackBar(`"${key}" removed from local storage`);
         this.refreshData();
         this.filterMonths(); // Re-filter after removal

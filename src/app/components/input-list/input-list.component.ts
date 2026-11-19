@@ -1,3 +1,4 @@
+import { AppStorage } from '../../storage/app-storage';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -125,6 +126,7 @@ enum ErrorType {
  */
 
 export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
+  protected readonly storage = inject(AppStorage);
   @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
@@ -145,7 +147,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   private readonly announcer = inject(LiveAnnouncer);
   protected readonly newEntries = new Set<FormGroup>();
   protected readonly collapsedCategories = new Set<string>();
-  protected groupByCategory = localStorage.getItem('entryView') === 'category';
+  protected groupByCategory = this.storage.read('entryView') === 'category';
 
 
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
@@ -886,7 +888,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   protected toggleEntryView(): void {
     this.groupByCategory = !this.groupByCategory;
-    localStorage.setItem('entryView', this.groupByCategory ? 'category' : 'costType');
+    this.storage.write('entryView', this.groupByCategory ? 'category' : 'costType');
   }
 
   protected sortEntriesByRecentlyEdited(): void {

@@ -1,3 +1,5 @@
+import { AppStorage, SessionStore, PERSISTENT_STORAGE, SESSION_STORAGE } from '../storage/app-storage';
+import { MonthRepository } from '../storage/month.repository';
 import { Injector } from '@angular/core';
 import { EntryType, ExpenseCategory, UserDefinedLink } from '../components/models';
 import { BudgetService } from './budget.service';
@@ -16,6 +18,11 @@ describe('expense categories', () => {
   function createInjector() {
     return Injector.create({
       providers: [
+        AppStorage,
+        SessionStore,
+        MonthRepository,
+        { provide: PERSISTENT_STORAGE, useFactory: () => localStorage },
+        { provide: SESSION_STORAGE, useFactory: () => sessionStorage },
         CategoryService,
         DataService,
         BudgetService,
@@ -148,6 +155,21 @@ describe('expense categories', () => {
 
     expect(() => data.importMonth('2025-06', { entries, categories: [] })).toThrowError(/cycle/);
     expect(localStorage.getItem('monthlyData')).toBe(before);
+  });
+
+  it('deletes a month from persistence and published views while retaining other months', () => {
+    seedMonth('2025-04', ExpenseCategory.Groceries);
+    const may = seedMonth('2025-05', ExpenseCategory.Housing);
+    let published: Record<string, unknown> = {};
+    const subscription = data.getAllMonthsData().subscribe(value => { published = value; });
+
+    data.removeMonth('2025-04');
+
+    expect(data.loadSingleMonth('2025-04')).toBeNull();
+    expect(data.loadSingleMonth('2025-05')?.rawInput).toEqual(may);
+    expect(Object.keys(published)).toEqual(['2025-05']);
+    expect(data.monthlyData['2025-04'].rawInput).toEqual([]);
+    subscription.unsubscribe();
   });
 
   it('restores a full backup and removes app data absent from the backup', () => {
