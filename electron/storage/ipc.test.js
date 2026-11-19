@@ -18,7 +18,7 @@ test('database bridge authorizes only the application main frame and validates r
   assert.throws(()=>handlers.get('database:state:snapshot')({...event,sender:{}},{}),/Unauthorized/);
   assert.throws(()=>handlers.get('database:state:snapshot')({...event,senderFrame:{url:mainFrame.url}},{}),/Unauthorized/);
   assert.throws(()=>handlers.get('database:months:get')(event,'not-a-month'),/Invalid/);
-  const initial=handlers.get('database:state:snapshot')(event,{});
+  const initial=handlers.get('database:state:snapshot')(event);
   assert.equal(initial.revision,0);
   const saved=handlers.get('database:months:save')(event,{month:'2025-04',lastUpdated:'-',entries:[],mode:'create'}).value;
   assert.equal(saved.month,'2025-04');

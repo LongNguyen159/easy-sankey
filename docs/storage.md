@@ -15,6 +15,14 @@ and entry history commit in one transaction. Calculated chart data is never save
 Settings and small configuration collections load before rendering. Months and
 history are queried separately. Session copies/display state use `SessionStore`.
 
+## Operation contract
+
+`electron/api/operations.ts` is the shared operation contract. IPC handlers, the
+sandbox-compatible preload client, frontend types, and the
+[API reference](database-api.md) derive from it. Add an operation and its database
+implementation without maintaining separate channel lists or method interfaces.
+See [adding an operation](adding-database-operations.md).
+
 ## Development schema
 
 The current schema is version 4. New databases are created directly in that format.

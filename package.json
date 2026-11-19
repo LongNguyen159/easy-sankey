@@ -21,7 +21,12 @@
     "rebuild:electron": "electron-builder install-app-deps",
     "test:packaged": "node scripts/smoke-packaged.cjs",
     "postinstall": "electron-builder install-app-deps",
-    "prebuild": "node scripts/sync-default-categories.cjs",
+    "prebuild": "node scripts/generate-database-api.cjs && node scripts/sync-default-categories.cjs",
+    "generate:api": "node scripts/generate-database-api.cjs",
+    "pretest": "node scripts/generate-database-api.cjs",
+    "pretest:database": "node scripts/generate-database-api.cjs",
+    "prestart": "node scripts/generate-database-api.cjs",
+    "preelectron": "node scripts/generate-database-api.cjs",
     "dev:serve": "ng serve --host 127.0.0.1 --port 4200"
   },
   "private": true,
