@@ -103,7 +103,9 @@
   }
 
   .budget-reorder-handle {
-    position: static;
+    // Keep the button's absolute interaction layers inside the handle.
+    position: relative;
+    inset: auto;
   }
 
   .budget-item {

@@ -1,7 +1,8 @@
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DatePipe } from '@angular/common';
 import { provideRouter } from '@angular/router';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { provideTestDatabase } from '../../testing/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -9,6 +10,7 @@ import { By } from '@angular/platform-browser';
 import { BudgetListComponent } from './budget-list.component';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
 import { CategoryService } from '../../services/category.service';
+import { BudgetDialogComponent } from '../dialogs/budget-dialog/budget-dialog.component';
 
 describe('BudgetListComponent', () => {
   let component: BudgetListComponent;
@@ -36,6 +38,35 @@ describe('BudgetListComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  for (const view of ['list', 'cards']) {
+    for (const target of ['.budget-label', '.budget-indicator']) {
+      it(`opens the budget dialog by clicking ${target} in ${view} view`, async () => {
+        const toggle = fixture.debugElement.query(By.directive(MatButtonToggleGroup));
+        toggle.triggerEventHandler('change', { value: view });
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        const item: HTMLButtonElement = fixture.nativeElement.querySelector('.budget-item');
+        const element = item.querySelector(target)!;
+        element.scrollIntoView({ block: 'center' });
+        const bounds = element.getBoundingClientRect();
+        // Use browser hit testing so an overlapping drag-handle layer fails this test.
+        const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+        expect(hit?.closest('.budget-item')).toBe(item);
+        (hit as HTMLElement)?.click();
+        fixture.detectChanges();
+
+        const dialog = TestBed.inject(MatDialog);
+        expect(dialog.openDialogs.length).toBe(1);
+        const instance = dialog.openDialogs[0]?.componentInstance as BudgetDialogComponent | undefined;
+        expect(instance).toBeInstanceOf(BudgetDialogComponent);
+        expect(instance?.data.categoryLabel).toBe(item.querySelector('.budget-label')!.textContent!.trim());
+        dialog.closeAll();
+        await fixture.whenStable();
+      });
+    }
+  }
 
   it('sorts by amount, disables reordering, and restores the saved manual order', () => {
     const [first, second] = TestBed.inject(CategoryService).categories();
