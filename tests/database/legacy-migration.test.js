@@ -70,7 +70,7 @@ test("released LocalStorage imports source records once with identities, precisi
     );
     assert.equal(state.data.monthlyData["2025-04"].pieData, undefined);
     assert.equal(state.data.selectedCurrency, "EUR");
-    assert.equal(state.data.budgetView, "list");
+    assert.equal(state.data.budgetView, undefined);
     assert.deepEqual(state.data.logs, JSON.parse(legacy.logs));
     assert.equal(
       state.data.trackedCategories.trackingCategories[0].currentSpending,

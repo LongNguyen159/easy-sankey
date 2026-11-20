@@ -56,7 +56,8 @@ describe('InputListComponent manual sorting', () => {
       { provide: DataService, useValue: { demoLinks: [], nonAllowedNames: [], isDemo: () => false,
         hasDataCycle: { set: () => {} }, saveMonthDraft: save,
         selectMonth: jasmine.createSpy('selectMonth').and.resolveTo() } },
-      { provide: UiService, useValue: { showSnackBar: jasmine.createSpy('showSnackBar') } },
+      { provide: UiService, useValue: { showSnackBar: jasmine.createSpy('showSnackBar'),
+        openConfirmDialog: jasmine.createSpy('openConfirmDialog').and.returnValue(of(true)) } },
       { provide: ColorService, useValue: {} },
       { provide: LogsService, useValue: {} },
       { provide: Router, useValue: {navigate:jasmine.createSpy('navigate').and.resolveTo(true)} },
@@ -223,6 +224,26 @@ describe('InputListComponent manual sorting', () => {
     expect(component.isEditing()).toBeFalse();
   });
 
+  for (const result of [false, undefined]) {
+    it(`keeps the selected entries when bulk deletion is ${result === false ? 'cancelled' : 'dismissed'}`, async () => {
+      component.populateInputFields({rawInput: [entry('dinner'), entry('lunch')]} as SingleMonthData);
+      component.edit();
+      component.select('dinner');
+      component.select('lunch');
+      const confirm = TestBed.inject(UiService).openConfirmDialog as jasmine.Spy;
+      confirm.and.returnValue(of(result));
+
+      await component.deleteSelected();
+
+      expect(confirm.calls.mostRecent().args[0].title).toBe('Delete 2 entries?');
+      expect(save).not.toHaveBeenCalled();
+      expect(ids()).toEqual(['dinner', 'lunch']);
+      expect(component.selectedIds()).toEqual(['dinner', 'lunch']);
+      expect(component.isEditing()).toBeTrue();
+      expect(component.isBusy()).toBeFalse();
+    });
+  }
+
   it('creates the first envelope and assigns selected expenses before leaving edit mode', async () => {
     component.populateInputFields({rawInput:[entry('dinner')]} as SingleMonthData);
     const data={month:'2026-11',envelopes:[]} as unknown as SingleMonthData;
@@ -249,7 +270,7 @@ describe('InputListComponent manual sorting', () => {
     component.edit();component.select('dinner');await component.manage();
     expect(component.isEditing()).toBeFalse();
     expect(component.selectedIds()).toEqual([]);
-    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/storage'],{queryParams:{tab:4}});
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/storage'],{queryParams:{tab:3}});
   });
 
   it('exits edit mode after removing an assignment and retains selection if saving fails', async () => {
@@ -292,29 +313,17 @@ describe('envelope dialog cancellation rendering', () => {
     spyOn(fixture.componentInstance, 'flushPendingEdits').and.resolveTo(true);
     await fixture.whenStable();
     const editor=fixture.nativeElement as HTMLElement;
-    const editButton=()=>editor.querySelector<HTMLButtonElement>('.entry-bulk-toolbar button')!;
-    editButton().click();await fixture.whenStable();
-    const row=Array.from(editor.querySelectorAll<HTMLElement>('.entry-editor-row'))
-      .find(item=>item.querySelector<HTMLInputElement>('input[formcontrolname=target]')?.value==='Dinner')!;
-    row.querySelector<HTMLInputElement>('mat-checkbox input')!.click();await fixture.whenStable();
-    const component=fixture.componentInstance as unknown as {toggleEntrySelection(id:string,checked:boolean):void;createEnvelopeForSelection():Promise<void>};
-    component.toggleEntrySelection('dinner',true);
-    const creation=component.createEnvelopeForSelection();
+    const component=fixture.componentInstance as unknown as {createEnvelopeForSelection(row:FormGroup):Promise<void>};
+    const dinner=fixture.componentInstance.linkArray.controls.find(row=>row.get('id')?.value==='dinner')!;
+    const actions=()=>editor.querySelector<HTMLButtonElement>('[aria-label="Actions for Dinner"]')!;
+    const creation=component.createEnvelopeForSelection(dinner);
     await fixture.whenStable();
     expect(open).toHaveBeenCalled();
-    expect(editButton().disabled).toBeTrue();
-    expect(row.querySelector<HTMLInputElement>('mat-checkbox input')!.disabled).toBeTrue();
-
+    expect(actions().disabled).toBeTrue();
     TestBed.inject(NgZone).runOutsideAngular(()=>{closed.next(undefined);closed.complete();});
     await creation;
-    // No explicit detectChanges or extra input event: signals must schedule the redraw.
     await fixture.whenStable();
-    expect(editButton().disabled).toBeFalse();
-    expect(editButton().textContent).toContain('Edit');
-    expect(editor.querySelectorAll('.entry-selection').length).toBe(0);
-    editButton().click();await fixture.whenStable();
-    const checkboxes=Array.from(editor.querySelectorAll<HTMLInputElement>('.entry-selection input'));
-    expect(checkboxes.length).toBe(2);
-    expect(checkboxes.every(input=>!input.disabled)).toBeTrue();
+    expect(actions().disabled).toBeFalse();
+    expect(dinner.get('envelopeId')?.value).toBeNull();
   });
 });

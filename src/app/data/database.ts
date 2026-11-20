@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { AmountSort } from '../utils/amount-sort';
-import { BudgetEnvelope, Budget, ExpenseCategoryDetails, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, ExpenseCategoryDetails, UserDefinedLink } from '../components/models';
 export interface MonthSource {
     month: string;
     lastUpdated: string;
@@ -116,17 +116,13 @@ export interface Settings {
   };
   selectedCurrency: string;
   entryView: string;
-  budgetView: string;
-  budgetSort: AmountSort;
   fixCostSort: AmountSort;
-  budgetManualOrder: string[];
   firstTime: string;
   appVersion: string;
 }
 // Only small configuration scopes are loaded before rendering; months and history are queried on demand.
 let settingsSeed: Partial<Settings> = {};
 let categoriesSeed: ExpenseCategoryDetails[] = [];
-let budgetsSeed: Budget[] = [];
 let globalEnvelopesSeed: BudgetEnvelope[] = [];
 let fixedSeed: UserDefinedLink[] = [];
 let trackingSeed: TrackingTarget[] = [];
@@ -136,7 +132,6 @@ export const CONFIGURATION = new InjectionToken('Loaded configuration', {
   factory: () => ({
     settings: settingsSeed,
     categories: categoriesSeed,
-    budgets: budgetsSeed,
     globalEnvelopes: globalEnvelopesSeed,
     fixedCosts: fixedSeed,
     tracking: trackingSeed,
@@ -144,11 +139,10 @@ export const CONFIGURATION = new InjectionToken('Loaded configuration', {
   }),
 });
 async function loadConfiguration(client: DatabaseClient) {
-  const [settings, categories, budgets, fixed, tracking, metadata, globalEnvelopes] =
+  const [settings, categories, fixed, tracking, metadata, globalEnvelopes] =
     await Promise.all([
       client.api.settings.list(),
       client.api.categories.list(),
-      client.api.budgets.list(),
       client.api.fixedCosts.list(),
       client.api.tracking.list(),
       client.api.trackingMetadata(),
@@ -156,7 +150,6 @@ async function loadConfiguration(client: DatabaseClient) {
     ]);
   settingsSeed = settings.value;
   categoriesSeed = categories.items;
-  budgetsSeed = budgets.items;
   globalEnvelopesSeed = globalEnvelopes;
   fixedSeed = fixed.items;
   trackingSeed = tracking.items;

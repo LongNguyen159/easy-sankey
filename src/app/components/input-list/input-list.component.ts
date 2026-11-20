@@ -343,7 +343,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
         if (!row) ids.forEach(id => this.selectedEntryIds.add(id));
         await this.assignSelectedEnvelope(result.envelopeId, row);
       } else if (!row) this.finishEditing();
-    } catch { this.uiService.showSnackBar('Could not create the envelope. Try again.'); }
+    } catch { this.uiService.showSnackBar('Could not create the budget. Try again.'); }
     finally { this.bulkBusy.set(false); }
   }
 
@@ -369,6 +369,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (this.bulkBusy() || !this.selectedEntryIds.size) return;
     this.bulkBusy.set(true);
     try {
+      const count = this.selectedEntryIds.size;
+      const confirmed = await firstValueFrom(this.uiService.openConfirmDialog({
+        title: `Delete ${count} ${count === 1 ? 'entry' : 'entries'}?`,
+        message: `Are you sure you want to delete ${count} selected ${count === 1 ? 'entry' : 'entries'}? This cannot be undone.`,
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Delete',
+        confirmColor: 'warn',
+      }, '28rem', 'auto'));
+      if (confirmed !== true) return;
       if (!await this.flushPendingEdits()) return;
       const entries = this.linkArray.getRawValue() as UserDefinedLink[];
       const byName = new Map(entries.map(entry => [entry.target, entry]));
@@ -387,7 +396,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (!await this.flushPendingEdits()) return;
     this.finishEditing();
     this.dialog.closeAll();
-    await this.router.navigate([RoutePath.FinanceManagerPage], {queryParams: {tab: 4}});
+    await this.router.navigate([RoutePath.FinanceManagerPage], {queryParams: {tab: 3}});
   }
 
   protected async manageMonthlyEnvelopes(): Promise<void> {
@@ -1130,6 +1139,14 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
 
   protected async removeEntry(row: FormGroup): Promise<void> {
+    const confirmed = await firstValueFrom(this.uiService.openConfirmDialog({
+      title: 'Delete entry?',
+      message: 'Are you sure you want to delete this entry? This cannot be undone.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      confirmColor: 'warn',
+    }, '28rem', 'auto'));
+    if (confirmed !== true) return;
     await this.removeLink(this.linkArray.controls.indexOf(row));
   }
 
@@ -1199,7 +1216,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   navigateToFixCosts() {
     this.dataService.setNavigateFixCostState(true)
     this.router.navigate([RoutePath.FinanceManagerPage], {
-      queryParams: { tab: 2 }
+      queryParams: { tab: 1 }
     });
     this.dataService.setNavigateFixCostState(false)
   }

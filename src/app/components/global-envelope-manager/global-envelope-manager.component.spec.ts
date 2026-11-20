@@ -18,6 +18,11 @@ describe('central global envelope editor', () => {
     expect(fake.configuration.globalEnvelopes[0].budget).toBe(600);
     expect(fake.months.size).toBe(0);
     expect(editor.saved()).toBeTrue();
+    editor.add();
+    editor.rows.at(1).patchValue({name:'Travel',budget:200});
+    await editor.save();
+    expect(fake.configuration.globalEnvelopes[1].isGlobal).toBeTrue();
+    expect(fake.months.size).toBe(0);
     editor.rows.at(0).patchValue({budget:700});
     spyOn(TestBed.inject(DataService),'saveGlobalEnvelopes').and.rejectWith(new Error('Save failed'));
     await editor.save();

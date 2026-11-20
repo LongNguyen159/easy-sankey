@@ -28,7 +28,7 @@ describe('MainPageComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
-  it('shows stable envelope budgets alongside category budgets, including unused allowances', async () => {
+  it('shows stable envelope budgets without category budgets, including unused allowances', async () => {
     await component.dataService.ready;
     const envelopes=[{id:'revolut',name:'Revolut spending',budget:500,isGlobal:true},
       {id:'holiday',name:'Holiday',budget:200}];
@@ -37,19 +37,16 @@ describe('MainPageComponent', () => {
       {id:'dinner',type:EntryType.Expense,target:'Dinner',value:40,envelopeId:'revolut',source:ExpenseCategory.Restaurants},
       {id:'food',type:EntryType.Expense,target:'Supermarket',value:80,source:ExpenseCategory.Groceries},
     ],'2026-11','-',id => id === ExpenseCategory.Restaurants || id === ExpenseCategory.Groceries,envelopes);
-    component.budgets=[{category:ExpenseCategory.Restaurants,value:500},{category:ExpenseCategory.Groceries,value:300}];
     component.pieChartDataNetto=component.entriesOfOneMonth.pieData;
-    component.getBudgetData();
     fixture.detectChanges();
-    expect(component.indicators.length).toBe(2);
     expect(component.envelopeBudgets.map(item=>item.spent)).toEqual([40,0]);
-    const section=fixture.nativeElement.querySelector('[aria-label="Envelope budgets"]');
+    const section=fixture.nativeElement.querySelector('[aria-label="Budgets"]');
     expect(section.querySelectorAll('app-budget-gauge-chart').length).toBe(2);
-    expect(section.textContent).toContain('Global envelope');
+    expect(section.textContent).toContain('Global budget');
     expect(fixture.nativeElement.textContent).not.toContain('No budgets set yet!');
     // Cover both direct category gauges and envelope gauges with captions.
     const grids=Array.from(fixture.nativeElement.querySelectorAll('.gauge-chart-container')) as HTMLElement[];
-    expect(grids.length).toBe(2);
+    expect(grids.length).toBe(1);
     for (const width of ['900px', '500px']) {
       grids.forEach(grid => grid.style.width = width);
       await new Promise(resolve => setTimeout(resolve, 250));

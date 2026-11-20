@@ -14,10 +14,10 @@ import { DataService } from '../../services/data.service';
   imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
   template: `
     <section class="global-envelope-manager">
-      <h2>Global envelopes</h2>
+      <h2>Global budgets</h2>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>
-      @if (loading()) { <p>Loading envelopes…</p> }
-      @if (!loading() && !rows.length) { <p>No global envelopes yet.</p> }
+      @if (loading()) { <p>Loading budgets…</p> }
+      @if (!loading() && !rows.length) { <p>No global budgets yet.</p> }
       @for (row of rows.controls; track row) {
         <div class="envelope-fields" [formGroup]="row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -36,12 +36,12 @@ import { DataService } from '../../services/data.service';
       }
       <div class="envelope-actions">
         <button mat-button [disabled]="loading() || saving()" (click)="add()">
-          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add envelope
+          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add budget
         </button>
         <button mat-flat-button [disabled]="loading() || saving() || rows.invalid" (click)="save()">{{ saving() ? 'Saving…' : 'Save' }}</button>
       </div>
       @if (error()) { <p role="alert">{{ error() }}</p> }
-      @if (saved()) { <p role="status">Global envelopes saved.</p> }
+      @if (saved()) { <p role="status">Global budgets saved.</p> }
     </section>
   `,
   styles: `
@@ -77,7 +77,7 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
       await this.service.ready;
       this.base=structuredClone(this.service.globalEnvelopes());
       this.base.forEach(item=>this.rows.push(this.group(item)));
-    } catch { this.error.set('Could not load global envelopes.'); }
+    } catch { this.error.set('Could not load global budgets.'); }
     finally { this.loading.set(false); }
   }
   add() { this.rows.push(this.group({id:uuid(),name:'',budget:500})); this.saved.set(false); }
@@ -85,7 +85,7 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
     if(this.rows.invalid || this.loading() || this.saving())return;
     const items=this.rows.getRawValue().map(row=>({...row,name:row.name.trim(),isGlobal:true}));
     if(new Set(items.map(item=>item.name.toLowerCase())).size!==items.length) {
-      this.error.set('Choose a different name for each envelope.');return;
+      this.error.set('Choose a different name for each budget.');return;
     }
     this.saving.set(true);this.error.set('');this.saved.set(false);this.rows.disable();
     try {
@@ -93,7 +93,7 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
       this.base=structuredClone(this.service.globalEnvelopes());
       this.rows.clear();this.base.forEach(item=>this.rows.push(this.group(item)));
       this.saved.set(true);
-    } catch { this.error.set('Could not save global envelopes. Your changes are still here; try again.'); }
+    } catch { this.error.set('Could not save global budgets. Your changes are still here; try again.'); }
     finally { this.rows.enable();this.saving.set(false); }
   }
 }

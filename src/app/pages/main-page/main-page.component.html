@@ -45,90 +45,26 @@
 
 
 
-        <!-- BUDGET VS ACTUAL SPENDING -->
         <div class="flex flex-col w-full items-center justify-center">
-          @if(budgets.length !== 0) {
-            <div class="flex flex-row w-full justify-end">
-              <button mat-button (click)="navigateToBudgetList()">
-                <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
-                <span>Edit Budgets</span>
-              </button>
-            </div>
-          }
-          <h2 class="font-bold">
-            Budget vs Actual Spending
-          </h2>
-          <div class="flex flex-row items-center gap-2">
-            <button mat-button (click)="dialogService.openTrackerDialog()">
-              <mat-icon fontSet="material-symbols-outlined">rocket_launch</mat-icon>
-              <span>View Spending Progress</span>
-            </button>
-          </div>
-
-          @if (indicators.length == 0 && budgets.length !== 0) {
-            <p class="mt-4">
-              Budget Charts will appear here once you enter your actual spending on the set budgets.
-            </p>
-          }
+          <h2 class="font-bold">Budget vs Actual Spending</h2>
+          <button mat-button (click)="navigateToBudgetList()">Manage global budgets</button>
+          <button mat-button (click)="dialogService.openTrackerDialog()">
+            <mat-icon fontSet="material-symbols-outlined">rocket_launch</mat-icon>
+            <span>View Spending Progress</span>
+          </button>
         </div>
-
-
-
-        @if (budgets.length == 0 && !envelopeBudgets.length) {
-          <div class="flex flex-col w-full justify-center items-center gap-2">
-            <p>No budgets set yet!</p>
-            <button class="app-button-primary" mat-stroked-button (click)="navigateToBudgetList()">Create One Now</button>
-          </div>
+        @if (!envelopeBudgets.length) {
+          <p class="text-center">No budgets set for this month.</p>
         }
-
-        <div class="flex flex-row w-full items-center justify-end">
-          <!-- ENABLE TOGGLE GAUGE CHART IF RADAR CHART EXISTS -->
-          @if (indicators.length > 2) {
-            <div class="flex flex-row w-full items-center justify-end gap-1">
-              <div class="text-sm">Show Gauge Chart</div>
-              <div>
-                <mat-slide-toggle [(ngModel)]="showGaugeChart" color="primary" labelPosition="before"></mat-slide-toggle>
-              </div>
-            </div>
-          }
-        </div>
-
-        <!-- SHOW RADAR CHART IF THERE ARE MORE THAN 2 BUDGETS CATEGORIES -->
-        @if (indicators.length > 2) {
-          <section>
-            <app-budget-radar-chart
-              [budget]="budgets"
-              [actualSpending]="spending"
-            ></app-budget-radar-chart>
-
-          </section>
-        }
-
-        <!-- GAUGE CHART IS OPTIONAL, CAN BE TOGGLED -->
-        @if (showGaugeChart) {
-          <section>
-            <div class="gauge-chart-container">
-              @for (item of indicators; track item) {
-                <app-budget-gauge-chart
-                  [title]="item.label"
-                  [budget]="getBudgetValue(item.value)"
-                  [actualSpending]="getActualSpendingValue(item.value)"
-                  [color]="colorService.isDarkMode() ? (item.colorDark || 'rgb(92, 144, 247)') : (item.colorLight || 'rgb(90, 111, 192)')">
-                </app-budget-gauge-chart>
-              }
-            </div>
-          </section>
-        }
-
 
         @if (envelopeBudgets.length) {
-          <section aria-label="Envelope budgets">
-            <h3 class="text-center font-bold">Envelopes · {{ entriesOfOneMonth.month }}</h3>
+          <section aria-label="Budgets">
+            <h3 class="text-center font-bold">Budgets · {{ entriesOfOneMonth.month }}</h3>
             <div class="gauge-chart-container">
               @for (envelope of envelopeBudgets; track envelope.id) {
                 <div [attr.aria-label]="envelope.name + ': ' + envelope.spent + ' spent of ' + envelope.budget">
                   <app-budget-gauge-chart [title]="envelope.name" [budget]="envelope.budget" [actualSpending]="envelope.spent"></app-budget-gauge-chart>
-                  <p class="text-center">{{ envelope.isGlobal ? 'Global envelope' : 'Month-only envelope' }}</p>
+                  <p class="text-center">{{ envelope.isGlobal ? 'Global budget' : 'Month-only budget' }}</p>
                 </div>
               }
             </div>

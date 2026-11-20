@@ -5,24 +5,24 @@ import { DatabaseApi, StoredMonth, MonthSave, HistoryItem } from '../data/databa
 /** Promise-based fake at the same boundary as the desktop bridge. No browser persistence. */
 export function testDatabase() {
     let revision = 0;
-    const configuration = { settings: { firstTime: 'false', appVersion: '2.0.4' } as Partial<Settings>, categories: structuredClone(Object.values(expenseCategoryDetails)), globalEnvelopes: [] as BudgetEnvelope[], budgets: [], fixedCosts: [], tracking: [], metadata: { targetSurplus: 0, avgIncome: 0 } };
+    const configuration = { settings: { firstTime: 'false', appVersion: '2.0.4' } as Partial<Settings>, categories: structuredClone(Object.values(expenseCategoryDetails)), globalEnvelopes: [] as BudgetEnvelope[], fixedCosts: [], tracking: [], metadata: { targetSurplus: 0, avgIncome: 0 } };
     const months = new Map<string, StoredMonth>();
     const histories = new Map<string, HistoryItem[]>();
     const result = <T>(value: T) => ({ revision: ++revision, value: structuredClone(value), affected: [] });
-    const entity = (key: 'categories' | 'budgets' | 'fixedCosts' | 'tracking') => ({
+    const entity = (key: 'categories' | 'fixedCosts' | 'tracking') => ({
         list: async () => ({ revision, items: structuredClone(configuration[key]) }),
         replace: async ({ items, metadata }: any) => { (configuration as any)[key] = structuredClone(items); if (metadata)
             configuration.metadata = metadata; return result(items); },
         create: async ({ item }: any) => { (configuration[key] as any[]).push(structuredClone(item)); return result(configuration[key]); },
-        update: async ({ id, changes }: any) => { (configuration as any)[key] = (configuration[key] as any[]).map(value => (key==='categories'?value.value:key==='budgets'?value.category:key==='tracking'?value.name:value.id) === id ? {...value,...structuredClone(changes)} : value); return result(configuration[key]); },
+        update: async ({ id, changes }: any) => { (configuration as any)[key] = (configuration[key] as any[]).map(value => (key==='categories'?value.value:key==='tracking'?value.name:value.id) === id ? {...value,...structuredClone(changes)} : value); return result(configuration[key]); },
         reorder: async ({ ids }: any) => { const map = new Map((configuration[key] as any[]).map(value => [value.value, value])); (configuration as any)[key] = ids.map((id: string) => map.get(id)); return result(configuration[key]); },
-        delete: async ({id}:any)=>{if(key==='categories')return api.deleteCategory({id});(configuration as any)[key]=(configuration[key] as any[]).filter(item=>(key==='budgets'?item.category:key==='tracking'?item.name:item.id)!==id);return result(null);},
-        get: async ({id}:any) => structuredClone((configuration[key] as any[]).find(item=>(key==='categories'?item.value:key==='budgets'?item.category:key==='tracking'?item.name:item.id)===id)??null),
+        delete: async ({id}:any)=>{if(key==='categories')return api.deleteCategory({id});(configuration as any)[key]=(configuration[key] as any[]).filter(item=>(key==='tracking'?item.name:item.id)!==id);return result(null);},
+        get: async ({id}:any) => structuredClone((configuration[key] as any[]).find(item=>(key==='categories'?item.value:key==='tracking'?item.name:item.id)===id)??null),
     });
     const api = {
         status: async () => ({ revision, initialized: true, recoveryRequired: false }),
         settings: { list: async () => result(configuration.settings), set: async ({ key, value }: any) => { (configuration.settings as any)[key] = value; return result(value); } },
-        categories: entity('categories'), budgets: entity('budgets'), fixedCosts: entity('fixedCosts'), tracking: entity('tracking'),
+        categories: entity('categories'), fixedCosts: entity('fixedCosts'), tracking: entity('tracking'),
         trackingMetadata: async () => configuration.metadata,
         envelopes: {
           listGlobal: async () => structuredClone(configuration.globalEnvelopes),

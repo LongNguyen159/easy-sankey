@@ -9,23 +9,24 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 Packaged with Electron Builder.
 Edit Built App configs (windows size etc.) at `main.js` in root directory
 
-## Monthly envelopes
+## Budgets
 
-In the entry editor, choose **Edit**, select entries with the checkboxes, and use
-**Add to envelope**, which also includes **Create envelope** and **Manage envelopes**.
-The **More actions** menu contains **Remove from envelope** and **Delete selected**. Only expenses
-receive envelope assignments; income and tax entries can still be selected for
-deletion. Edit reusable allowances in **Finance Manager → Envelopes**.
-**Manage envelopes** in the entry menu opens that central page; **Month-only envelopes**
-edits allowances for the current month. Quick creation remains available from
-**Add to envelope**. Global names and allowances are shared; actual spending is calculated independently for each month. Entries keep their categories.
+Budgets group expenses under a spending limit, independently of their categories.
+Categories are labels and have no budget amounts.
 
-The Sankey shows **spent / allowance** with category branches split between assigned
-and unassigned expenses. Turn off the **Envelopes** switch beside the chart title
-for the category view. Only actual expenses reduce Surplus; unused allowance adds no extra node. The monthly
-**Budget vs Actual Spending** section also shows envelope gauges, including unused
-allowances. Deleting an envelope keeps its expenses. Copying a month preserves
-existing global references and makes independent copies of month-only allowances.
+Create and edit **Global budgets** in **Finance Manager → Budgets**. These are
+available in all months, with spending calculated separately for each month.
+Create budgets in the month's entry dialog with **This month only** or **For every month**.
+The entry menu's **Manage budgets** opens local and global budgets in separate
+sections. Use **Add to budget** to assign an expense to either scope.
+
+The Sankey **Budgets** switch groups spending by budget; turn it off for the
+category view. Gauges compare actual spending with each limit, including unused
+budgets. Deleting a budget keeps its expenses. Copying a month keeps global
+references and creates separate copies of month-only budgets.
+
+The development migration removes the old category-limit table and its display
+preferences. Finance entries, categories, fixed-cost templates and history remain.
 
 ## Local development
 

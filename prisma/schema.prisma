@@ -26,10 +26,8 @@ model Category {
   colorDark      String? @map("color_dark")
   position       Int
   isEssential    Boolean @default(false) @map("is_essential")
-  budgetPosition Int? @map("budget_position")
   entries        Entry[]
   templates      FixedCostTemplate[]
-  budget         Budget?
   trackingTarget TrackingTarget?
   @@map("categories")
 }
@@ -83,14 +81,6 @@ model FixedCostTemplate {
   @@map("fixed_cost_templates")
 }
 
-model Budget {
-  position   Int @default(0)
-  categoryId String @id @map("category_id")
-  amount     Float
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  @@map("budgets")
-}
-
 model TrackingTarget {
   id           String @id
   categoryId   String? @unique @map("category_id")
@@ -126,8 +116,6 @@ model AppSettings {
   id                Int @id @default(1)
   selectedCurrency  String? @map("selected_currency")
   entryView         String? @map("entry_view")
-  budgetView        String? @map("budget_view")
-  budgetSort        String? @map("budget_sort")
   fixedCostSort     String? @map("fixed_cost_sort")
   themeMode         String? @map("theme_mode")
   isDarkMode        Boolean? @map("is_dark_mode")

@@ -4,7 +4,7 @@ import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation, Change
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { DataService } from '../../services/data.service';
 import { debounceTime, takeUntil } from 'rxjs';
-import { Budget, BudgetSlider, MonthlyData, Tracker } from '../models';
+import { BudgetSlider, MonthlyData, Tracker } from '../models';
 import { CommonModule } from '@angular/common';
 import {MatSliderModule} from '@angular/material/slider';
 import { formatBigNumber, roundToNearestHundreds } from '../../utils/utils';
@@ -27,7 +27,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TrackingService } from '../../services/tracking.service';
 import { DialogsService } from '../../services/dialogs.service';
-import { BudgetService } from '../../services/budget.service';
+import { v4 as uuid } from 'uuid';
 
 
 @Component({
@@ -64,7 +64,6 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   uiService = inject(UiService)
   trackingService = inject(TrackingService)
   dialogService = inject(DialogsService)
-  budgetService = inject(BudgetService)
 
   @ViewChild('stepper') stepper: MatStepper;
   /** Retries count for stepper. Max attempts: 3.
@@ -804,22 +803,23 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   }
 
 
-  /** Save highlighted categories to budgets. */
+  /** Save planned amounts as independent global budgets. */
   async saveToBudgets() {
-    const budgetsToAdd: Budget[] = this.visibleSliders.map(item => ({
-      category: item.name,
-      value: Math.round((item.value) * 100) / 100
-    }))
-    const allBudgets = this.budgetService.getBudgets()
-
-    const mergedBudgets = this.combineBudgets(allBudgets, budgetsToAdd)
-
-    await this.budgetService.saveBudgets(mergedBudgets);
-
-    this.uiService.showSnackBar("Budgets saved!", "Ok");
+    const base = this.dataService.globalEnvelopes();
+    const budgets = base.map(item => ({...item}));
+    for (const slider of this.visibleSliders) {
+      const limit = Math.round(slider.value * 100) / 100;
+      if (limit <= 0) continue;
+      const name = this.categoryService.label(slider.name);
+      const existing = budgets.find(item => item.name.toLowerCase() === name.toLowerCase());
+      if (existing) existing.budget = limit;
+      else budgets.push({id:uuid(), name, budget:limit, isGlobal:true});
+    }
+    try {
+      await this.dataService.saveGlobalEnvelopes(budgets, base);
+      this.uiService.showSnackBar('Budgets saved!', 'Ok');
+    } catch { this.uiService.showSnackBar('Could not save budgets. Try again.'); }
   }
-
-
 
   getTrackedCategory(categoryName: string) {
     return this.trackedCategories.find(item => item.name == categoryName)
@@ -869,27 +869,6 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
   categoryLabel(name: string): string {
     return this.categoryService.label(name);
   }
-
-  /** Helper to merge incoming budget to existing budget. Current logic of budget service
-   * overrides all exisiting budgets with incoming budgets, that's why we use this function to merge them.
-   */
-  combineBudgets(existing: Budget[], incoming: Budget[]) {
-    const categoryMap = new Map();
-  
-    // Populate the map with existing items
-    existing.forEach(item => {
-      categoryMap.set(item.category, item.value);
-    });
-  
-    // Replace or add incoming items
-    incoming.forEach(item => {
-      // Always replace the value if the category exists
-      categoryMap.set(item.category, item.value);
-    });
-  
-    // Convert the map back to an array of objects
-    return Array.from(categoryMap, ([category, value]) => ({ category, value }));
-  };
 
   //#endregion
 }

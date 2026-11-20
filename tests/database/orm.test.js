@@ -150,8 +150,8 @@ test("cycles and duplicate names reject atomically and foreign keys prevent dang
     );
     assert.deepEqual(await store.crud.months.get("2025-04"), before);
     await assert.rejects(
-      store.prisma.budget.create({
-        data: { categoryId: "missing", amount: 1 },
+      store.prisma.trackingTarget.create({
+        data: { id:"missing-target", categoryId: "missing", targetAmount: 1, position:0 },
       }),
     );
   }));
@@ -190,16 +190,11 @@ test("category deletion clears relations and dependent configuration atomically"
     await store.crud.fixedCosts.create({
       item: { ...entry("template"), source: category },
     });
-    await store.crud.budgets.create({ item: { category, value: 100 } });
     await store.crud.tracking.create({
       item: { name: category, targetSpending: 100 },
     });
     await store.crud.settings.set({
       key: "essentialCategories",
-      value: [category],
-    });
-    await store.crud.settings.set({
-      key: "budgetManualOrder",
       value: [category],
     });
     await store.crud.deleteCategory({ id: category });
@@ -211,7 +206,6 @@ test("category deletion clears relations and dependent configuration atomically"
       (await store.crud.fixedCosts.get({ id: "template" })).source,
       undefined,
     );
-    assert.equal(await store.prisma.budget.count(), 0);
     assert.equal(await store.prisma.trackingTarget.count(), 0);
     assert.deepEqual(
       (await store.crud.settings.list()).value.essentialCategories,
@@ -344,16 +338,16 @@ test('SQLite table-rebuild migrations preserve dependent rows and failed migrati
  const directory=path.join(dir,'migrations');
  try {
   await store.initialize({});await save(store,'2025-04',[{...entry(),source:category}]);
-  await store.crud.budgets.create({item:{category,value:42}});await store.close();
+  await store.crud.tracking.create({item:{name:category,targetSpending:42}});await store.close();
   fs.cpSync(path.join(process.cwd(),'prisma/migrations'),directory,{recursive:true});
   let db=new Database(file);const sql=db.prepare("SELECT sql FROM sqlite_master WHERE name='categories'").get().sql.replace('"categories"','"new_categories"');db.close();
   const migration=path.join(directory,'202611200002_rebuild');fs.mkdirSync(migration);
   fs.writeFileSync(path.join(migration,'migration.sql'),`${sql}; INSERT INTO new_categories SELECT * FROM categories; DROP TABLE categories; ALTER TABLE new_categories RENAME TO categories;`);
   require('../../electron/migrations').migrate(file,{directory});
-  db=new Database(file);assert.equal(db.prepare('SELECT count(*) AS n FROM budgets').get().n,1);assert.equal(db.prepare('SELECT category_id FROM finance_entries').get().category_id,category);db.close();
+  db=new Database(file);assert.equal(db.prepare('SELECT count(*) AS n FROM tracking_targets').get().n,1);assert.equal(db.prepare('SELECT category_id FROM finance_entries').get().category_id,category);db.close();
   const broken=path.join(directory,'202611200003_broken');fs.mkdirSync(broken);fs.writeFileSync(path.join(broken,'migration.sql'),'CREATE TABLE should_rollback(id TEXT); THIS IS NOT SQL;');
   assert.throws(()=>require('../../electron/migrations').migrate(file,{directory}));
-  db=new Database(file);assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name='should_rollback'").get().n,0);assert.equal(db.prepare('SELECT count(*) AS n FROM budgets').get().n,1);db.close();
+  db=new Database(file);assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name='should_rollback'").get().n,0);assert.equal(db.prepare('SELECT count(*) AS n FROM tracking_targets').get().n,1);db.close();
  }finally{await store.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -387,7 +381,7 @@ test('monthly envelopes persist independent category membership, survive backup/
     assert.ok(ungrouped.entries.every(item=>!item.envelopeId && item.source===category));
   }));
 
-test('envelope migration preserves populated existing months and categories', async () => {
+test('budget migration drops category limits and preserves finance entries and categories', async () => {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'envelope-upgrade-'));
   const file=path.join(dir,'db.sqlite'); const initial=path.join(dir,'initial');
   fs.mkdirSync(initial);
@@ -396,14 +390,25 @@ test('envelope migration preserves populated existing months and categories', as
   try {
     require('../../electron/migrations').migrate(file,{directory:initial});
     const db=new Database(file);
+    db.prepare('INSERT INTO categories (id,label,position) VALUES (?,?,?)').run('old-category','Food',0);
+    db.prepare('INSERT INTO budgets (category_id,amount,position) VALUES (?,?,?)').run('old-category',100,0);
     db.prepare('INSERT INTO finance_months (id) VALUES (?)').run('2026-11');
     db.prepare('INSERT INTO finance_entries (month_id,id,type,name,normalized_name,amount,position) VALUES (?,?,?,?,?,?,?)')
       .run('2026-11','old','expense','Existing purchase','existing purchase',25,0);
+    db.prepare('INSERT INTO fixed_cost_templates (id,type,name,normalized_name,amount,position,category_id) VALUES (?,?,?,?,?,?,?)').run('rent','expense','Rent','rent',600,0,'old-category');
+    db.prepare('INSERT INTO finance_entry_history (id,month_id,entry_id,position,timestamp_text,value_number) VALUES (?,?,?,?,?,?)').run('history','2026-11','old',0,'2026-11-01',25);
     db.close();
     store=openDatabase(file);
     const month=await store.crud.months.get('2026-11');
     assert.equal(month.entries[0].value,25);
     assert.deepEqual(month.envelopes,[]);
+    const upgraded=new Database(file);
+    assert.equal(upgraded.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name='budgets'").get().n,0);
+    assert.equal(upgraded.prepare('SELECT label FROM categories WHERE id=?').get('old-category').label,'Food');
+    assert.equal(upgraded.prepare('SELECT amount FROM fixed_cost_templates WHERE id=?').get('rent').amount,600);
+    assert.equal(upgraded.prepare('SELECT category_id FROM fixed_cost_templates WHERE id=?').get('rent').category_id,'old-category');
+    assert.equal(upgraded.prepare('SELECT value_number FROM finance_entry_history WHERE id=?').get('history').value_number,25);
+    upgraded.close();
   } finally { if(store)await store.close(); fs.rmSync(dir,{recursive:true,force:true}); }
 });
 

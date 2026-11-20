@@ -1,5 +1,4 @@
-import { CategoryService } from '../../services/category.service';
-import { ChangeDetectionStrategy, Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -17,12 +16,10 @@ import { onMonthChanges } from '../../utils/data-utils';
 import { PieChartComponent } from '../../components/charts/pie-chart/pie-chart.component';
 import { SankeyChartComponent } from '../../components/charts/sankey-chart/sankey-chart.component';
 import { DialogsService } from '../../services/dialogs.service';
-import { Budget, DateChanges, ExpenseCategoryDetails } from '../../components/models';
-import { BudgetRadarChartComponent } from "../../components/charts/budget-radar-chart/budget-radar-chart.component";
+import { DateChanges } from '../../components/models';
 import { BudgetGaugeChartComponent } from "../../components/charts/budget-gauge-chart/budget-gauge-chart.component";
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
-import { BudgetService } from '../../services/budget.service';
 import { Router } from '@angular/router';
 import { RoutePath } from '../../components/models';
 import { TreemapChartComponent } from "../../components/charts/treemap-chart/treemap-chart.component";
@@ -33,7 +30,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     imports: [SankeyChartComponent, PieChartComponent,
         MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
         NavbarComponent, MonthPickerComponent,
-        MatChipsModule, BudgetRadarChartComponent, BudgetGaugeChartComponent,
+        MatChipsModule, BudgetGaugeChartComponent,
         MatSlideToggleModule, FormsModule, TreemapChartComponent,
         MatTooltipModule],
     templateUrl: './main-page.component.html',
@@ -51,7 +48,6 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   dataService = inject(DataService)
   colorService = inject(ColorService)
   dialogService = inject(DialogsService)
-  budgetService = inject(BudgetService)
 
   router = inject(Router)
 
@@ -68,17 +64,12 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   pieChartDataBrutto: {name: string, value: number}[] = []
   pieChartDataNetto: {name: string, value: number}[] = []
 
-  private readonly categoryService = inject(CategoryService);
 
   monthInsights: DifferenceItem[] = []
 
-  budgets: Budget[] = []
-  spending: Budget[] = []
   treeMapData: TreeNode[] = []
 
-  indicators: ExpenseCategoryDetails[] = []
 
-  showGaugeChart: boolean = true
   isSankeyVertical: boolean = false
   isShowInsights: boolean = true
 
@@ -86,12 +77,8 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
 
   constructor() {
     super();
-    effect(() => {
-      this.budgets = this.budgetService.budget()
-    })
   }
   ngOnInit(): void {
-    this.budgets = this.budgetService.getBudgets()
 
     /** Get all months data to show the orange dot under the months that has entries.
      *
@@ -121,7 +108,6 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
         this.totalNetIncome = data.totalUsableIncome
         this.treeMapData = data.treeMapData
 
-        this.getBudgetData()
 
         this.getMonthInsights(data.month, getLastMonth(data.month))
 
@@ -152,48 +138,15 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   }
 
 
-  getBudgetData() {
-    const categoriesValues = this.pieChartDataNetto.filter(item => this.categoryService.get(item.name)).map(item => ({
-      category: item.name,
-      value: item.value
-    }))
-    this.spending = categoriesValues
-
-    /** Find overlap between spending and budget. Only show what appears in both arrays and not null or 0. */
-    this.indicators = categoriesValues
-      .filter(a => a.value > 0 && this.budgets.some(b => b.category === a.category && b.value > 0))
-      .map(a => {
-        return this.categoryService.get(a.category);
-      }).filter(category => category !== undefined);
-
-    /** Gauge MUST be shown when indicators is < 2. Because we can't show Radar chart if there is less than 3 items.
-     */
-    if (this.indicators.length <= 2) {
-      this.showGaugeChart = true
-    } else if (this.indicators.length > 2) {
-      this.showGaugeChart = false
-    }
-  }
-
   get envelopeBudgets() {
     return (this.entriesOfOneMonth?.envelopes ?? []).map(envelope => ({...envelope,
       spent: this.entriesOfOneMonth.sankeyData.nodes.find(node => node.envelopeId === envelope.id)?.spent ?? 0,
     }));
   }
 
-  getBudgetValue(category: string): number {
-    const budget = this.budgets.find(b => b.category === category);
-    return budget ? budget.value : 0;
-  }
-
-  getActualSpendingValue(category: string): number {
-    const spending = this.spending.find(s => s.category === category);
-    return spending ? spending.value : 0;
-  }
-
   navigateToBudgetList() {
     this.router.navigate([RoutePath.FinanceManagerPage], {
-      queryParams: { tab: 1 }
+      queryParams: { tab: 3 }
     });
   }
 

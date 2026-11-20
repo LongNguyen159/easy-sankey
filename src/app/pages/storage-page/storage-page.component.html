@@ -1,6 +1,6 @@
 
 <div class="flex flex-col">
-    <app-navbar class="navbar" [backLink]="RoutePath.MainPage" [backLabel]="'Main'" [showLogo]="false" [scrollToTop]="selectedTabIndex == 1">
+    <app-navbar class="navbar" [backLink]="RoutePath.MainPage" [backLabel]="'Main'" [showLogo]="false" [scrollToTop]="selectedTabIndex == 3">
         <span class="font-bold text-lg" [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">Finance Manager</span>
     </app-navbar>
     <mat-tab-group animationDuration="0" [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
@@ -18,19 +18,7 @@
             }
         </mat-tab>
       
-        <mat-tab>
-            <ng-template mat-tab-label>
-                <mat-icon fontSet="material-symbols-outlined" class="mr-3" [ngStyle]="{'color': colorService.isDarkMode() ? '#a5d6a7' : '#4caf50'}" fontSet="material-symbols-outlined">savings</mat-icon>
-                Budgets
-            </ng-template>
 
-            <!-- PAGE CONTENTS -->
-            @if (selectedTabIndex == 1) {
-                <div class="p-4" #toTop>
-                    <app-budget-list></app-budget-list>
-                </div>
-            }
-        </mat-tab>
 
         <mat-tab>
             <ng-template mat-tab-label>
@@ -39,7 +27,7 @@
             </ng-template>
 
             <!-- PAGE CONTENTS -->
-            @if (selectedTabIndex == 2) {
+            @if (selectedTabIndex == 1) {
                 <div class="p-4">
                     <app-fix-cost-input></app-fix-cost-input>
                 </div>
@@ -51,7 +39,7 @@
                 <mat-icon fontSet="material-symbols-outlined" class="mr-3" [style.color]="colorService.isDarkMode() ? '#e1bee7' : '#9c27b0'">category</mat-icon>
                 Categories
             </ng-template>
-            @if (selectedTabIndex == 3) {
+            @if (selectedTabIndex == 2) {
                 <div class="p-4">
                     <app-category-manager></app-category-manager>
                 </div>
@@ -59,11 +47,15 @@
         </mat-tab>
         <mat-tab>
             <ng-template mat-tab-label>
-                <mat-icon fontSet="material-symbols-outlined" class="mr-3">mail</mat-icon>
-                Envelopes
+                <mat-icon fontSet="material-symbols-outlined" class="mr-3" [ngStyle]="{'color': colorService.isDarkMode() ? '#a5d6a7' : '#4caf50'}" fontSet="material-symbols-outlined">savings</mat-icon>
+                Budgets
             </ng-template>
-            @if (selectedTabIndex == 4) {
-                <div class="p-4"><app-global-envelope-manager></app-global-envelope-manager></div>
+
+            <!-- PAGE CONTENTS -->
+            @if (selectedTabIndex == 3) {
+                <div class="p-4" #toTop>
+                    <app-global-envelope-manager></app-global-envelope-manager>
+                </div>
             }
         </mat-tab>
     </mat-tab-group>

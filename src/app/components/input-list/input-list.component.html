@@ -41,11 +41,11 @@
       <mat-menu #menu="matMenu" xPosition="before">
         <button mat-menu-item type="button" (click)="manageEnvelopes()">
           <mat-icon fontSet="material-symbols-outlined">mail</mat-icon>
-          <span>Global envelopes</span>
+          <span>Global budgets</span>
         </button>
         <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
           <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>
-          <span>Month-only envelopes</span>
+          <span>Budgets for this month</span>
         </button>
         <button mat-menu-item (click)="copyLinks()" [disabled]="dataService.hasDataCycle()">
           <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
@@ -72,15 +72,15 @@
   </div>
 
   <div class="entry-bulk-toolbar" role="group" aria-label="Entry editing actions">
-    <button mat-stroked-button type="button" [disabled]="bulkBusy()" (click)="toggleEditMode()" [attr.aria-pressed]="editMode()">
+    <button matButton type="button" [disabled]="bulkBusy()" (click)="toggleEditMode()" [attr.aria-pressed]="editMode()">
       <mat-icon fontSet="material-symbols-outlined">{{ editMode() ? 'check' : 'edit' }}</mat-icon>{{ editMode() ? 'Done' : 'Edit' }}
     </button>
     @if (editMode()) {
       <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
-        (change)="selectAll($event.checked)">{{ isSearching ? 'Select filtered' : 'Select all' }}</mat-checkbox>
-      <span aria-live="polite">{{ selectedEntryIds.size }} selected</span>
+        (change)="selectAll($event.checked)"></mat-checkbox>
+      <span aria-live="polite" class="bg-gray-200 p-2 px-3 rounded-full">{{ selectedEntryIds.size }} selected</span>
       <button mat-button type="button" [disabled]="bulkBusy()"
-        [matMenuTriggerFor]="envelopeMenu">Add to envelope</button>
+        [matMenuTriggerFor]="envelopeMenu">Add to budget</button>
       <mat-menu #envelopeMenu="matMenu">
         @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
           <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
@@ -89,13 +89,13 @@
         }
         @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
         <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
-          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create envelope…
+          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
         </button>
-        <button mat-menu-item type="button" (click)="manageEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage envelopes
-        </button>
+        <!-- <button mat-menu-item type="button" (click)="manageEnvelopes()">
+          <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
+        </button> -->
         <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Month-only envelopes
+          <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
         </button>
       </mat-menu>
       <button mat-icon-button type="button" aria-label="More selection actions" matTooltip="More actions" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
@@ -104,7 +104,7 @@
       <mat-menu #selectionActions="matMenu">
         @if (selectedAssignedExpenseCount) {
           <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
-            <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from envelope
+            <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
           </button>
           <mat-divider></mat-divider>
         }
@@ -210,7 +210,7 @@
     }
   </div>
 
-  <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center">
+  <div class="sticky bottom-2 z-40 flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center">
     <div>
       <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
         <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
@@ -246,9 +246,6 @@
             <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Fixed cost" aria-label="Fixed cost">event_repeat</mat-icon>
           }
           <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
-          @if (envelopeName(linkGroup.get('envelopeId')?.value); as name) {
-            <mat-hint>{{ name }}</mat-hint>
-          }
           @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
             <mat-error>
               This name is not allowed.
@@ -324,27 +321,34 @@
         }
         <button mat-icon-button type="button" class="mt-2" [disabled]="bulkBusy()"
           [attr.aria-label]="'Actions for ' + (linkGroup.get('target')?.value || 'new entry')"
+          [matTooltip]="envelopeName(linkGroup.get('envelopeId')?.value) || 'Entry actions'"
           [matMenuTriggerFor]="entryMenu">
-          <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
+          <mat-icon fontSet="material-symbols-outlined">{{ envelopeName(linkGroup.get('envelopeId')?.value) ? 'account_balance_wallet' : 'more_vert' }}</mat-icon>
         </button>
         <mat-menu #entryMenu="matMenu">
-          <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
-            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
-          </button>
           <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
             [matMenuTriggerFor]="entryEnvelopeMenu">
-            <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>Add to envelope
+            <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
+          </button>
+          <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
+            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
           </button>
         </mat-menu>
         <mat-menu #entryEnvelopeMenu="matMenu">
           @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
-            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(envelope.id, linkGroup)">
+            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(envelope.id, linkGroup)"
+              [class.entry-budget-selected]="linkGroup.get('envelopeId')?.value === envelope.id"
+              [attr.aria-current]="linkGroup.get('envelopeId')?.value === envelope.id ? 'true' : null">
+              <mat-icon fontSet="material-symbols-outlined">{{ linkGroup.get('envelopeId')?.value === envelope.id ? 'check' : 'account_balance_wallet' }}</mat-icon>
               {{ envelope.name }} · {{ envelope.isGlobal ? 'All months' : 'This month' }}
             </button>
           }
           @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
           <button mat-menu-item type="button" (click)="createEnvelopeForSelection(linkGroup)">
-            <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create envelope…
+            <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
+          </button>
+          <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
+            <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
           </button>
         </mat-menu>
       </div>

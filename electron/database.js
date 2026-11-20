@@ -302,14 +302,6 @@ function openDatabase(filename, { onQuery } = {}) {
       })
     ).map(entryDto);
   }
-  async function listBudgets(db) {
-    return (
-      await db.budget.findMany({
-        include: { category: true },
-        orderBy: { position: "asc" },
-      })
-    ).map((row) => ({ category: row.categoryId, value: row.amount }));
-  }
   async function listTracking(db) {
     return (
       await db.trackingTarget.findMany({ orderBy: { position: "asc" } })
@@ -334,12 +326,6 @@ function openDatabase(filename, { onQuery } = {}) {
       await db.category.findMany({
         where: { isEssential: true },
         orderBy: { position: "asc" },
-      })
-    ).map((row) => row.id);
-    result.budgetManualOrder = (
-      await db.category.findMany({
-        where: { budgetPosition: { not: null } },
-        orderBy: { budgetPosition: "asc" },
       })
     ).map((row) => row.id);
     return result;
@@ -371,13 +357,6 @@ function openDatabase(filename, { onQuery } = {}) {
         where: { id: { in: value ?? [] } },
         data: { isEssential: true },
       });
-    } else if (key === "budgetManualOrder") {
-      await db.category.updateMany({ data: { budgetPosition: null } });
-      for (const [position, id] of (value ?? []).entries())
-        await db.category.update({
-          where: { id },
-          data: { budgetPosition: position },
-        });
     } else throw new Error("Unsupported preference.");
   }
   async function snapshot(db = prisma) {
@@ -386,7 +365,6 @@ function openDatabase(filename, { onQuery } = {}) {
       ...(await readPreferences(db)),
       expenseCategories: await listCategories(db),
       fixCosts: await listTemplates(db),
-      budgets: await listBudgets(db),
       ...((await listGlobalEnvelopes(db)).length ? {globalEnvelopes: await listGlobalEnvelopes(db)} : {}),
     };
     const months = await db.month.findMany({ orderBy: { id: "asc" } });
@@ -435,7 +413,6 @@ function openDatabase(filename, { onQuery } = {}) {
     await db.envelope.deleteMany();
     await db.month.deleteMany();
     await db.fixedCostTemplate.deleteMany();
-    await db.budget.deleteMany();
     await db.trackingTarget.deleteMany();
     await db.category.deleteMany();
     await db.appSettings.deleteMany();
@@ -497,10 +474,6 @@ function openDatabase(filename, { onQuery } = {}) {
         lastUpdated: item.lastUpdated,
       });
     await saveTemplates(db, data.fixCosts ?? []);
-    for (const [position, item] of (data.budgets ?? []).entries())
-      await db.budget.create({
-        data: { categoryId: item.category, amount: item.value, position },
-      });
     if (data.trackedCategories) {
       await db.trackingSettings.update({
         where: { id: 1 },
@@ -534,7 +507,6 @@ function openDatabase(filename, { onQuery } = {}) {
       "firstTime",
       "themeSettings",
       "essentialCategories",
-      "budgetManualOrder",
     ])
       if (Object.hasOwn(data, key)) await setPreference(db, key, data[key]);
     await db.importState.update({
@@ -648,82 +620,6 @@ function openDatabase(filename, { onQuery } = {}) {
             },
           });
         return { value: await listCategories(db) };
-      }),
-  };
-  const budgets = {
-    list: () => listResult(listBudgets),
-    get: async (p) => {
-      await ready;
-      const row = await prisma.budget.findUnique({
-        where: { categoryId: p.id },
-      });
-      return row ? { category: row.categoryId, value: row.amount } : null;
-    },
-    create: (p) =>
-      command(p, async (db) => {
-        canonical("budgets", [p.item]);
-        const row = await db.budget.create({
-          data: {
-            categoryId: p.item.category,
-            amount: p.item.value,
-            position:
-              ((await db.budget.aggregate({ _max: { position: true } }))._max
-                .position ?? -1) + 1,
-          },
-        });
-        return { value: { category: row.categoryId, value: row.amount } };
-      }),
-    update: (p) =>
-      command(p, async (db) => {
-        const old = await db.budget.findUniqueOrThrow({
-          where: { categoryId: p.id },
-        });
-        const item = {
-          category: p.id,
-          value: old.amount,
-          ...(p.changes ?? p.item),
-        };
-        if (item.category !== p.id)
-          throw new Error("Budget identity cannot change.");
-        canonical("budgets", [item]);
-        await db.budget.update({
-          where: { categoryId: p.id },
-          data: { amount: item.value },
-        });
-        return { value: item };
-      }),
-    delete: (p) =>
-      command(p, async (db) => {
-        const result = await db.budget.deleteMany({
-          where: { categoryId: p.id },
-        });
-        return { value: null, changed: !!result.count };
-      }),
-    reorder: (p) =>
-      command(p, async (db) => {
-        validateOrder(
-          p.ids,
-          (await db.budget.findMany({ select: { categoryId: true } })).map(
-            (row) => row.categoryId,
-          ),
-        );
-        for (const [position, id] of p.ids.entries())
-          await db.budget.update({
-            where: { categoryId: id },
-            data: { position },
-          });
-        return { value: null };
-      }),
-    replace: (p) =>
-      command(p, async (db) => {
-        canonical("budgets", p.items);
-        await checkBase(db, p, listBudgets);
-        await db.budget.deleteMany();
-        for (const [position, item] of p.items.entries())
-          await db.budget.create({
-            data: { categoryId: item.category, amount: item.value, position },
-          });
-        return { value: await listBudgets(db) };
       }),
   };
   const fixedCosts = {
@@ -1131,7 +1027,6 @@ function openDatabase(filename, { onQuery } = {}) {
     },
     entries,
     categories,
-    budgets,
     fixedCosts,
     tracking,
     settings: {

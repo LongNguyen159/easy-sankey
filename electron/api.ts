@@ -1,7 +1,6 @@
 import type {openDatabase} from './database';
 import type {
   BudgetEnvelope,
-  Budget,
   ExpenseCategoryDetails,
   UserDefinedLink,
 } from '../src/app/components/models';
@@ -56,7 +55,7 @@ function operation<I, O>(
   return { channel: `database:${channel}`, description, validate, run };
 }
 type Revision = { revision?: number };
-function modelApi<T>(name: "categories" | "budgets" | "fixedCosts" | "tracking") {
+function modelApi<T>(name: "categories" | "fixedCosts" | "tracking") {
   return {
     list: operation<void, { revision: number; items: T[] }>(
       `${name}:list`,
@@ -329,7 +328,6 @@ export const operations = {
     ),
   },
   categories: modelApi<ExpenseCategoryDetails>('categories'),
-  budgets: modelApi<Budget>('budgets'),
   fixedCosts: modelApi<UserDefinedLink>('fixedCosts'),
   tracking: modelApi<TrackingTarget>('tracking'),
 };

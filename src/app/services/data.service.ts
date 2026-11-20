@@ -13,7 +13,6 @@ import { formatDateToYYYYMM } from '../utils/utils';
 import { ConfirmDialogData } from '../components/dialogs/confirm-dialog/confirm-dialog.component';
 import { LogsService } from './logs.service';
 import { CategoryService } from './category.service';
-import { BudgetService } from './budget.service';
 import { TrackingService } from './tracking.service';
 import { SingleMonthData, MonthlyData } from '../components/models';
 import { MonthTransfer } from '../utils/data-transfer';
@@ -49,7 +48,6 @@ export class DataService {
     private UiService = inject(UiService)
     private logService = inject(LogsService)
     private categories = inject(CategoryService)
-    private budgets = inject(BudgetService)
     private tracking = inject(TrackingService)
 
     readonly REMAINING_BALANCE_LABEL = 'Surplus'
@@ -389,7 +387,7 @@ export class DataService {
         });
 
         await this.categories.remove(id);
-        await Promise.all([this.budgets.reload(),this.tracking.reload(),this.fixedCosts.reload(),this.preferences.reload()]);
+        await Promise.all([this.tracking.reload(),this.fixedCosts.reload(),this.preferences.reload()]);
         this.tracking.categoriesToTrack.update(ids=>ids.filter(value=>value!==id));
         this.demoLinks=clear(this.demoLinks);
         const copied=this.retrieveCopiedLinks();if(copied)this.storeCopiedLinks(clear(copied));

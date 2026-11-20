@@ -101,11 +101,6 @@ export interface BudgetEnvelope {
   budget: number;
 }
 
-export interface Budget {
-  category: string;
-  value: number;
-}
-
 //#endregion
 
 export interface DateChanges {

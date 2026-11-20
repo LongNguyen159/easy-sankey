@@ -1,9 +1,9 @@
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const textKeys = new Set(['selectedCurrency','entryView','budgetView','budgetSort','fixCostSort','firstTime','appVersion']);
-const collections = { expenseCategories: 'value', fixCosts: 'id', budgets: 'category' };
+const textKeys = new Set(['selectedCurrency','entryView','fixCostSort','firstTime','appVersion']);
+const collections = { expenseCategories: 'value', fixCosts: 'id' };
 const keys = new Set(['monthlyData', 'globalEnvelopes', ...Object.keys(collections), ...textKeys,
-  'trackedCategories','essentialCategories','logs','themeSettings','budgetManualOrder']);
+  'trackedCategories','essentialCategories','logs','themeSettings']);
 function fail(message) { throw new Error(message); }
 function entry(value) {
   if (!object(value) || typeof value.id !== 'string' || !value.id || !['income','expense','tax'].includes(value.type)
@@ -60,7 +60,7 @@ function validate(key, value) {
   } else if (key === 'globalEnvelopes') envelopes(value);
   else if (textKeys.has(key)) {
     if (typeof value !== 'string') fail('Invalid preference.');
-    if (['budgetSort','fixCostSort'].includes(key) && !['manual','highest','lowest'].includes(value)) fail('Invalid sort preference.');
+    if (key === 'fixCostSort' && !['manual','highest','lowest'].includes(value)) fail('Invalid sort preference.');
     if (key === 'firstTime' && !['true','false'].includes(value)) fail('Invalid onboarding flag.');
   } else if (key === 'fixCosts') entries(value);
   else if (key === 'expenseCategories') {
@@ -72,10 +72,7 @@ function validate(key, value) {
         || ['icon','colorLight','colorDark'].some(k => category[k] != null && typeof category[k] !== 'string')) fail('Invalid category.');
       ids.add(category.value);
     }
-  } else if (key === 'budgets') {
-    if (!Array.isArray(value) || value.some(v => !object(v) || typeof v.category !== 'string' || !Number.isFinite(v.value) || v.value < 0)
-      || new Set(value.map(v => v.category)).size !== value.length) fail('Invalid budgets.');
-  } else if (['essentialCategories','budgetManualOrder'].includes(key)) {
+  } else if (key === 'essentialCategories') {
     if (!Array.isArray(value) || value.some(v => typeof v !== 'string')) fail('Invalid category order.');
   } else if (key === 'themeSettings') {
     if (!object(value) || typeof value.isDarkMode !== 'boolean' || typeof value.isManualThemeSet !== 'boolean'
@@ -108,8 +105,10 @@ function canonical(key,value) {
 function sourceData(data) {
   if (!object(data)) throw new Error("Invalid source data.");
   const result = {};
-  for (const [key, value] of Object.entries(data))
+  for (const [key, value] of Object.entries(data)) {
+    if (['budgets', 'budgetManualOrder', 'budgetView', 'budgetSort'].includes(key)) continue; // Discard retired category limits.
     result[key] = canonical(key, value);
+  }
   const globals = result.globalEnvelopes ?? [];
   envelopes(globals);
   for (const record of Object.values(result.monthlyData ?? {})) {
@@ -187,8 +186,6 @@ function historyDto(row) {
 const preferenceColumns = {
   selectedCurrency: "selectedCurrency",
   entryView: "entryView",
-  budgetView: "budgetView",
-  budgetSort: "budgetSort",
   fixCostSort: "fixedCostSort",
   appVersion: "appVersion",
 };

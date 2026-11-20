@@ -7,7 +7,7 @@ Angular component -> feature service -> Electron API -> Prisma -> SQLite
 ```
 
 The persistent schema is **prisma/schema.prisma**. Attributes have real columns;
-parents, categories, monthly envelopes, budgets and history use foreign keys. No entity payloads are
+parents, categories, monthly/global spending budgets and history use foreign keys. No entity payloads are
 stored as JSON. JSON is only a file/transport format for legacy data and backups.
 
 ## What each file does
@@ -42,12 +42,12 @@ whole import. Original LocalStorage stays untouched. The completion marker avoid
 stale reimports after reset; a missing database offers explicit backup recovery.
 Full backup versions 1/2 and month clipboard transfer remain supported.
 
-Envelopes have their own allowance and entry membership, independent of categories.
+Budgets (stored as envelopes) have their own allowance and entry membership, independent of categories.
 A nullable `Envelope.monthId` distinguishes reusable global definitions from
 month-only allowances. Global spending is derived from each month's entries;
 there is no shared spending counter. Global name/allowance changes apply to every
 month and invalidate month revisions to protect open editors. The central
-Finance Manager envelope tab saves shared definitions through a dedicated operation
+Finance Manager Budgets tab saves shared definitions through a dedicated operation
 without creating or rewriting a month. Month saves can
 update global and local definitions atomically, with an expected global-definition
 snapshot to detect concurrent changes. The global definitions are queried at startup
@@ -77,3 +77,10 @@ all source fields matched after re-export (3 months, 21 entries, 3 templates and
 2 history items). Migration tests cover adding a column, rebuilding a referenced
 table without losing related rows, and rolling back failed SQL. Windows runtime
 verification requires Windows CI. No release was published.
+
+Category spending limits are removed. Migration `202611200005` drops the old
+`budgets` table and category-budget display preferences; it leaves all finance
+entries, categories, fixed-cost templates, history and envelope definitions intact.
+The monthly dialog edits local and global definitions together using an atomic
+month save and a global-definition snapshot for conflict detection. Global
+definitions can also be managed independently in Finance Manager. Retired category-limit data in imports is discarded.
