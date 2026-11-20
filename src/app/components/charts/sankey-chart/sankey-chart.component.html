@@ -1,11 +1,15 @@
-<div class="flex flex-row w-full justify-center items-center gap-2">
-    <h2 class="font-bold">
-        Income Flow and Expense Allocation
-    </h2>
-    @if (showTooltip) {
-        <button mat-icon-button class="!flex custom-position" [matTooltip]="'Tip: You can click on the chart to edit values directly || Info: Trends below show your current spending compared to last month.'">
-            <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
-        </button>
+<div class="sankey-heading">
+    <div class="sankey-title">
+        <h2 class="font-bold">Income Flow and Expense Allocation</h2>
+        @if (showTooltip) {
+            <button mat-icon-button aria-label="Chart information" matTooltip="Click an entry to edit its amount. Envelope labels show spent / allowance; Surplus uses actual spending.">
+                <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
+            </button>
+        }
+    </div>
+    @if (sankeyData?.categoryView) {
+        <mat-slide-toggle [checked]="showEnvelopes" (change)="toggleEnvelopes()" hideIcon
+            matTooltip="Group expenses by envelope">Envelopes</mat-slide-toggle>
     }
 </div>
 @if (dataService.isDemo()) {

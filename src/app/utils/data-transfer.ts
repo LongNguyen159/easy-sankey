@@ -1,5 +1,5 @@
-import {ExpenseCategoryDetails,UserDefinedLink} from '../components/models';
-import {canonical,entries as validateEntries,sourceData} from '../../../electron/import-export';
+import {BudgetEnvelope,ExpenseCategoryDetails,UserDefinedLink} from '../components/models';
+import {envelopes as validateEnvelopes,canonical,entries as validateEntries,sourceData} from '../../../electron/import-export';
 
 type JsonObject=Record<string,unknown>;
 function readTransfer(text:string,type:'full'|'month'):JsonObject {
@@ -12,15 +12,18 @@ function readTransfer(text:string,type:'full'|'month'):JsonObject {
 export function readBackup(text:string):JsonObject {
  return sourceData(readTransfer(text,'full')['data']);
 }
-export interface MonthTransfer {entries:UserDefinedLink[];categories:ExpenseCategoryDetails[];}
-export function exportMonth(entries:UserDefinedLink[],categories:readonly ExpenseCategoryDetails[]):string {
+export interface MonthTransfer {entries:UserDefinedLink[];categories:ExpenseCategoryDetails[];envelopes?:BudgetEnvelope[];}
+export function exportMonth(entries:UserDefinedLink[],categories:readonly ExpenseCategoryDetails[],envelopes:BudgetEnvelope[]=[]):string {
  const sources=new Set(entries.map(entry=>entry.source));
- return JSON.stringify({app:'easy-sankey',version:1,type:'month',entries,categories:categories.filter(category=>sources.has(category.value))});
+ return JSON.stringify({app:'easy-sankey',version:1,type:'month',entries,envelopes,categories:categories.filter(category=>sources.has(category.value))});
 }
 export function readMonth(text:string):MonthTransfer {
  const payload=readTransfer(text,'month');
  const entries=payload['entries'];const categories=payload['categories'];
  if(!Array.isArray(entries)||!entries.length||!Array.isArray(categories))throw new Error('Invalid month data.');
  validateEntries(entries);canonical('expenseCategories',categories);
- return {entries:entries as UserDefinedLink[],categories:categories as ExpenseCategoryDetails[]};
+ const envelopes=payload['envelopes']??[];validateEnvelopes(envelopes);
+ const ids=new Set((envelopes as BudgetEnvelope[]).map(item=>item.id));
+ if(entries.some(item=>item.envelopeId&&!ids.has(item.envelopeId)))throw new Error('Missing envelope in copied month.');
+ return {entries:entries as UserDefinedLink[],categories:categories as ExpenseCategoryDetails[],envelopes:envelopes as BudgetEnvelope[]};
 }

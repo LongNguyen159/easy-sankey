@@ -34,3 +34,66 @@ describe('month source projections', () => {
     expect(result.remainingBalance).toBe('850');
   });
 });
+
+describe('monthly spending envelopes', () => {
+  const category = 'restaurants';
+  const envelope = {id: 'personal', name: 'Personal spending', budget: 500};
+  const entries: UserDefinedLink[] = [
+    {id: 'salary', type: EntryType.Income, target: 'Salary', value: 1000},
+    {id: 'dinner', type: EntryType.Expense, target: 'Dinner', value: 40, source: category, envelopeId: 'personal'},
+    {id: 'lunch', type: EntryType.Expense, target: 'Lunch', value: 60, source: category},
+  ];
+  const calculate = (budget = 500) => calculateMonth(entries, '2026-11', '-', id => id === category, [{...envelope, budget}]);
+
+  it('uses only actual spending for surplus and category reports, regardless of the allowance', () => {
+    for (const budget of [50, 500, 2000]) {
+      const data = calculate(budget);
+      expect(data.totalExpenses).toBe(100);
+      expect(data.remainingBalance).toBe('900');
+      expect(data.pieData).toContain({name: category, value: 100});
+      const node = data.sankeyData.nodes.find(node => node.envelopeId === 'personal')!;
+      expect(node.spent).toBe(40);
+      expect(node.budget).toBe(budget);
+      expect(node.value).toBe(budget);
+      expect(data.sankeyData.nodes.some(node => node.name.includes('Budget remaining'))).toBeFalse();
+    }
+  });
+
+  it('splits a category by envelope while displaying every expense exactly once', () => {
+    const data = calculate();
+    const nodes = data.sankeyData.nodes;
+    const branches = nodes.filter(node => node.categoryId === category);
+    expect(branches.map(node => node.value).sort((a,b) => a-b)).toEqual([40,60]);
+    const envelopeNode = nodes.find(node => node.envelopeId)!;
+    const inside = data.sankeyData.links.find(link => link.source === envelopeNode.name)!;
+    expect(nodes.find(node => node.name === inside.target)?.value).toBe(40);
+    expect(nodes.filter(node => node.entryName === 'Dinner').length).toBe(1);
+    expect(nodes.filter(node => node.entryName === 'Lunch').length).toBe(1);
+    expect(data.sankeyData.categoryView?.nodes.filter(node => node.name === category).length).toBe(1);
+    expect(entries[1].value).toBe(40);
+  });
+
+  it('shows unused envelopes and spending above the allowance without adding synthetic expenses', () => {
+    const unused = calculateMonth(entries.map(entry => ({...entry, envelopeId: null})), '2026-11', '-', id => id === category, [envelope]);
+    expect(unused.sankeyData.nodes.find(node => node.envelopeId)?.spent).toBe(0);
+    expect(unused.remainingBalance).toBe('900');
+    const overspent = calculate(20);
+    expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.value).toBe(40);
+    expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.budget).toBe(20);
+    expect(overspent.remainingBalance).toBe('900');
+  });
+
+  it('preserves tax calculations and handles independent memberships within expense hierarchies', () => {
+    const data = calculateMonth([
+      entries[0], {id:'tax', type:EntryType.Tax, target:'Tax', value:100},
+      {id:'parent', type:EntryType.Expense, target:'Meals', value:100, source:category},
+      {...entries[1], source:'Meals'},
+    ], '2026-11', '-', id => id === category, [envelope]);
+    expect(data.totalExpenses).toBe(100);
+    expect(data.totalTax).toBe(100);
+    expect(data.remainingBalance).toBe('800');
+    expect(data.sankeyData.nodes.find(node => node.envelopeId)?.spent).toBe(40);
+    expect(data.sankeyData.nodes.filter(node => node.categoryId === category).reduce((sum,node) => sum+node.value,0)).toBe(100);
+    expect(data.sankeyData.links.find(link => link.target === data.sankeyData.nodes.find(node => node.envelopeId)?.name)?.source).toBe('Usable Income');
+  });
+});

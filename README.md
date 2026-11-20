@@ -9,6 +9,24 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 Packaged with Electron Builder.
 Edit Built App configs (windows size etc.) at `main.js` in root directory
 
+## Monthly envelopes
+
+In the entry editor, choose **Edit**, select entries with the checkboxes, and use
+**Add to envelope**, which also includes **Create envelope** and **Manage envelopes**.
+The **More actions** menu contains **Remove from envelope** and **Delete selected**. Only expenses
+receive envelope assignments; income and tax entries can still be selected for
+deletion. Edit reusable allowances in **Finance Manager → Envelopes**.
+**Manage envelopes** in the entry menu opens that central page; **Month-only envelopes**
+edits allowances for the current month. Quick creation remains available from
+**Add to envelope**. Global names and allowances are shared; actual spending is calculated independently for each month. Entries keep their categories.
+
+The Sankey shows **spent / allowance** with category branches split between assigned
+and unassigned expenses. Turn off the **Envelopes** switch beside the chart title
+for the category view. Only actual expenses reduce Surplus; unused allowance adds no extra node. The monthly
+**Budget vs Actual Spending** section also shows envelope gauges, including unused
+allowances. Deleting an envelope keeps its expenses. Copying a month preserves
+existing global references and makes independent copies of month-only allowances.
+
 ## Local development
 
 Run `npm start` to start Angular with live reload and launch Electron. Closing the

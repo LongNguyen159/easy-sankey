@@ -1,3 +1,5 @@
+import { calculateMonth } from '../../utils/month-calculation';
+import { EntryType, ExpenseCategory } from '../../components/models';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DatePipe } from '@angular/common';
 import { provideRouter } from '@angular/router';
@@ -26,4 +28,36 @@ describe('MainPageComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+  it('shows stable envelope budgets alongside category budgets, including unused allowances', async () => {
+    await component.dataService.ready;
+    const envelopes=[{id:'revolut',name:'Revolut spending',budget:500,isGlobal:true},
+      {id:'holiday',name:'Holiday',budget:200}];
+    component.entriesOfOneMonth=calculateMonth([
+      {id:'salary',type:EntryType.Income,target:'Salary',value:1000},
+      {id:'dinner',type:EntryType.Expense,target:'Dinner',value:40,envelopeId:'revolut',source:ExpenseCategory.Restaurants},
+      {id:'food',type:EntryType.Expense,target:'Supermarket',value:80,source:ExpenseCategory.Groceries},
+    ],'2026-11','-',id => id === ExpenseCategory.Restaurants || id === ExpenseCategory.Groceries,envelopes);
+    component.budgets=[{category:ExpenseCategory.Restaurants,value:500},{category:ExpenseCategory.Groceries,value:300}];
+    component.pieChartDataNetto=component.entriesOfOneMonth.pieData;
+    component.getBudgetData();
+    fixture.detectChanges();
+    expect(component.indicators.length).toBe(2);
+    expect(component.envelopeBudgets.map(item=>item.spent)).toEqual([40,0]);
+    const section=fixture.nativeElement.querySelector('[aria-label="Envelope budgets"]');
+    expect(section.querySelectorAll('app-budget-gauge-chart').length).toBe(2);
+    expect(section.textContent).toContain('Global envelope');
+    expect(fixture.nativeElement.textContent).not.toContain('No budgets set yet!');
+    // Cover both direct category gauges and envelope gauges with captions.
+    const grids=Array.from(fixture.nativeElement.querySelectorAll('.gauge-chart-container')) as HTMLElement[];
+    expect(grids.length).toBe(2);
+    for (const width of ['900px', '500px']) {
+      grids.forEach(grid => grid.style.width = width);
+      await new Promise(resolve => setTimeout(resolve, 250));
+      const heights=grids.map(grid => grid.getBoundingClientRect().height);
+      heights.forEach(height => expect(height).toBeGreaterThan(0));
+      await new Promise(resolve => setTimeout(resolve, 400));
+      grids.forEach((grid,index) => expect(grid.getBoundingClientRect().height).toBeCloseTo(heights[index], 0));
+    }
+  });
+
 });

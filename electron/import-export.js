@@ -2,12 +2,13 @@ const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textKeys = new Set(['selectedCurrency','entryView','budgetView','budgetSort','fixCostSort','firstTime','appVersion']);
 const collections = { expenseCategories: 'value', fixCosts: 'id', budgets: 'category' };
-const keys = new Set(['monthlyData', ...Object.keys(collections), ...textKeys,
+const keys = new Set(['monthlyData', 'globalEnvelopes', ...Object.keys(collections), ...textKeys,
   'trackedCategories','essentialCategories','logs','themeSettings','budgetManualOrder']);
 function fail(message) { throw new Error(message); }
 function entry(value) {
   if (!object(value) || typeof value.id !== 'string' || !value.id || !['income','expense','tax'].includes(value.type)
     || typeof value.target !== 'string' || !value.target.trim() || !Number.isFinite(value.value) || value.value < 0
+    || (value.envelopeId != null && (typeof value.envelopeId !== 'string' || !value.envelopeId || value.type !== 'expense'))
     || (value.source != null && typeof value.source !== 'string')
     || (value.lastEditedAt != null && (!Number.isFinite(value.lastEditedAt) || value.lastEditedAt < 0))
     || ['isFixCost','demo'].some(key => value[key] != null && typeof value[key] !== 'boolean')) fail('Invalid entry.');
@@ -31,6 +32,18 @@ function entries(values) {
     }
   }
 }
+function envelopes(values) {
+  if (!Array.isArray(values)) fail('Invalid envelopes.');
+  const ids = new Set(), names = new Set();
+  for (const value of values) {
+    if (!object(value) || typeof value.id !== 'string' || !value.id
+      || typeof value.name !== 'string' || !value.name.trim()
+      || (value.isGlobal != null && typeof value.isGlobal !== 'boolean')
+      || !Number.isFinite(value.budget) || value.budget <= 0
+      || ids.has(value.id) || names.has(`${!!value.isGlobal}:${value.name.trim().toLowerCase()}`)) fail('Invalid or duplicate envelope.');
+    ids.add(value.id); names.add(`${!!value.isGlobal}:${value.name.trim().toLowerCase()}`);
+  }
+}
 function validate(key, value) {
   if (!keys.has(key)) fail('Unsupported storage field.');
   if (value === null) return;
@@ -41,8 +54,11 @@ function validate(key, value) {
         || typeof record.lastUpdated !== 'string'
         || (record.lastUpdated !== '-' && !Number.isFinite(Date.parse(record.lastUpdated)))) fail('Invalid month metadata.');
       entries(record.rawInput);
+      envelopes(record.envelopes ?? []);
+
     }
-  } else if (textKeys.has(key)) {
+  } else if (key === 'globalEnvelopes') envelopes(value);
+  else if (textKeys.has(key)) {
     if (typeof value !== 'string') fail('Invalid preference.');
     if (['budgetSort','fixCostSort'].includes(key) && !['manual','highest','lowest'].includes(value)) fail('Invalid sort preference.');
     if (key === 'firstTime' && !['true','false'].includes(value)) fail('Invalid onboarding flag.');
@@ -79,8 +95,9 @@ function validate(key, value) {
 }
 function canonical(key,value) {
   validate(key,value);
+  if (key === 'globalEnvelopes' && value) return value.map(item => ({id:item.id,name:item.name,budget:item.budget,isGlobal:true}));
   if (key === 'monthlyData' && value) return Object.fromEntries(Object.entries(value).map(([month, record]) =>
-    [month, { month, lastUpdated: record.lastUpdated, rawInput: record.rawInput }]));
+    [month, { month, lastUpdated: record.lastUpdated, rawInput: record.rawInput, ...(record.envelopes?.length ? {envelopes:record.envelopes} : {}) }]));
   if (key === 'trackedCategories' && value) return { targetSurplus: value.targetSurplus, avgIncome:value.avgIncome??0,
     trackingCategories: value.trackingCategories.map(v => ({ name:v.name, targetSpending:v.targetSpending })) };
   return value;
@@ -93,6 +110,14 @@ function sourceData(data) {
   const result = {};
   for (const [key, value] of Object.entries(data))
     result[key] = canonical(key, value);
+  const globals = result.globalEnvelopes ?? [];
+  envelopes(globals);
+  for (const record of Object.values(result.monthlyData ?? {})) {
+    const available = [...globals, ...(record.envelopes ?? [])];
+    if (new Set(available.map(item => item.id)).size !== available.length) fail('Duplicate envelope identity.');
+    const ids = new Set(available.map(item => item.id));
+    if (record.rawInput.some(item => item.envelopeId && !ids.has(item.envelopeId))) fail('Missing envelope for entry.');
+  }
   return result;
 }
 function legacyData(legacy) {
@@ -114,6 +139,7 @@ function entryDto(row) {
     target: row.name,
     value: row.amount,
   };
+  if (row.envelopeId) item.envelopeId = row.envelopeId;
   if (row.categoryId) item.source = row.categoryId;
   else if (row.parent) item.source = row.parent.name;
   for (const [field, column] of [
@@ -126,9 +152,10 @@ function entryDto(row) {
         typeof row[column] === "bigint" ? Number(row[column]) : row[column];
   return item;
 }
-function entryColumns(item) {
+function entryColumns(item, template = false) {
   return {
     id: item.id,
+    ...(!template ? {envelopeId: item.envelopeId ?? null} : {}),
     type: item.type,
     name: item.target,
     normalizedName: item.target.trim().toLowerCase(),
@@ -165,7 +192,7 @@ const preferenceColumns = {
   fixCostSort: "fixedCostSort",
   appVersion: "appVersion",
 };
-module.exports = {canonical, entries, keys, textKeys, object,
+module.exports = {canonical, entries, envelopes, keys, textKeys, object,
   sourceData,
   legacyData,
   entryDto,

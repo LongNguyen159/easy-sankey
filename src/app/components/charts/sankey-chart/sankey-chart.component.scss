@@ -1,5 +1,16 @@
-.custom-position {
-    position: absolute;
-    right: calc(50% - 200px);
-    transform: translateX(100%);
+.sankey-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem 1.5rem;
 }
+
+.sankey-title {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  min-width: 0;
+}
+
+.sankey-title h2 { margin: 0; }

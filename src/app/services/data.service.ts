@@ -1,12 +1,12 @@
 import { calculateMonth } from '../utils/month-calculation';
-import {DATABASE_CLIENT} from '../data/database';
+import {CONFIGURATION, DATABASE_CLIENT} from '../data/database';
 import {SettingsService} from './settings.service';
 import {FixedCostService} from './fixed-cost.service';
 import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -36,6 +36,7 @@ export class DataService {
     private readonly database=inject(DATABASE_CLIENT);
     private readonly fixedCosts=inject(FixedCostService);
 
+    readonly globalEnvelopes = signal<BudgetEnvelope[]>(structuredClone(inject(CONFIGURATION).globalEnvelopes ?? []));
     readonly loading=signal(true);
     readonly loadError=signal<string|null>(null);
     readonly ready:Promise<void>;
@@ -295,14 +296,14 @@ export class DataService {
         const savedMonth = savedSource ? this.project(savedSource) : null;
         const changed = JSON.stringify(userDefinedLinks) !== JSON.stringify(savedSource?.entries);
         const lastUpdated = changed && userDefinedLinks.length ? new Date() : savedMonth?.lastUpdated || '-';
-        const data = this.calculateMonth(userDefinedLinks, month, lastUpdated);
+        const data = this.calculateMonth(userDefinedLinks, month, lastUpdated, undefined, savedSource?.envelopes ?? []);
         const updatedMonths = { ...this.monthlyData, [month]: data };
 
         if (changed && !this.isDemo()) {
-            if(userDefinedLinks.length) {const saved=(await this.database.command(()=>this.database.api.months.save({month,entries:userDefinedLinks,lastUpdated:new Date(lastUpdated).toISOString(),expectedRevision:savedSource?.revision??null,history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined}))).value;this.sources.set(month,saved);}
+            if(userDefinedLinks.length || savedSource?.envelopes?.length) {const saved=(await this.database.command(()=>this.database.api.months.save({month,entries:userDefinedLinks,lastUpdated:lastUpdated === '-' ? '-' : new Date(lastUpdated).toISOString(),expectedRevision:savedSource?.revision??null,history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined}))).value;this.sources.set(month,saved);}
             else if(savedSource) {(await this.database.command(()=>this.database.api.months.remove({month}))).value;this.sources.delete(month);}
             this.logService.commitPending(month,history);
-            this.multiMonthEntries$.next(Object.fromEntries(Object.entries(updatedMonths).filter(([,value])=>value.rawInput.length)));
+            this.multiMonthEntries$.next(Object.fromEntries(Object.entries(updatedMonths).filter(([,value])=>value.rawInput.length || value.envelopes?.length)));
             this.dataSaved$.next(true);
         }
         this.monthlyData=updatedMonths;
@@ -314,6 +315,11 @@ export class DataService {
 
 
         return data;
+    }
+
+    getEntryForChart(name: string): UserDefinedLink | undefined {
+      const active = this.processedSingleMonthEntries$.value;
+      return (this.sources.get(active.month)?.entries ?? active.rawInput).find(entry => entry.target === name);
     }
 
     async updateEntryAmount(month:string,entry:UserDefinedLink,value:number,expression:string|number):Promise<void> {
@@ -334,8 +340,43 @@ export class DataService {
     }
 
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
-        hasCategory = (id: string) => !!this.categories.get(id)): SingleMonthData {
-        return calculateMonth(entries, month, lastUpdated, hasCategory);
+        hasCategory = (id: string) => !!this.categories.get(id), envelopes: BudgetEnvelope[] = []): SingleMonthData {
+        const locals = envelopes.filter(envelope => !envelope.isGlobal);
+        return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals]);
+    }
+
+    async saveEnvelopes(month: string, envelopes: BudgetEnvelope[], globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
+      const operation = this.inputSaveQueue.then(async () => {
+        const source = this.sources.get(month);
+        const ids = new Set([...envelopes, ...(globals ?? this.globalEnvelopes())].map(envelope => envelope.id));
+        const entries = (source?.entries ?? this.monthlyData[month]?.rawInput ?? []).map(entry =>
+          entry.envelopeId && !ids.has(entry.envelopeId) ? {...entry, envelopeId: null} : entry);
+        const saved = (await this.database.command(() => this.database.api.months.save({
+          month, entries, envelopes, globalEnvelopes: globals, expectedGlobalEnvelopes: expectedGlobals, lastUpdated: new Date().toISOString(), expectedRevision: source?.revision ?? null,
+        }))).value;
+        this.sources.set(month, saved);
+        const activeMonth = this.processedSingleMonthEntries$.value.month;
+        this.monthlyData = await this.loadData();
+        this.isDemo.set(false);
+        this.multiMonthEntries$.next(this.monthlyData);
+        if (activeMonth) this.processedSingleMonthEntries$.next(this.monthlyData[activeMonth] ?? this.calculateMonth([], activeMonth, '-'));
+        this.dataSaved$.next(true);
+      });
+      this.inputSaveQueue = operation.catch(() => {});
+      return operation;
+    }
+
+    async saveGlobalEnvelopes(items: BudgetEnvelope[], base: BudgetEnvelope[]): Promise<void> {
+      const operation = this.inputSaveQueue.then(async () => {
+        await this.database.command(() => this.database.api.envelopes.replaceGlobal({items, base}));
+        const activeMonth = this.processedSingleMonthEntries$.value.month;
+        this.monthlyData = await this.loadData();
+        this.multiMonthEntries$.next(this.monthlyData);
+        if (activeMonth) this.processedSingleMonthEntries$.next(this.monthlyData[activeMonth] ?? this.calculateMonth([], activeMonth, '-'));
+        this.dataSaved$.next(true);
+      });
+      this.inputSaveQueue = operation.catch(() => {});
+      return operation;
     }
 
     /** Rebuild saved projections after clearing a category from its entries. */
@@ -387,10 +428,12 @@ export class DataService {
     //#endregion
 
 
-    private project(source:StoredMonth):SingleMonthData {return this.calculateMonth(source.entries,source.month,source.lastUpdated);}
+    private project(source:StoredMonth):SingleMonthData {return this.calculateMonth(source.entries,source.month,source.lastUpdated,undefined,source.envelopes ?? []);}
 
     async loadData():Promise<MonthlyData> {
-      const sources=(await this.database.api.months.range()).value;this.sources=new Map(sources.map(source=>[source.month,source]));
+      const [globals, result] = await Promise.all([this.database.api.envelopes.listGlobal(), this.database.api.months.range()]);
+      this.globalEnvelopes.set(globals);
+      const sources=result.value;this.sources=new Map(sources.map(source=>[source.month,source]));
       return Object.fromEntries(sources.map(source=>[source.month,this.project(source)]));
     }
     async loadSingleMonth(month:string):Promise<SingleMonthData|null> {
@@ -404,7 +447,7 @@ export class DataService {
       const draft=this.failedDrafts.get(month);
       const preview=this.monthlyData[month];
       const demo=preview?.rawInput.some(entry=>entry.demo)?preview:null;
-      const data=draft?this.calculateMonth(draft,month,loaded?.lastUpdated??'-'):loaded??demo??this.calculateMonth([],month,'-');
+      const data=draft?this.calculateMonth(draft,month,loaded?.lastUpdated??'-',undefined,loaded?.envelopes ?? []):loaded??demo??this.calculateMonth([],month,'-');
       if(selection===this.selection){
         this.isDemo.set(data.rawInput.some(entry=>!!entry.demo));
         this.processedSingleMonthEntries$.next(data);
@@ -425,7 +468,7 @@ export class DataService {
 
 
     //#region Copy & Paste Links
-    async importMonth(month: string, { entries, categories }: MonthTransfer): Promise<void> {
+    async importMonth(month: string, { entries, categories, envelopes = [] }: MonthTransfer): Promise<void> {
         const currentCategories = this.categories.categories();
         const definitions = new Map(currentCategories.map(category => [category.value, category]));
         const sources = new Set(entries.map(entry => entry.source));
@@ -453,15 +496,21 @@ export class DataService {
             for (const node of path) checked.add(node);
         }
 
-        const links = entries.map(({ source, type, target, value, isFixCost }) => ({
+        const sharedIds = new Set(this.globalEnvelopes().map(envelope => envelope.id));
+        const envelopeIds = new Map(envelopes.map(envelope => [envelope.id,
+          envelope.isGlobal && sharedIds.has(envelope.id) ? envelope.id : uuid()]));
+        const copiedEnvelopes = envelopes.filter(envelope => !envelope.isGlobal || !sharedIds.has(envelope.id))
+          .map(({isGlobal, ...envelope}) => ({...envelope, id: envelopeIds.get(envelope.id)!}));
+        const links = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => ({
             id: uuid(), type, target, value, isFixCost,
+            envelopeId: envelopeId ? envelopeIds.get(envelopeId) ?? null : null,
             source: type === EntryType.Expense && (!source?.endsWith(`@${SYSTEM_PREFIX}`) || definitions.has(source))
                 ? source ?? undefined : undefined
         }));
-        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
+        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id), copiedEnvelopes);
         const savedMonths = { ...this.monthlyData, [month]: data };
         const addedCategories = definitions.size > currentCategories.length;
-        const saved=(await this.database.command(()=>this.database.api.months.save({month:data.month,entries:links,lastUpdated:new Date(data.lastUpdated).toISOString(),expectedRevision:this.sources.get(month)?.revision??null,categories:addedCategories?[...definitions.values()]:undefined,clearHistory:true}))).value;
+        const saved=(await this.database.command(()=>this.database.api.months.save({month:data.month,entries:links,envelopes:copiedEnvelopes,lastUpdated:new Date(data.lastUpdated).toISOString(),expectedRevision:this.sources.get(month)?.revision??null,categories:addedCategories?[...definitions.values()]:undefined,clearHistory:true}))).value;
         this.sources.set(month,saved);
 
         if (addedCategories) await this.categories.reload();
@@ -473,6 +522,9 @@ export class DataService {
         this.processedSingleMonthEntries$.next(data);
         this.dataSaved$.next(true);
     }
+
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[]) { this.sessionStore.write('copiedEnvelopes', envelopes); }
+    retrieveCopiedEnvelopes(): BudgetEnvelope[] { return this.sessionStore.read('copiedEnvelopes') ?? []; }
 
     storeCopiedLinks(links: UserDefinedLink[]) {
         this.sessionStore.write('copiedLinks', links);

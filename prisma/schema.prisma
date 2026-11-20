@@ -14,6 +14,7 @@ model Month {
   lastUpdated String? @map("last_updated")
   revision    Int     @default(0)
   entries     Entry[]
+  envelopes   Envelope[]
   @@map("finance_months")
 }
 
@@ -41,6 +42,8 @@ model Entry {
   normalizedName String @map("normalized_name")
   amount        Float
   position      Int
+  envelopeId    String? @map("envelope_id")
+  envelope      Envelope? @relation(fields: [envelopeId], references: [id], onDelete: SetNull)
   categoryId    String? @map("category_id")
   parentEntryId String? @map("parent_entry_id")
   isFixedCost   Boolean? @map("is_fixed_cost")
@@ -140,4 +143,16 @@ model ImportState {
   revision                    Int @default(0)
   sourceFormat                String? @map("source_format")
   @@map("import_state")
+}
+
+model Envelope {
+  id       String @id
+  monthId  String? @map("month_id")
+  name     String
+  budget   Float
+  position Int
+  month    Month? @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  entries  Entry[]
+  @@index([monthId, position])
+  @@map("envelopes")
 }

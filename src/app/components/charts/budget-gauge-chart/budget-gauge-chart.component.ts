@@ -41,7 +41,7 @@ export class BudgetGaugeChartComponent extends BaseChartComponent implements OnC
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes && changes['budget'] || changes['actualSpending'] || changes['color']) {
+    if (changes && (changes['budget'] || changes['actualSpending'] || changes['color'] || changes['title'])) {
       this.updateChart()
     }
   }

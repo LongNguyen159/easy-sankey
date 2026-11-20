@@ -5,6 +5,7 @@ export interface UserDefinedLink {
     type: EntryType;  // Type of the entry
     target: string;   // The name of the current node
     value: number;    // Amount associated with the link
+    envelopeId?: string | null; // Optional monthly spending envelope; independent of category
     source?: string;  // Category ID or parent node (only for expenses)
     isFixCost?: boolean;  // Optional flag to indicate fix cost
     demo?: boolean;   // Optional flag to indicate demo data
@@ -28,6 +29,7 @@ export interface MonthlyData {
 /** Interface for single month data. */
 export interface SingleMonthData {
   lastUpdated: Date | string
+  envelopes?: BudgetEnvelope[];
   sankeyData: SankeyData;
   totalUsableIncome: number;
   totalGrossIncome: number;
@@ -92,6 +94,13 @@ export const expenseCategoryDetails = Object.fromEntries(
   categoryDefinitions.map(category=>[category.value,category])
 ) as Record<ExpenseCategory,ExpenseCategoryDetails>;
 
+export interface BudgetEnvelope {
+  isGlobal?: boolean;
+  id: string;
+  name: string;
+  budget: number;
+}
+
 export interface Budget {
   category: string;
   value: number;
@@ -110,6 +119,12 @@ export interface DateChanges {
 export interface SankeyNode {
     name: string;
     value: number;
+    displayName?: string;
+    categoryId?: string;
+    entryName?: string;
+    envelopeId?: string;
+    spent?: number;
+    budget?: number;
   }
   
   export interface SankeyLink {
@@ -119,6 +134,7 @@ export interface SankeyNode {
   }
   
 export interface SankeyData {
+    categoryView?: SankeyData;
     nodes: SankeyNode[];
     links: SankeyLink[];
 }

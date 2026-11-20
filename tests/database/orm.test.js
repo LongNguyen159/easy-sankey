@@ -276,7 +276,7 @@ test("committed migrations apply once and add a later schema change without data
     try {
       assert.equal(
         db.prepare("SELECT count(*) AS n FROM _prisma_migrations").get().n,
-        2,
+        fs.readdirSync(path.join(process.cwd(), "prisma/migrations")).filter(name => fs.existsSync(path.join(process.cwd(), "prisma/migrations", name, "migration.sql"))).length + 1,
       );
       assert.ok(
         db
@@ -356,3 +356,122 @@ test('SQLite table-rebuild migrations preserve dependent rows and failed migrati
   db=new Database(file);assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name='should_rollback'").get().n,0);assert.equal(db.prepare('SELECT count(*) AS n FROM budgets').get().n,1);db.close();
  }finally{await store.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('monthly envelopes persist independent category membership, survive backup/restart, and reject invalid references', () =>
+  fixture(async ({ store, reopen }) => {
+    const month = '2026-11';
+    const envelopes = [{id:'personal', name:'Personal spending', budget:500}];
+    const items = [{...entry('dinner',40),source:category,envelopeId:'personal'}, {...entry('lunch',60),source:category}];
+    await store.crud.months.save({month,lastUpdated:'-',entries:items,envelopes});
+    let saved = await store.crud.months.get(month);
+    assert.deepEqual(saved.envelopes,envelopes);
+    assert.equal(saved.entries[0].envelopeId,'personal');
+    assert.equal(saved.entries[0].source,category);
+    assert.equal((await store.crud.months.range()).value.find(item=>item.month===month).envelopes[0].budget,500);
+    await assert.rejects(store.crud.entries.update({month,id:'lunch',changes:{envelopeId:'missing'}}),/envelope/);
+    await assert.rejects(store.crud.entries.update({month,id:'lunch',changes:{envelopeId:'personal',type:'income',source:undefined}}),/Invalid entry/);
+    await assert.rejects(store.crud.months.save({month:'2026-12',lastUpdated:'-',entries:items,envelopes}),/another month/);
+    await assert.rejects(store.crud.months.save({month,lastUpdated:'-',entries:items,envelopes:[{...envelopes[0],budget:-1}]}),/envelope/);
+    assert.deepEqual(await store.crud.months.get(month),saved);
+    await store.crud.entries.update({month,id:'lunch',changes:{envelopeId:'personal'}});
+    const backup=await store.exportBackup();
+    await store.reset((await store.crud.status()).revision);
+    await store.restore(backup,(await store.crud.status()).revision);
+    const opened=await reopen();
+    saved=await opened.crud.months.get(month);
+    assert.deepEqual(saved.envelopes,envelopes);
+    assert.ok(saved.entries.every(item=>item.envelopeId==='personal'));
+    await opened.crud.months.save({month,lastUpdated:'-',entries:saved.entries.map(item=>({...item,envelopeId:null})),envelopes:[]});
+    const ungrouped=await opened.crud.months.get(month);
+    assert.deepEqual(ungrouped.envelopes,[]);
+    assert.ok(ungrouped.entries.every(item=>!item.envelopeId && item.source===category));
+  }));
+
+test('envelope migration preserves populated existing months and categories', async () => {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'envelope-upgrade-'));
+  const file=path.join(dir,'db.sqlite'); const initial=path.join(dir,'initial');
+  fs.mkdirSync(initial);
+  fs.cpSync(path.join(process.cwd(),'prisma/migrations/202611200001_relational'),path.join(initial,'202611200001_relational'),{recursive:true});
+  let store;
+  try {
+    require('../../electron/migrations').migrate(file,{directory:initial});
+    const db=new Database(file);
+    db.prepare('INSERT INTO finance_months (id) VALUES (?)').run('2026-11');
+    db.prepare('INSERT INTO finance_entries (month_id,id,type,name,normalized_name,amount,position) VALUES (?,?,?,?,?,?,?)')
+      .run('2026-11','old','expense','Existing purchase','existing purchase',25,0);
+    db.close();
+    store=openDatabase(file);
+    const month=await store.crud.months.get('2026-11');
+    assert.equal(month.entries[0].value,25);
+    assert.deepEqual(month.envelopes,[]);
+  } finally { if(store)await store.close(); fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('global envelopes are shared definitions with independent monthly memberships and complete backup lifecycle', () =>
+  fixture(async ({store,reopen}) => {
+    const global={id:'revolut',name:'Revolut spending',budget:500,isGlobal:true};
+    await store.crud.months.save({month:'2026-11',entries:[],lastUpdated:'-',globalEnvelopes:[global],expectedGlobalEnvelopes:[]});
+    await store.crud.months.save({month:'2026-11',lastUpdated:'-',entries:[{...entry('dinner',40),source:category,envelopeId:'revolut'}]});
+    await store.crud.months.save({month:'2026-12',lastUpdated:'-',entries:[{...entry('dinner',90),source:category,envelopeId:'revolut'}]});
+    assert.deepEqual(await store.crud.envelopes.listGlobal(),[global]);
+    assert.equal((await store.crud.months.get('2026-11')).entries[0].value,40);
+    assert.equal((await store.crud.months.get('2026-12')).entries[0].value,90);
+    const december=await store.crud.months.get('2026-12');
+    await store.crud.months.save({month:'2026-11',lastUpdated:'-',entries:(await store.crud.months.get('2026-11')).entries,
+      globalEnvelopes:[{...global,budget:600}],expectedGlobalEnvelopes:[global]});
+    assert.equal((await store.crud.envelopes.listGlobal())[0].budget,600);
+    await assert.rejects(store.crud.months.save({month:'2026-12',lastUpdated:'-',entries:december.entries,expectedRevision:december.revision}),/CONFLICT/);
+    await assert.rejects(store.crud.months.save({month:'2026-11',lastUpdated:'-',entries:[],globalEnvelopes:[],expectedGlobalEnvelopes:[global]}),/CONFLICT/);
+    const backup=await store.exportBackup();
+    assert.equal(JSON.parse(backup).data.globalEnvelopes[0].budget,600);
+    await store.reset((await store.crud.status()).revision);
+    await store.restore(backup,(await store.crud.status()).revision);
+    const opened=await reopen();
+    assert.equal((await opened.crud.months.get('2026-12')).entries[0].envelopeId,'revolut');
+    await opened.crud.months.delete({month:'2026-11'});
+    assert.equal((await opened.crud.envelopes.listGlobal()).length,1);
+    await opened.crud.months.save({month:'2027-01',lastUpdated:'-',entries:[],globalEnvelopes:[],
+      expectedGlobalEnvelopes:[{...global,budget:600}]});
+    const retained=await opened.crud.months.get('2026-12');
+    assert.equal(retained.entries[0].envelopeId,undefined);
+    assert.equal(retained.entries[0].source,category);
+    assert.equal(retained.entries[0].value,90);
+  }));
+
+test('global-envelope upgrade preserves existing month-only definitions and entry foreign keys', async () => {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'global-envelope-upgrade-'));
+  const file=path.join(dir,'db.sqlite'), initial=path.join(dir,'migrations');
+  fs.mkdirSync(initial);let store;
+  try {
+    for(const name of ['202611200001_relational','202611200002_add_envelopes']) {
+      fs.cpSync(path.join(process.cwd(),'prisma/migrations',name),path.join(initial,name),{recursive:true});
+    }
+    require('../../electron/migrations').migrate(file,{directory:initial});
+    const db=new Database(file);
+    db.exec(`INSERT INTO finance_months(id) VALUES('2026-11');
+      INSERT INTO envelopes(id,month_id,name,budget,position) VALUES('local','2026-11','Personal',500,0);
+      INSERT INTO finance_entries(month_id,id,type,name,normalized_name,amount,position,envelope_id)
+        VALUES('2026-11','dinner','expense','Dinner','dinner',40,0,'local');`);
+    db.close();store=openDatabase(file);
+    const month=await store.crud.months.get('2026-11');
+    assert.deepEqual(month.envelopes,[{id:'local',name:'Personal',budget:500}]);
+    assert.equal(month.entries[0].envelopeId,'local');
+    assert.deepEqual(await store.crud.envelopes.listGlobal(),[]);
+  } finally {if(store)await store.close();fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('central global-envelope editing needs no month and preserves actual entries', () =>
+  fixture(async ({store}) => {
+    const global={id:'shared',name:'Revolut',budget:500,isGlobal:true};
+    await store.crud.envelopes.replaceGlobal({items:[global],base:[]});
+    assert.deepEqual(await store.crud.months.list(),[]);
+    await store.crud.months.save({month:'2026-11',lastUpdated:'-',entries:[{...entry('dinner',40),source:category,envelopeId:'shared'}]});
+    const changed={...global,name:'Revolut spending',budget:600};
+    await store.crud.envelopes.replaceGlobal({items:[changed],base:[global]});
+    assert.deepEqual(await store.crud.envelopes.listGlobal(),[changed]);
+    assert.deepEqual((await store.crud.months.get('2026-11')).entries,[{...entry('dinner',40),source:category,envelopeId:'shared'}]);
+    await assert.rejects(store.crud.envelopes.replaceGlobal({items:[],base:[global]}),/CONFLICT/);
+    await store.crud.envelopes.replaceGlobal({items:[],base:[changed]});
+    const retained=(await store.crud.months.get('2026-11')).entries[0];
+    assert.equal(retained.value,40);assert.equal(retained.source,category);assert.equal(retained.envelopeId,undefined);
+  }));

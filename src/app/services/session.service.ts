@@ -1,8 +1,9 @@
 import { inject, Injectable, InjectionToken } from '@angular/core';
-import { UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, UserDefinedLink } from '../components/models';
 export const SESSION_STORAGE = new InjectionToken<Storage>('Session storage', { providedIn: 'root', factory: () => sessionStorage });
 interface SessionSchema {
     copiedLinks: UserDefinedLink[];
+    copiedEnvelopes: BudgetEnvelope[];
     isFormatBigNumbers: boolean;
 }
 @Injectable({ providedIn: 'root' })

@@ -74,7 +74,7 @@
 
 
 
-        @if (budgets.length == 0) {
+        @if (budgets.length == 0 && !envelopeBudgets.length) {
           <div class="flex flex-col w-full justify-center items-center gap-2">
             <p>No budgets set yet!</p>
             <button class="app-button-primary" mat-stroked-button (click)="navigateToBudgetList()">Create One Now</button>
@@ -120,6 +120,20 @@
           </section>
         }
 
+
+        @if (envelopeBudgets.length) {
+          <section aria-label="Envelope budgets">
+            <h3 class="text-center font-bold">Envelopes · {{ entriesOfOneMonth.month }}</h3>
+            <div class="gauge-chart-container">
+              @for (envelope of envelopeBudgets; track envelope.id) {
+                <div [attr.aria-label]="envelope.name + ': ' + envelope.spent + ' spent of ' + envelope.budget">
+                  <app-budget-gauge-chart [title]="envelope.name" [budget]="envelope.budget" [actualSpending]="envelope.spent"></app-budget-gauge-chart>
+                  <p class="text-center">{{ envelope.isGlobal ? 'Global envelope' : 'Month-only envelope' }}</p>
+                </div>
+              }
+            </div>
+          </section>
+        }
 
         <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
 

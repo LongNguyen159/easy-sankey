@@ -3,7 +3,7 @@ const { randomUUID } = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
 const { PrismaClient } = require("../generated/prisma");
 const { migrate } = require("./migrations");
-const { canonical, entries: validateEntries } = require("./import-export");
+const { canonical, envelopes: validateEnvelopes, entries: validateEntries } = require("./import-export");
 const {
   sourceData,
   legacyData,
@@ -80,6 +80,7 @@ function openDatabase(filename, { onQuery } = {}) {
     const row = await db.month.findUnique({
       where: { id: month },
       include: {
+        envelopes: { orderBy: { position: "asc" } },
         entries: {
           orderBy: { position: "asc" },
           include: { parent: { select: { name: true } } },
@@ -91,6 +92,7 @@ function openDatabase(filename, { onQuery } = {}) {
           month: row.id,
           lastUpdated: row.lastUpdated ?? "-",
           entries: row.entries.map(entryDto),
+          envelopes: row.envelopes.map(envelopeDto),
           revision: row.revision,
         }
       : null;
@@ -164,15 +166,46 @@ function openDatabase(filename, { onQuery } = {}) {
         })),
     });
   }
+  function envelopeDto(row) {
+    return { id: row.id, name: row.name, budget: row.budget, ...(row.monthId === null ? {isGlobal: true} : {}) };
+  }
+  async function listGlobalEnvelopes(db) {
+    return (await db.envelope.findMany({where: {monthId: null}, orderBy: {position: 'asc'}})).map(envelopeDto);
+  }
+  async function writeGlobalEnvelopes(db, globals) {
+      for (const [position, item] of globals.entries()) {
+        const previous = await db.envelope.findUnique({where: {id: item.id}});
+        if (previous && previous.monthId !== null) throw new Error("Envelope belongs to a month.");
+        await db.envelope.upsert({where: {id: item.id},
+          create: {id: item.id, name: item.name.trim(), budget: item.budget, monthId: null, position},
+          update: {name: item.name.trim(), budget: item.budget, position}});
+      }
+      await db.envelope.deleteMany({where: {monthId: null, id: {notIn: globals.map(item => item.id)}}});
+      // A changed/deleted shared definition also invalidates open editors in other months.
+      await db.month.updateMany({data: {revision: {increment: 1}}});
+  }
   async function saveMonth(db, p) {
+    const old = await getMonth(db, p.month);
+    const envelopes = p.envelopes ?? old?.envelopes ?? [];
+    const oldGlobals = await listGlobalEnvelopes(db);
+    const globals = canonical("globalEnvelopes", p.globalEnvelopes ?? oldGlobals);
+    validateEnvelopes(globals);
+    validateEnvelopes(envelopes);
+    if (new Set([...globals, ...envelopes].map(item => item.id)).size !== globals.length + envelopes.length) throw new Error("Duplicate envelope identity.");
+    const envelopeIds = new Set([...globals, ...envelopes].map(item => item.id));
+    if (p.entries.some(item => item.envelopeId && !envelopeIds.has(item.envelopeId))) throw new Error("Missing envelope for entry.");
+    if (envelopes.some(item => item.isGlobal)) throw new Error("Global envelopes must be saved separately.");
+    if (p.globalEnvelopes && (!p.expectedGlobalEnvelopes || !isDeepStrictEqual(oldGlobals, p.expectedGlobalEnvelopes))) {
+      throw new Error("CONFLICT: Global envelopes changed. Reload before saving.");
+    }
     canonical("monthlyData", {
       [p.month]: {
         month: p.month,
         lastUpdated: p.lastUpdated,
         rawInput: p.entries,
+        envelopes,
       },
     });
-    const old = await getMonth(db, p.month);
     if (p.mode === "create" && old) throw new Error("Month already exists.");
     if (p.mode === "update" && !old) throw new Error("Month does not exist.");
     if (
@@ -180,6 +213,9 @@ function openDatabase(filename, { onQuery } = {}) {
       (old?.revision ?? null) !== p.expectedRevision
     )
       throw new Error("CONFLICT: Month changed.");
+    if (p.globalEnvelopes && !isDeepStrictEqual(oldGlobals, globals)) {
+      await writeGlobalEnvelopes(db, globals);
+    }
     for (const item of p.categories ?? [])
       await db.category.upsert({
         where: { id: item.value },
@@ -206,6 +242,16 @@ function openDatabase(filename, { onQuery } = {}) {
         revision: { increment: 1 },
       },
     });
+    // Envelope identities may never move between months.
+    for (const [position, item] of envelopes.entries()) {
+      const existing = await db.envelope.findUnique({ where: { id: item.id } });
+      if (existing && existing.monthId !== p.month) throw new Error("Envelope belongs to another month.");
+      await db.envelope.upsert({ where: { id: item.id },
+        create: { id: item.id, budget: item.budget, name: item.name.trim(), monthId: p.month, position },
+        update: { name: item.name.trim(), budget: item.budget, position } });
+    }
+    await db.entry.updateMany({ where: { monthId: p.month }, data: { envelopeId: null } });
+    await db.envelope.deleteMany({ where: { monthId: p.month, id: { notIn: envelopes.map(item => item.id) } } });
     // Multi-row form/import transaction: detach old relationships and reserve unique names before final-state edits.
     await db.entry.updateMany({
       where: { monthId: p.month },
@@ -341,6 +387,7 @@ function openDatabase(filename, { onQuery } = {}) {
       expenseCategories: await listCategories(db),
       fixCosts: await listTemplates(db),
       budgets: await listBudgets(db),
+      ...((await listGlobalEnvelopes(db)).length ? {globalEnvelopes: await listGlobalEnvelopes(db)} : {}),
     };
     const months = await db.month.findMany({ orderBy: { id: "asc" } });
     data.monthlyData = {};
@@ -350,6 +397,7 @@ function openDatabase(filename, { onQuery } = {}) {
         month: month.id,
         lastUpdated: saved.lastUpdated,
         rawInput: saved.entries,
+        ...(saved.envelopes.length ? { envelopes: saved.envelopes } : {}),
       };
     }
     const metadata = await db.trackingSettings.findUniqueOrThrow({
@@ -384,6 +432,7 @@ function openDatabase(filename, { onQuery } = {}) {
     await db.fixedCostTemplate.updateMany({ data: { parentId: null } });
     await db.entryHistory.deleteMany();
     await db.entry.deleteMany();
+    await db.envelope.deleteMany();
     await db.month.deleteMany();
     await db.fixedCostTemplate.deleteMany();
     await db.budget.deleteMany();
@@ -412,8 +461,8 @@ function openDatabase(filename, { onQuery } = {}) {
     for (const [position, item] of items.entries())
       await db.fixedCostTemplate.upsert({
         where: { id: item.id },
-        create: { ...entryColumns(item), position },
-        update: { ...entryColumns(item), position },
+        create: { ...entryColumns(item, true), position },
+        update: { ...entryColumns(item, true), position },
       });
     for (const item of items)
       await db.fixedCostTemplate.update({
@@ -437,10 +486,14 @@ function openDatabase(filename, { onQuery } = {}) {
           position,
         },
       });
+    for (const [position, item] of (data.globalEnvelopes ?? []).entries()) {
+      await db.envelope.create({data: {id: item.id, name: item.name.trim(), budget: item.budget, monthId: null, position}});
+    }
     for (const [month, item] of Object.entries(data.monthlyData ?? {}))
       await saveMonth(db, {
         month,
         entries: item.rawInput,
+        envelopes: item.envelopes ?? [],
         lastUpdated: item.lastUpdated,
       });
     await saveTemplates(db, data.fixCosts ?? []);
@@ -691,7 +744,7 @@ function openDatabase(filename, { onQuery } = {}) {
         await checkCycle(db, null, p.item.id, relations.parentId, true);
         const row = await db.fixedCostTemplate.create({
           data: {
-            ...entryColumns(p.item),
+            ...entryColumns(p.item, true),
             ...relations,
             position:
               ((
@@ -718,7 +771,7 @@ function openDatabase(filename, { onQuery } = {}) {
         await checkCycle(db, null, item.id, relations.parentId, true);
         const row = await db.fixedCostTemplate.update({
           where: { id: p.id },
-          data: { ...entryColumns(item), ...relations },
+          data: { ...entryColumns(item, true), ...relations },
           include: { parent: { select: { name: true } } },
         });
         return { value: entryDto(row) };
@@ -932,6 +985,10 @@ function openDatabase(filename, { onQuery } = {}) {
       validateEntries([p.entry]);
       if (action === "update" && (!previous || p.entry.id !== p.id))
         throw new Error("Entry does not exist.");
+      if (p.entry.envelopeId) {
+        const envelope = await db.envelope.findUnique({ where: { id: p.entry.envelopeId } });
+        if (!envelope || (envelope.monthId !== null && envelope.monthId !== p.month)) throw new Error("Missing envelope for this month.");
+      }
       const relations = await relation(db, p.entry, p.month);
       await checkCycle(db, p.month, p.entry.id, relations.parentEntryId);
       const data = { ...entryColumns(p.entry), ...relations };
@@ -962,8 +1019,10 @@ function openDatabase(filename, { onQuery } = {}) {
               "demo",
               "lastEditedAt",
               "source",
+              "envelopeId",
             ];
         const columns = {
+          envelopeId: ["envelopeId"],
           target: ["name", "normalizedName"],
           type: ["type"],
           value: ["amount"],
@@ -1001,6 +1060,18 @@ function openDatabase(filename, { onQuery } = {}) {
   }
   const crud = {
     status: () => status(),
+    envelopes: {
+      listGlobal: async () => { await ready; return listGlobalEnvelopes(prisma); },
+      replaceGlobal: p => command(p, async db => {
+        const globals = canonical('globalEnvelopes', p.items);
+        validateEnvelopes(globals);
+        const old = await listGlobalEnvelopes(db);
+        if (!isDeepStrictEqual(old, p.base)) throw new Error('CONFLICT: Global envelopes changed. Reload before saving.');
+        const changed = !isDeepStrictEqual(old, globals);
+        if (changed) await writeGlobalEnvelopes(db, globals);
+        return {value: await listGlobalEnvelopes(db), changed};
+      }),
+    },
     months: {
       list: async () => {
         await ready;
@@ -1028,6 +1099,7 @@ function openDatabase(filename, { onQuery } = {}) {
           where: { id: { gte: from, lte: to } },
           orderBy: { id: "asc" },
           include: {
+            envelopes: { orderBy: { position: "asc" } },
             entries: {
               orderBy: { position: "asc" },
               include: { parent: { select: { name: true } } },
@@ -1040,6 +1112,7 @@ function openDatabase(filename, { onQuery } = {}) {
             month: row.id,
             lastUpdated: row.lastUpdated ?? "-",
             entries: row.entries.map(entryDto),
+            envelopes: row.envelopes.map(envelopeDto),
             revision: row.revision,
           })),
         );

@@ -1,4 +1,5 @@
-import { EntryType, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
+import { envelopeSankey } from './envelope-sankey';
+import { BudgetEnvelope, EntryType, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
 
 interface ExpenseData {
  totalExpenses: number;
@@ -382,6 +383,8 @@ class MonthCalculator {
 }
 
 export function calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
-  hasCategory: (id: string) => boolean): SingleMonthData {
-  return new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
+  hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = []): SingleMonthData {
+  const result = new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
+  return { ...result, envelopes: structuredClone(envelopes),
+    sankeyData: envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory) };
 }

@@ -1,15 +1,17 @@
 import { InjectionToken } from '@angular/core';
 import { AmountSort } from '../utils/amount-sort';
-import { Budget, ExpenseCategoryDetails, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, Budget, ExpenseCategoryDetails, UserDefinedLink } from '../components/models';
 export interface MonthSource {
     month: string;
     lastUpdated: string;
     rawInput: UserDefinedLink[];
+    envelopes?: BudgetEnvelope[];
 }
 export interface StoredMonth {
     month: string;
     lastUpdated: string;
     entries: UserDefinedLink[];
+    envelopes?: BudgetEnvelope[];
     revision: number;
 }
 export interface DatabaseSnapshot {
@@ -38,6 +40,9 @@ export interface TrackingMetadata {
     avgIncome: number;
 }
 export interface MonthSave {
+    globalEnvelopes?: BudgetEnvelope[];
+    expectedGlobalEnvelopes?: BudgetEnvelope[];
+    envelopes?: BudgetEnvelope[];
     month: string;
     lastUpdated: string;
     entries: UserDefinedLink[];
@@ -122,6 +127,7 @@ export interface Settings {
 let settingsSeed: Partial<Settings> = {};
 let categoriesSeed: ExpenseCategoryDetails[] = [];
 let budgetsSeed: Budget[] = [];
+let globalEnvelopesSeed: BudgetEnvelope[] = [];
 let fixedSeed: UserDefinedLink[] = [];
 let trackingSeed: TrackingTarget[] = [];
 let metadataSeed: TrackingMetadata = { targetSurplus: 0, avgIncome: 0 };
@@ -131,13 +137,14 @@ export const CONFIGURATION = new InjectionToken('Loaded configuration', {
     settings: settingsSeed,
     categories: categoriesSeed,
     budgets: budgetsSeed,
+    globalEnvelopes: globalEnvelopesSeed,
     fixedCosts: fixedSeed,
     tracking: trackingSeed,
     metadata: metadataSeed,
   }),
 });
 async function loadConfiguration(client: DatabaseClient) {
-  const [settings, categories, budgets, fixed, tracking, metadata] =
+  const [settings, categories, budgets, fixed, tracking, metadata, globalEnvelopes] =
     await Promise.all([
       client.api.settings.list(),
       client.api.categories.list(),
@@ -145,10 +152,12 @@ async function loadConfiguration(client: DatabaseClient) {
       client.api.fixedCosts.list(),
       client.api.tracking.list(),
       client.api.trackingMetadata(),
+      client.api.envelopes.listGlobal(),
     ]);
   settingsSeed = settings.value;
   categoriesSeed = categories.items;
   budgetsSeed = budgets.items;
+  globalEnvelopesSeed = globalEnvelopes;
   fixedSeed = fixed.items;
   trackingSeed = tracking.items;
   metadataSeed = metadata;

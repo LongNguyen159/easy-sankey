@@ -7,7 +7,7 @@ Angular component -> feature service -> Electron API -> Prisma -> SQLite
 ```
 
 The persistent schema is **prisma/schema.prisma**. Attributes have real columns;
-parents, categories, budgets and history use foreign keys. No entity payloads are
+parents, categories, monthly envelopes, budgets and history use foreign keys. No entity payloads are
 stored as JSON. JSON is only a file/transport format for legacy data and backups.
 
 ## What each file does
@@ -41,6 +41,21 @@ categories and entries, resolves parent names to foreign keys, and commits the
 whole import. Original LocalStorage stays untouched. The completion marker avoids
 stale reimports after reset; a missing database offers explicit backup recovery.
 Full backup versions 1/2 and month clipboard transfer remain supported.
+
+Envelopes have their own allowance and entry membership, independent of categories.
+A nullable `Envelope.monthId` distinguishes reusable global definitions from
+month-only allowances. Global spending is derived from each month's entries;
+there is no shared spending counter. Global name/allowance changes apply to every
+month and invalidate month revisions to protect open editors. The central
+Finance Manager envelope tab saves shared definitions through a dedicated operation
+without creating or rewriting a month. Month saves can
+update global and local definitions atomically, with an expected global-definition
+snapshot to detect concurrent changes. The global definitions are queried at startup
+and saved once in full backups under `globalEnvelopes`; month backups retain local
+definitions. Older backups default to no global envelopes. Deleting an envelope
+clears membership and keeps its entries. Copying a month keeps known global IDs;
+unknown shared definitions become month-only copies. Only actual expense projections
+affect totals and Surplus; Sankey capacity and budget gauges are derived afterward.
 
 Prisma models persist source records only. Charts, totals and current tracking
 spending are calculated in memory. An amount update uses a row patch; parent

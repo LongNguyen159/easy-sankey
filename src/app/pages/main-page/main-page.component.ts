@@ -175,6 +175,12 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
     }
   }
 
+  get envelopeBudgets() {
+    return (this.entriesOfOneMonth?.envelopes ?? []).map(envelope => ({...envelope,
+      spent: this.entriesOfOneMonth.sankeyData.nodes.find(node => node.envelopeId === envelope.id)?.spent ?? 0,
+    }));
+  }
+
   getBudgetValue(category: string): number {
     const budget = this.budgets.find(b => b.category === category);
     return budget ? budget.value : 0;

@@ -93,3 +93,17 @@ mat-card {
 .entry-category-drafts {
   padding-block: 0.5rem 0.75rem;
 }
+
+@media (max-width: 760px) {
+  .entry-editor-row {
+    flex-wrap: wrap;
+    > :is(mat-form-field, app-category-select) { flex: 1 1 9rem; }
+  }
+}
+
+.entry-bulk-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.entry-selection { flex: none; margin-top: .5rem; }
+
+.entry-toolbar-container { padding-bottom: .5rem; }
+
+.entry-editor-row { margin-bottom: .5rem; }

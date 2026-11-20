@@ -1,11 +1,11 @@
-import { expenseCategoryDetails } from '../components/models';
+import { BudgetEnvelope, expenseCategoryDetails } from '../components/models';
 import {CONFIGURATION,DATABASE_CLIENT,Settings} from '../data/database';
 import { DatabaseClient } from '../data/database';
 import { DatabaseApi, StoredMonth, MonthSave, HistoryItem } from '../data/database';
 /** Promise-based fake at the same boundary as the desktop bridge. No browser persistence. */
 export function testDatabase() {
     let revision = 0;
-    const configuration = { settings: { firstTime: 'false', appVersion: '2.0.4' } as Partial<Settings>, categories: structuredClone(Object.values(expenseCategoryDetails)), budgets: [], fixedCosts: [], tracking: [], metadata: { targetSurplus: 0, avgIncome: 0 } };
+    const configuration = { settings: { firstTime: 'false', appVersion: '2.0.4' } as Partial<Settings>, categories: structuredClone(Object.values(expenseCategoryDetails)), globalEnvelopes: [] as BudgetEnvelope[], budgets: [], fixedCosts: [], tracking: [], metadata: { targetSurplus: 0, avgIncome: 0 } };
     const months = new Map<string, StoredMonth>();
     const histories = new Map<string, HistoryItem[]>();
     const result = <T>(value: T) => ({ revision: ++revision, value: structuredClone(value), affected: [] });
@@ -24,12 +24,24 @@ export function testDatabase() {
         settings: { list: async () => result(configuration.settings), set: async ({ key, value }: any) => { (configuration.settings as any)[key] = value; return result(value); } },
         categories: entity('categories'), budgets: entity('budgets'), fixedCosts: entity('fixedCosts'), tracking: entity('tracking'),
         trackingMetadata: async () => configuration.metadata,
+        envelopes: {
+          listGlobal: async () => structuredClone(configuration.globalEnvelopes),
+          replaceGlobal: async ({items,base}: {items:BudgetEnvelope[];base:BudgetEnvelope[]}) => {
+            if(JSON.stringify(base)!==JSON.stringify(configuration.globalEnvelopes)) throw new Error('CONFLICT');
+            configuration.globalEnvelopes=structuredClone(items);
+            const ids=new Set(items.map(item=>item.id));
+            for(const month of months.values()) month.entries=month.entries.map(entry=>
+              entry.envelopeId && base.some(item=>item.id===entry.envelopeId) && !ids.has(entry.envelopeId)
+                ? {...entry,envelopeId:null} : entry);
+            return result(items);
+          },
+        },
         months: {
             range: async () => result([...months.values()]), get: async (month: string) => structuredClone(months.get(month) ?? null),
             save: async (p: MonthSave) => { if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(p.month))
-                throw new Error('Invalid month'); const old = months.get(p.month); if (p.mode === 'create' && old)
+                throw new Error('Invalid month'); const old = months.get(p.month); if(p.globalEnvelopes) configuration.globalEnvelopes = structuredClone(p.globalEnvelopes); if (p.mode === 'create' && old)
                 throw new Error('Month already exists'); if (p.mode === 'update' && !old)
-                throw new Error('Month does not exist'); const record = { month: p.month, entries: structuredClone(p.entries), lastUpdated: p.lastUpdated, revision: revision + 1 }; months.set(p.month, record); for (const c of p.categories ?? [])
+                throw new Error('Month does not exist'); const record = { month: p.month, entries: structuredClone(p.entries), envelopes: structuredClone(p.envelopes ?? old?.envelopes ?? []), lastUpdated: p.lastUpdated, revision: revision + 1 }; months.set(p.month, record); for (const c of p.categories ?? [])
                 if (!configuration.categories.some(item => item.value === c.value))
                     configuration.categories.push(c); return result(record); },
             remove: async ({ month }: any) => result(months.delete(month)), list: async () => [...months.keys()],

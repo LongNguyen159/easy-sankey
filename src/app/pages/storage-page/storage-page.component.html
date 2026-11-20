@@ -57,5 +57,14 @@
                 </div>
             }
         </mat-tab>
+        <mat-tab>
+            <ng-template mat-tab-label>
+                <mat-icon fontSet="material-symbols-outlined" class="mr-3">mail</mat-icon>
+                Envelopes
+            </ng-template>
+            @if (selectedTabIndex == 4) {
+                <div class="p-4"><app-global-envelope-manager></app-global-envelope-manager></div>
+            }
+        </mat-tab>
     </mat-tab-group>
 </div>

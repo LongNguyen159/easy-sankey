@@ -1,3 +1,5 @@
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { EnvelopeDialogComponent } from '../dialogs/envelope-dialog/envelope-dialog.component';
 import {SettingsService} from '../../services/settings.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
@@ -13,7 +15,7 @@ import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatSelectModule} from '@angular/material/select';
 import {MatIconModule} from '@angular/material/icon';
-import { debounceTime, takeUntil } from 'rxjs';
+import { debounceTime, firstValueFrom, takeUntil } from 'rxjs';
 import { CategoryService } from '../../services/category.service';
 import { MatAutocompleteModule, MatAutocompleteTrigger} from '@angular/material/autocomplete';
 import { CategorySelectComponent } from '../category-select/category-select.component';
@@ -71,7 +73,7 @@ enum ErrorType {
 }
 @Component({
     selector: 'app-input-list',
-    imports: [MatButtonModule, CdkDrag, CdkDragHandle, CdkDropList,
+    imports: [MatCheckboxModule, MatButtonModule, CdkDrag, CdkDragHandle, CdkDropList,
         ReactiveFormsModule,
         CommonModule,
         MatInputModule,
@@ -139,6 +141,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   private readonly clipboard = inject(Clipboard);
   private readonly announcer = inject(LiveAnnouncer);
   protected readonly newEntries = new Set<FormGroup>();
+  protected readonly editMode = signal(false);
+  protected readonly bulkBusy = signal(false);
+  protected readonly selectedEntryIds = new Set<string>();
   protected readonly collapsedCategories = new Set<string>();
   protected groupByCategory = this.preferences.read('entryView') === 'category';
 
@@ -244,6 +249,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
      */
     this.dataService.getSingleMonthData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
       this.fixedLinks = this.dataService.retrieveFixCostsLinks();
+      if (this.dataMonth !== data.month) { this.selectedEntryIds.clear(); this.editMode.set(false); }
       this.dataMonth = data.month
       this.taxNodeExists = this._hasTaxNode(data.rawInput);
 
@@ -285,6 +291,113 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * @param link Optional parameter to populate the form with existing data
    * if no `link` param is provided, an empty form with default values '' will be created.
    */
+  protected toggleEditMode(): void {
+    this.editMode.update(value => !value);
+    this.selectedEntryIds.clear();
+  }
+
+  private finishEditing(): void {
+    this.editMode.set(false);
+    this.selectedEntryIds.clear();
+  }
+
+  protected toggleEntrySelection(id: string, checked: boolean): void {
+    if (checked) this.selectedEntryIds.add(id); else this.selectedEntryIds.delete(id);
+  }
+
+  protected get selectableRows(): FormGroup[] {
+    return this.linkArray.controls.filter(row => this.filteredLinkIds.includes(row.get('id')?.value));
+  }
+  protected get allSelected(): boolean {
+    return this.selectableRows.length > 0 && this.selectableRows.every(row => this.selectedEntryIds.has(row.get('id')?.value));
+  }
+  protected get someSelected(): boolean {
+    return this.selectableRows.some(row => this.selectedEntryIds.has(row.get('id')?.value)) && !this.allSelected;
+  }
+  protected selectAll(checked: boolean): void {
+    this.selectableRows.forEach(row => this.toggleEntrySelection(row.get('id')?.value, checked));
+  }
+  protected get selectedExpenseCount(): number {
+    return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
+      && row.get('type')?.value === EntryType.Expense).length;
+  }
+  protected get selectedAssignedExpenseCount(): number {
+    return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
+      && row.get('type')?.value === EntryType.Expense && row.get('envelopeId')?.value).length;
+  }
+
+  protected async createEnvelopeForSelection(row?: FormGroup): Promise<void> {
+    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    this.bulkBusy.set(true);
+    try {
+      if (!await this.flushPendingEdits()) return;
+      const data = this.singleMonthData();
+      if (!data?.month) return;
+      const ids = row ? [row.get('id')?.value] : [...this.selectedEntryIds];
+      const result = await firstValueFrom(this.dialog.open(EnvelopeDialogComponent, {
+        data: {...data, createEnvelope: true}, width: '44rem', maxWidth: '95vw',
+      }).afterClosed());
+      if (this.destroyRef.destroyed || data.month !== this.dataMonth) return;
+      this.bulkBusy.set(false);
+      if (result?.envelopeId) {
+        if (!row) ids.forEach(id => this.selectedEntryIds.add(id));
+        await this.assignSelectedEnvelope(result.envelopeId, row);
+      } else if (!row) this.finishEditing();
+    } catch { this.uiService.showSnackBar('Could not create the envelope. Try again.'); }
+    finally { this.bulkBusy.set(false); }
+  }
+
+  protected envelopeName(id: string | null): string {
+    return this.singleMonthData()?.envelopes?.find(envelope => envelope.id === id)?.name ?? '';
+  }
+  protected async assignSelectedEnvelope(envelopeId: string | null, row?: FormGroup): Promise<void> {
+    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    if (envelopeId && !this.singleMonthData()?.envelopes?.some(envelope => envelope.id === envelopeId)) return;
+    const ids = row ? new Set([row.get('id')?.value]) : new Set(this.selectedEntryIds);
+    this.bulkBusy.set(true);
+    try {
+      if (!await this.flushPendingEdits()) return;
+      const entries = (this.linkArray.getRawValue() as UserDefinedLink[]).map(entry =>
+        entry.type === EntryType.Expense && ids.has(entry.id)
+          ? {...entry, envelopeId, lastEditedAt: Date.now()} : entry);
+      await this.dataService.saveMonthDraft(entries, this.dataMonth);
+      if (!row) this.finishEditing();
+    } catch { this.uiService.showSnackBar('Could not update the selected expenses. Try again.'); }
+    finally { this.bulkBusy.set(false); }
+  }
+  protected async deleteSelectedEntries(): Promise<void> {
+    if (this.bulkBusy() || !this.selectedEntryIds.size) return;
+    this.bulkBusy.set(true);
+    try {
+      if (!await this.flushPendingEdits()) return;
+      const entries = this.linkArray.getRawValue() as UserDefinedLink[];
+      const byName = new Map(entries.map(entry => [entry.target, entry]));
+      const remaining = entries.filter(entry => !this.selectedEntryIds.has(entry.id)).map(entry => {
+        let source = entry.source;
+        while (source && byName.has(source) && this.selectedEntryIds.has(byName.get(source)!.id)) source = byName.get(source)!.source;
+        return {...entry, source};
+      });
+      await this.dataService.saveMonthDraft(remaining, this.dataMonth);
+      this.finishEditing();
+    } catch { this.uiService.showSnackBar('Could not delete the selected entries. Try again.'); }
+    finally { this.bulkBusy.set(false); }
+  }
+
+  protected async manageEnvelopes(): Promise<void> {
+    if (!await this.flushPendingEdits()) return;
+    this.finishEditing();
+    this.dialog.closeAll();
+    await this.router.navigate([RoutePath.FinanceManagerPage], {queryParams: {tab: 4}});
+  }
+
+  protected async manageMonthlyEnvelopes(): Promise<void> {
+    if (!await this.flushPendingEdits()) return;
+    const data = this.singleMonthData();
+    if (!data?.month) return;
+    this.finishEditing();
+    this.dialog.open(EnvelopeDialogComponent, {data, width: '44rem', maxWidth: '95vw'});
+  }
+
   protected _createLinkGroup(link?: UserDefinedLink): FormGroup {
     const linkGroup = this.fb.group({
       id: [link && link.id ? link.id : uuidv4(), Validators.required], // Generate a unique UUID if link.id is missing.
@@ -299,6 +412,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
         restrictedNodeNamesValidator(this.dataService.nonAllowedNames)
       ]],
       value: [link ? link.value : 0, [Validators.required, Validators.min(0)]],
+      envelopeId: [link?.envelopeId ?? null],
       source: [link?.source === '-- None --' ? '' : link?.source ?? ''],
       isFixCost: [link ? link.isFixCost : false],
       lastEditedAt: [link ? link.lastEditedAt ?? null : Date.now()]
@@ -343,6 +457,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       if (value == EntryType.Income || value == EntryType.Tax) {
         linkGroup.get('source')?.disable({ emitEvent: false }); // Disable source if type = income or tax
         linkGroup.get('source')?.setValue('', { emitEvent: false }); // Clear source field
+        linkGroup.get('envelopeId')?.setValue(null, { emitEvent: false });
       } else {
         linkGroup.get('source')?.enable({ emitEvent: false });  // Enable source otherwise
       }
@@ -363,8 +478,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     });
     // Track content edits only. Moving rows or rebuilding the form preserves edit times.
     const content = () => {
-      const { type, target, value, source, isFixCost } = linkGroup.getRawValue();
-      return JSON.stringify({ type, target, value, source, isFixCost });
+      const { type, target, value, source, isFixCost, envelopeId } = linkGroup.getRawValue();
+      return JSON.stringify({ type, target, value, source, isFixCost, envelopeId });
     };
     let previousContent = content();
     linkGroup.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(() => {
@@ -393,6 +508,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.clear({ emitEvent: false });
     
     const links = this.dataService.isDemo() ? this.demoLinks : selectedMonthData.rawInput;
+    for (const id of this.selectedEntryIds) if (!links.some(entry => entry.id === id)) this.selectedEntryIds.delete(id);
     
     // Populate form without emitting valueChanges
     links.forEach(link => this.linkArray.push(this._createLinkGroup(link), { emitEvent: false }));
@@ -529,7 +645,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     await this.logService.setLog(this.dataMonth, id, value);
 
 
-    linkGroup?.setValue({ ...linkGroup.value, value: sum, source: linkGroup.value.source ?? '' });
+    linkGroup?.patchValue({ value: sum, source: linkGroup.value.source ?? '' });
 
     /** Update form data after setting summed value. */
     const updatedFormData = formDataOld.map(item => 
@@ -606,10 +722,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       return;
     }
     const month = this.dataMonth;
-    const text = exportMonth(currentLinks, this.categoryService.categories());
+    const text = exportMonth(currentLinks, this.categoryService.categories(), this.singleMonthData()?.envelopes ?? []);
     let savedInTab = false;
     try {
       this.dataService.storeCopiedLinks(currentLinks);
+      this.dataService.storeCopiedEnvelopes(this.singleMonthData()?.envelopes ?? []);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
@@ -666,7 +783,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   protected async pasteMonthFromTab(month: string): Promise<boolean> {
     const entries = this.lastMonthCopiedInTab;
-    return !!entries?.length && (await this.applyMonthTransfer({ entries, categories: [] }, month));
+    return !!entries?.length && (await this.applyMonthTransfer({ entries, categories: [], envelopes: this.dataService.retrieveCopiedEnvelopes() }, month));
   }
 
   private async applyMonthTransfer(transfer: MonthTransfer, month: string): Promise<boolean> {

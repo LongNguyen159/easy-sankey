@@ -1,0 +1,10 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.budget-gauge {
+  // A percentage height feeds the grid's caption height back into each chart resize.
+  height: 380px;
+  width: 100%;
+}

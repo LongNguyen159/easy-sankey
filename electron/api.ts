@@ -1,5 +1,6 @@
 import type {openDatabase} from './database';
 import type {
+  BudgetEnvelope,
   Budget,
   ExpenseCategoryDetails,
   UserDefinedLink,
@@ -314,6 +315,17 @@ export const operations = {
       'Update entry positions.',
       (input) => scope(input) && Array.isArray(input['ids']),
       ({ state }, input) => state.crud.entries.reorder(input),
+    ),
+  },
+  envelopes: {
+    listGlobal: operation<void, BudgetEnvelope[]>(
+      'envelopes:global', 'List reusable envelopes available in every month.', none,
+      ({state}) => state.crud.envelopes.listGlobal(),
+    ),
+    replaceGlobal: operation<{items: BudgetEnvelope[]; base: BudgetEnvelope[]}, CommandResult<BudgetEnvelope[]>>(
+      'envelopes:replace-global', 'Save global allowances independently of any month.',
+      input => record(input) && Array.isArray(input['items']) && Array.isArray(input['base']),
+      ({state}, input) => state.crud.envelopes.replaceGlobal(input),
     ),
   },
   categories: modelApi<ExpenseCategoryDetails>('categories'),

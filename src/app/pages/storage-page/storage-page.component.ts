@@ -1,3 +1,4 @@
+import { GlobalEnvelopeManagerComponent } from '../../components/global-envelope-manager/global-envelope-manager.component';
 import { AfterViewInit, Component, ElementRef, inject, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { StorageManagerComponent } from '../../components/storage-manager/storage-manager.component';
 import { NavbarComponent } from "../../components/navbar/navbar.component";
@@ -15,7 +16,7 @@ import { RoutePath } from '../../components/models';
 @Component({
     selector: 'app-storage-page',
     imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
-        CommonModule, BudgetListComponent, CategoryManagerComponent],
+        CommonModule, BudgetListComponent, CategoryManagerComponent, GlobalEnvelopeManagerComponent],
     templateUrl: './storage-page.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './storage-page.component.scss'
