@@ -136,8 +136,10 @@ export class DataService {
     private async initializeData(): Promise<void> {
     
         // Check if it's the user's first time
+        // Welcome navigation can update preferences while the first query is in flight.
+        const showDemo = this.isFirstTimeUser() || this.isOldVersion();
         this.monthlyData=await this.loadData();
-        if (!Object.keys(this.monthlyData).length && (this.isFirstTimeUser() || this.isOldVersion())) {
+        if (!Object.keys(this.monthlyData).length && showDemo) {
             console.log('First time user or outdated app version. Processing demo data.');
             await this.processDemoData();
         } else {
@@ -172,8 +174,11 @@ export class DataService {
             this.multiMonthEntries$.next(this.monthlyData);  // Emit all months data
         } else {
             console.log('No saved data found.');
-            await this.selectMonth(formatDateToYYYYMM(new Date()));
         }
+        const month = formatDateToYYYYMM(this.selectedActiveDate);
+        this.processedSingleMonthEntries$.next(
+            this.monthlyData[month] ?? this.calculateMonth([], month, '-'),
+        );
     }
     //#endregion
 
@@ -301,6 +306,7 @@ export class DataService {
             this.dataSaved$.next(true);
         }
         this.monthlyData=updatedMonths;
+        if (this.isDemo()) this.multiMonthEntries$.next(updatedMonths);
         if (emitObservable) this.processedSingleMonthEntries$.next(data);
         if (showSnackbarWhenDone && !this.isDemo()) {
             this.UiService.showSnackBar('Data updated successfully!', 'OK', 3000);
@@ -393,10 +399,16 @@ export class DataService {
     /** Querying a month never saves it. Stale responses cannot replace the active selection. */
     async selectMonth(month:string):Promise<void> {
       const selection=++this.selection;
+      await this.ready;
       const loaded=await this.loadSingleMonth(month);
       const draft=this.failedDrafts.get(month);
-      const data=draft?this.calculateMonth(draft,month,loaded?.lastUpdated??'-'):loaded??this.calculateMonth([],month,'-');
-      if(selection===this.selection)this.processedSingleMonthEntries$.next(data);
+      const preview=this.monthlyData[month];
+      const demo=preview?.rawInput.some(entry=>entry.demo)?preview:null;
+      const data=draft?this.calculateMonth(draft,month,loaded?.lastUpdated??'-'):loaded??demo??this.calculateMonth([],month,'-');
+      if(selection===this.selection){
+        this.isDemo.set(data.rawInput.some(entry=>!!entry.demo));
+        this.processedSingleMonthEntries$.next(data);
+      }
     }
 
     /** Delete persisted entries, then update the runtime views. */
