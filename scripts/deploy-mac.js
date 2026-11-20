@@ -8,6 +8,9 @@ if (args.includes('--x64') || args.includes('--universal')) {
 const enableDevTools = args.includes('--devtools');
 const builderArgs = args.filter(arg => arg !== '--devtools');
 if (!builderArgs.includes('--arm64')) builderArgs.push('--arm64');
+if (!builderArgs.some(arg => arg === '--publish' || arg.startsWith('--publish='))) {
+  builderArgs.push('--publish', 'never');
+}
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'inherit' });
@@ -19,7 +22,7 @@ function run(command, args) {
   }
 }
 
-run('npm', ['run', 'build']);
+run(process.execPath, [require.resolve('./build.cjs')]);
 run(process.execPath, [
   require.resolve('electron-builder/cli.js'),
   '--mac',

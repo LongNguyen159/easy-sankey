@@ -1,3 +1,4 @@
+require('./build-electron.cjs');
 const {spawn}=require('node:child_process');
 const http=require('node:http');
 const net=require('node:net');

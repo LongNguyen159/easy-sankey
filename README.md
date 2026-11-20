@@ -24,27 +24,21 @@ In VS Code, choose **Easy Sankey: development** in Run and Debug, then press F5.
 This starts the Angular server as a background task and launches Electron under
 the debugger. Stop the background task from the Tasks menu when finished.
 
-`npm run dev:serve` starts only Angular for a debugging session. A browser tab alone
-cannot use SQLite: Electron must provide the database API. `npm run electron` uses
-the built frontend and the same project-local development database.
+## Build the Mac installer
 
-## Build the desktop app
-
-Install Node.js 22.22 or newer in the Node 22 series on the machine that will build the installer. On an Apple Silicon Mac, `node -p process.arch` should print `arm64`. Run these commands from the repository root to create a local DMG:
+Use Node.js 22.22 or newer in the Node 22 series on an Apple Silicon Mac.
+After installing dependencies with `npm ci`, run:
 
 ```sh
-npm ci
-npm run deploy-mac -- --arm64 --publish never
+npm run deploy-mac
 ```
 
-Find the DMG under `releases/v<version>/darwin/arm64/`, where `<version>` is the version in `package.json`.
+This builds the app and creates a local DMG without publishing it. Find it under
+`releases/v<version>/darwin/arm64/`, where `<version>` is in `package.json`.
+To include DevTools, use `npm run deploy-mac -- --devtools`.
 
-DevTools are disabled by default. To enable them in a local build, run `npm run deploy-mac -- --arm64 --publish never --devtools`.
-
-Mac builds support Apple Silicon only. On Windows, use `npm run deploy-win -- --x64 --publish never`.
-
-GitHub Actions builds the Windows x64 and Apple Silicon Mac installers on pushes to `main`. You can also run **Build Electron App** manually from the **Actions** tab and download the installers from that run's artifacts.
-
+GitHub Actions builds and tests Windows x64 and Apple Silicon Mac installers on
+pushes to `main`. You can also run **Build Electron App** from the Actions tab.
 
 ## Code scaffolding
 
@@ -52,11 +46,12 @@ Run `ng generate component component-name` to generate a new component. You can 
 
 ## Build
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+`npm run deploy-mac` builds the desktop code and frontend before packaging. Internal
+builds can use `node scripts/build.cjs`; frontend output is stored in `dist/`.
 
 ## Running unit tests
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Run `npm test` to execute database/API tests and Angular tests.
 
 ## Running end-to-end tests
 
@@ -68,8 +63,36 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 ## Database development
 
+For schema changes, use `npm run orm:migrate -- --name describe_change`.
+
 Prisma models and relations live in `prisma/schema.prisma`. See [the architecture](docs/storage.md) and [developer guide](docs/orm-development.md) for tables, columns, migrations, API operations and consumers.
 
 Follow [the worked database workflow](docs/database-workflow-example.md) for a complete
 example of adding a related table, CRUD operations, an API and an Angular consumer,
 then adding or changing a column.
+
+## Workflow commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm start` | Start the complete app with live reload |
+| `npm run deploy-mac` | Build a local Mac DMG without publishing |
+| `npm run deploy-mac -- --devtools` | Build a Mac DMG with DevTools enabled |
+| `npm run orm:migrate -- --name change_name` | Create/apply a development schema migration |
+| `npm test` | Run database/API tests and browser tests once, headlessly |
+| `npm run check` | Check app/test types, spelling and circular runtime TypeScript imports |
+| `npm run ng -- generate component name` | Generate Angular components (or services, etc.) |
+| `npm run orm:studio` | Inspect the development database configured in `.env` |
+
+Prisma generation and Electron compilation happen automatically during start,
+packaging, tests and checks. Native dependencies are prepared by the automatic
+`postinstall` hook after installation. Explicit type-only imports are excluded
+from the circular runtime import check. All check stages run even if one fails;
+any failure makes the command fail.
+
+For browser test debugging, `npm test -- --watch --browsers=Chrome` runs database
+tests first, then starts interactive browser tests. The default `npm test` requires
+Chrome to be installed (or its executable set with `CHROME_BIN`).
+
+The VS Code launch configuration starts its frontend server directly as an internal
+task. Windows packaging and packaged-app smoke tests remain internal CI steps.

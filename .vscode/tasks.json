@@ -3,8 +3,7 @@
   "tasks": [
     {
       "label": "dev: Angular server",
-      "type": "npm",
-      "script": "dev:serve",
+      "type": "shell",
       "isBackground": true,
       "problemMatcher": {
         "pattern": {
@@ -19,7 +18,8 @@
           "beginsPattern": ".*",
           "endsPattern": "Local:.*127\\.0\\.0\\.1:4200"
         }
-      }
+      },
+      "command": "node scripts/build-electron.cjs && npx ng serve --host 127.0.0.1 --port 4200"
     }
   ]
 }

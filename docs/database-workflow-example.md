@@ -70,7 +70,7 @@ Apply it to the scratch database and regenerate the client:
 
 ```sh
 npm run orm:migrate
-npm run orm:generate
+npx prisma generate
 ```
 
 Commit both the schema and migration SQL. Generation updates types and CRUD methods;
@@ -243,7 +243,7 @@ To add an optional field, add `description String?` to `Group`, then:
 npm run orm:migrate -- --name add_group_description --create-only
 # Review the new SQL.
 npm run orm:migrate
-npm run orm:generate
+npx prisma generate
 ```
 
 Extend create/update API inputs, validation, Prisma writes and UI fields as needed.
@@ -264,9 +264,8 @@ Never modify a migration already applied/distributed; add another migration.
 ## 9. Verify and run
 
 ```sh
-npm run test:database
-npm test -- --watch=false --browsers=ChromeHeadless
-npm run build
+npm test
+node scripts/build.cjs
 git diff --check
 npm start
 ```
@@ -277,7 +276,7 @@ The new feature is complete when those cases pass and the consumer works after
 restarting the app. Use temporary DBs for migration tests.
 
 Normal startup builds the Electron API. If manually running an existing desktop
-process, run `npm run build:electron` and restart it after backend/API changes.
+process, run `node scripts/build-electron.cjs` and restart it after backend/API changes.
 Commit source, schema, migrations and tests; do not commit generated clients,
 local DBs or `.env`. Never run `db push`, `migrate reset` or `migrate dev` against
 an installed user's database.

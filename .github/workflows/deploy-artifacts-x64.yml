@@ -17,14 +17,14 @@ jobs:
         include:
           - target: windows-x64
             runner: windows-2025
-            script: deploy-win
+            command: node scripts/build.cjs && npx electron-builder --win --x64 --publish never
             platform: win32
             arch: x64
             extension: exe
             executable: win-unpacked/Easy Sankey.exe
           - target: mac-arm64
             runner: macos-15
-            script: deploy-mac
+            command: npm run deploy-mac -- --arm64 --publish never
             platform: darwin
             arch: arm64
             extension: dmg
@@ -47,9 +47,7 @@ jobs:
         run: npm ci
 
       - name: Verify native SQLite and browser tests
-        run: |
-          npm run test:database
-          npm test -- --watch=false --browsers=ChromeHeadless
+        run: npm test
 
       - name: Read package version
         id: package
@@ -57,10 +55,10 @@ jobs:
         run: node -p '"version=" + require("./package.json").version' >> "$GITHUB_OUTPUT"
 
       - name: Build and package the app
-        run: npm run ${{ matrix.script }} -- --${{ matrix.arch }} --publish never
+        run: ${{ matrix.command }}
 
       - name: Verify packaged SQLite and restart persistence
-        run: npm run test:packaged -- "releases/v${{ steps.package.outputs.version }}/${{ matrix.platform }}/${{ matrix.arch }}/${{ matrix.executable }}"
+        run: node scripts/smoke-packaged.cjs "releases/v${{ steps.package.outputs.version }}/${{ matrix.platform }}/${{ matrix.arch }}/${{ matrix.executable }}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7

@@ -12,7 +12,7 @@ app uses `finance-relational.sqlite`; the old experimental JSON DB is not used.
 
 ```sh
 npm ci
-npm run orm:generate
+npx prisma generate
 ```
 
 For schema development, copy `.env.example` to `.env` if you do not already have
@@ -46,7 +46,7 @@ Then create a committed migration and regenerate the client:
 
 ```sh
 npm run orm:migrate -- --name add_groups
-npm run orm:generate
+npx prisma generate
 ```
 
 The generated ORM provides `prisma.group.create`, `findUnique`, `findMany`,
@@ -71,7 +71,7 @@ For example, add `description String?` to Group, then run:
 
 ```sh
 npm run orm:migrate -- --name add_group_description
-npm run orm:generate
+npx prisma generate
 ```
 
 Review the generated SQL and test it on an existing temporary database containing
@@ -129,7 +129,7 @@ only generated model types are imported with `import type`. No registry, storage
 key, preload template, hand-maintained client interface or API generator is needed.
 
 IPC registration and the preload client read the same operation definitions.
-Frontend types are inferred from them. Run `npm run build:electron` after changing
+Frontend types are inferred from them. Run `node scripts/build-electron.cjs` after changing
 Electron/API source and restart Electron. Normal startup, builds and tests also
 compile it. The hypothetical Group example is not an existing app feature.
 
@@ -176,14 +176,13 @@ forwarded method. Frontend code never imports the Prisma runtime or accesses SQL
 ## Verify a change
 
 ```sh
-npm run test:database
-npm test -- --watch=false --browsers=ChromeHeadless
-npm run build
+npm test
+node scripts/build.cjs
 git diff --check
 ```
 
 Add real ORM tests for columns, constraints, CRUD and migration of existing rows.
 `tests/database/orm.test.js` includes examples. Use a temporary database for
-backup/import and migration checks. Package and run `npm run test:packaged --
+backup/import and migration checks. Package and run `node scripts/smoke-packaged.cjs
 "<executable>"` for runtime/native-engine changes. Windows verification runs on
 Windows CI; Mac packaging cannot establish Windows runtime correctness.
