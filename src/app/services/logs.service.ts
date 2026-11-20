@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { DATABASE_CLIENT } from '../storage/repositories';
-import { HistoryItem } from '../storage/database-api';
+import {DATABASE_CLIENT} from '../data/database';
+import { HistoryItem } from '../data/database';
 /** History reads are scoped. Pending expressions commit in the entry transaction. */
 @Injectable({ providedIn: 'root' })
 export class LogsService {
@@ -34,5 +34,5 @@ export class LogsService {
         }
         return structuredClone(this.loaded.get(key) ?? []);
     }
-    async reloadFromStorage() { this.loaded.clear(); }
+    async reload() { this.loaded.clear(); }
 }

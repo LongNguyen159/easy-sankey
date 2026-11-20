@@ -1,7 +1,7 @@
 import { expenseCategoryDetails } from '../components/models';
-import { CONFIGURATION, DATABASE_CLIENT, Settings } from '../storage/repositories';
-import { DatabaseClient } from '../storage/sqlite-client';
-import { DatabaseApi, StoredMonth, MonthSave, HistoryItem } from '../storage/database-api';
+import {CONFIGURATION,DATABASE_CLIENT,Settings} from '../data/database';
+import { DatabaseClient } from '../data/database';
+import { DatabaseApi, StoredMonth, MonthSave, HistoryItem } from '../data/database';
 /** Promise-based fake at the same boundary as the desktop bridge. No browser persistence. */
 export function testDatabase() {
     let revision = 0;
@@ -14,9 +14,9 @@ export function testDatabase() {
         replace: async ({ items, metadata }: any) => { (configuration as any)[key] = structuredClone(items); if (metadata)
             configuration.metadata = metadata; return result(items); },
         create: async ({ item }: any) => { (configuration[key] as any[]).push(structuredClone(item)); return result(configuration[key]); },
-        update: async ({ id, item }: any) => { (configuration as any)[key] = (configuration[key] as any[]).map(value => (key==='categories'?value.value:key==='budgets'?value.category:key==='tracking'?value.name:value.id) === id ? structuredClone(item) : value); return result(configuration[key]); },
+        update: async ({ id, changes }: any) => { (configuration as any)[key] = (configuration[key] as any[]).map(value => (key==='categories'?value.value:key==='budgets'?value.category:key==='tracking'?value.name:value.id) === id ? {...value,...structuredClone(changes)} : value); return result(configuration[key]); },
         reorder: async ({ ids }: any) => { const map = new Map((configuration[key] as any[]).map(value => [value.value, value])); (configuration as any)[key] = ids.map((id: string) => map.get(id)); return result(configuration[key]); },
-        delete: async ({id}:any)=>{(configuration as any)[key]=(configuration[key] as any[]).filter(item=>(key==='categories'?item.value:key==='budgets'?item.category:key==='tracking'?item.name:item.id)!==id);return result(null);},
+        delete: async ({id}:any)=>{if(key==='categories')return api.deleteCategory({id});(configuration as any)[key]=(configuration[key] as any[]).filter(item=>(key==='budgets'?item.category:key==='tracking'?item.name:item.id)!==id);return result(null);},
         get: async ({id}:any) => structuredClone((configuration[key] as any[]).find(item=>(key==='categories'?item.value:key==='budgets'?item.category:key==='tracking'?item.name:item.id)===id)??null),
     });
     const api = {

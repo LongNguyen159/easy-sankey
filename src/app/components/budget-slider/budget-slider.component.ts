@@ -1,4 +1,4 @@
-import { SettingsRepository } from '../../storage/repositories';
+import {SettingsService} from '../../services/settings.service';
 import { CategoryService } from '../../services/category.service';
 import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
@@ -57,7 +57,7 @@ import { BudgetService } from '../../services/budget.service';
     encapsulation: ViewEncapsulation.None
 })
 export class BudgetSliderComponent extends BasePageComponent implements OnInit {
-  private readonly storage = inject(SettingsRepository);
+  private readonly preferences = inject(SettingsService);
   dataService = inject(DataService)
   colorService = inject(ColorService)
   currencyService = inject(CurrencyService)
@@ -201,7 +201,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     });
 
     /** Retrieve Essential Categories selection from Local Storage */
-    const savedEssentialCategories = this.storage.read('essentialCategories') ?? [];
+    const savedEssentialCategories = this.preferences.read('essentialCategories') ?? [];
     if (savedEssentialCategories.length > 0) {
       this.essentialCategories = savedEssentialCategories.filter((id: string) => this.categoryService.get(id));
 
@@ -415,7 +415,7 @@ export class BudgetSliderComponent extends BasePageComponent implements OnInit {
     this.essentialCategories = categories.map(c => c.value);
   
     // Save essential categories to local storage
-    await this.storage.write('essentialCategories', this.essentialCategories);
+    await this.preferences.write('essentialCategories', this.essentialCategories);
   
     // Create essential sliders and update master sliders with the correct flag
     this.essentialSliders = this.essentialCategories.map(category => this.createSlider(category, true));

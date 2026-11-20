@@ -1,4 +1,4 @@
-import { SettingsRepository } from '../../storage/repositories';
+import {SettingsService} from '../../services/settings.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -121,7 +121,7 @@ enum ErrorType {
  */
 
 export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
-  protected readonly storage = inject(SettingsRepository);
+  protected readonly preferences = inject(SettingsService);
   @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
@@ -142,7 +142,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   private readonly announcer = inject(LiveAnnouncer);
   protected readonly newEntries = new Set<FormGroup>();
   protected readonly collapsedCategories = new Set<string>();
-  protected groupByCategory = this.storage.read('entryView') === 'category';
+  protected groupByCategory = this.preferences.read('entryView') === 'category';
 
 
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
@@ -878,7 +878,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   protected async toggleEntryView(): Promise<void> {
     this.groupByCategory = !this.groupByCategory;
-    await this.storage.write('entryView', this.groupByCategory ? 'category' : 'costType');
+    await this.preferences.write('entryView', this.groupByCategory ? 'category' : 'costType');
   }
 
   protected async sortEntriesByRecentlyEdited(): Promise<void> {

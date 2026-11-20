@@ -1,4 +1,4 @@
-import { SettingsRepository } from '../storage/repositories';
+import {SettingsService} from '../services/settings.service';
 
 import { Injectable, signal, effect, Renderer2, Inject, DOCUMENT, inject } from '@angular/core';
 
@@ -12,7 +12,7 @@ export enum Theme {
   providedIn: 'root'
 })
 export class ColorService {
-  private readonly storage = inject(SettingsRepository);
+  private readonly preferences = inject(SettingsService);
   renderer: Renderer2
   // Define a signal for dark mode
   isDarkMode = signal<boolean>(false);
@@ -78,7 +78,7 @@ export class ColorService {
    * If no settings are found, apply system's theme.
    */
   async applyStoredThemeSettings(): Promise<void> {
-    const settings = this.storage.read('themeSettings');
+    const settings = this.preferences.read('themeSettings');
     if (settings) {
       const { isDarkMode, isManualThemeSet, selectedTheme } = settings;
       /** Set signals */
@@ -144,7 +144,7 @@ export class ColorService {
       isManualThemeSet: this.isManualThemeSet(),
       selectedTheme: this.selectedTheme // Save selected theme
     };
-    await this.storage.write('themeSettings', settings);
+    await this.preferences.write('themeSettings', settings);
   }
 
 

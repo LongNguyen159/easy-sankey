@@ -1,72 +1,64 @@
-# Local SQLite storage
+# Database architecture
 
-The Electron main process owns `finance.sqlite` in `app.getPath('userData')`.
-Development uses `<project>/.local/finance.sqlite`; installed builds use the
-platform application-data folder. Finance data is not stored in LocalStorage.
+This is an Angular desktop app backed by Prisma and relational SQLite.
 
-## Database operations
+```text
+Angular component -> feature service -> Electron API -> Prisma -> SQLite
+```
 
-`electron/storage/crud-store.js` provides direct row CRUD, range queries, ordering,
-and explicit batch saves. `src/app/storage/database-api.ts` defines the async API.
-The preload bridge exposes named operations; SQL stays in the main process.
+The persistent schema is **prisma/schema.prisma**. Attributes have real columns;
+parents, categories, budgets and history use foreign keys. No entity payloads are
+stored as JSON. JSON is only a file/transport format for legacy data and backups.
 
-Single-record updates do not reconstruct sibling arrays. Related parent changes
-and entry history commit in one transaction. Calculated chart data is never saved.
-Settings and small configuration collections load before rendering. Months and
-history are queried separately. Session copies/display state use `SessionStore`.
+## What each file does
 
-## Operation contract
+| File | Responsibility |
+| --- | --- |
+| `prisma/schema.prisma` | Models, columns, relations and indexes. Prisma generates the database client. |
+| `prisma/migrations/` | Committed schema changes, applied on startup. |
+| `electron/database.js` | ORM queries, domain transactions and connection lifecycle. |
+| `electron/migrations.js` | Apply committed migrations offline, with checksum checks and rollback. |
+| `electron/import-export.js` | Validate/convert released LocalStorage and backup data into relational rows and file DTOs. |
+| `electron/api.ts` | The typed operations the UI may call. |
+| `electron/ipc.js` | Register those operations and check the calling window/frame. |
+| `electron/preload.ts` | Expose a small typed bridge to Angular. |
+| `src/app/data/database.ts` | Frontend API types, startup connection and write sequencing. |
+| `src/app/services/` | UI/domain state for categories, budgets, tracking, preferences, templates and charts. |
+| `tests/database/` and `tests/desktop/` | Real ORM/IPC tests and packaged migration/restart checks. |
 
-`electron/api/operations.ts` is the shared operation contract. IPC handlers, the
-sandbox-compatible preload client, frontend types, and the
-[API reference](database-api.md) derive from it. Add an operation and its database
-implementation without maintaining separate channel lists or method interfaces.
-See [adding an operation](adding-database-operations.md).
+There are no generic storage repositories, API code generators, preload templates,
+or generated operation registries. Electron source is compiled by a normal esbuild
+step. Only the Prisma client is generated from a data model.
 
-## Development schema
+## Data and upgrade behavior
 
-The current schema is version 4. New databases are created directly in that format.
-The released application used LocalStorage. Before Angular starts, a dedicated
-read-only reader captures that data and imports source records/settings into SQLite
-in one validated transaction. IDs, amounts, ordering, flags, edit timestamps,
-history and preferences are retained; calculated chart caches are ignored. Original
-LocalStorage is left untouched. Failed imports roll back and remain retryable.
+The app uses `finance-relational.sqlite` in Electron's userData directory. During
+development that is `.local/finance-relational.sqlite`. The experimental old
+`finance.sqlite` is left untouched and is not read by this version.
 
-Migration completion is recorded in SQLite and a small `.initialized` marker.
-Reset/restore preserve completion. A missing database with that marker requires
-explicit backup recovery instead of reimporting obsolete LocalStorage. Startup
-provides a backup-file recovery input if migration/database initialization fails.
+The released app used LocalStorage. Startup reads it once, validates it, inserts
+categories and entries, resolves parent names to foreign keys, and commits the
+whole import. Original LocalStorage stays untouched. The completion marker avoids
+stale reimports after reset; a missing database offers explicit backup recovery.
+Full backup versions 1/2 and month clipboard transfer remain supported.
 
-Historical experimental SQLite schema upgrades and automatic schema/pre-restore
-backup copies remain removed. Unsupported experimental schemas are refused without
-modifying their contents.
+Prisma models persist source records only. Charts, totals and current tracking
+spending are calculated in memory. An amount update uses a row patch; parent
+renaming does not rewrite children. Multi-row forms/imports use transactions.
 
-Existing current-schema development databases remain usable. Old schema/JSON backup sidecars are not read or automatically deleted. SQLite's own `-wal` and `-shm` files remain
-part of normal database operation and are not obsolete backup files.
+See [the developer guide](orm-development.md) for models, migrations, operations and
+consumers, and [the API reference](database-api.md) for the available operations.
 
-## Backups and reset
+## Verified behavior
 
-Settings provides explicit full JSON export/import. Restore validates data before
-transactional replacement; failure leaves saved data unchanged. Reset clears user
-records. Neither action writes automatic recovery copies. Close the application
-before copying the database file manually, or use the JSON export action.
+Verified on 20 November 2026: application/test TypeScript compilation, **67 browser
+tests**, **17 real ORM/IPC tests**, production build and Mac arm64 packaging passed.
+The packaged app passed two isolated launches, including released LocalStorage
+migration, UI CRUD, backup/reset/restore, reload and restart persistence. Evidence:
+`/var/folders/fr/bsm8p4kd1c35svp9x5h5rjyh0000gn/T/easy-sankey-packaged-EL3O6E`.
 
-## Verification
-
-- `npm run test:database`: real SQLite and IPC tests under Electron.
-- `npm test -- --watch=false --browsers=ChromeHeadless`: renderer tests.
-- `npm run build`: production frontend build.
-- `npm run deploy-mac -- --arm64 --publish never`: Mac arm64 package.
-- `npm run test:packaged -- "<executable>"`: disposable-profile UI CRUD, backup,
-  reset/restore, reload, and restart checks. No real user database is used.
-
-Use the project's Electron-compatible native driver. Mac arm64 and Windows x64 are
-supported packaging targets; native Windows runtime validation requires Windows CI.
-
-Released LocalStorage migration verified on 19 November 2026: **70 browser tests**
-and **12 real SQLite/IPC tests** passed. Production build and Mac arm64 packaging
-passed. The packaged smoke seeded real renderer LocalStorage before startup and
-verified imported amounts, IDs, edit timestamps and preferences, then CRUD,
-backup/reset/restore, reload, and persistence across two launches. Evidence:
-`/var/folders/fr/bsm8p4kd1c35svp9x5h5rjyh0000gn/T/easy-sankey-packaged-gjCZ6z`.
-Windows runtime verification requires Windows CI.
+The supplied version-1 JSON export restored into a temporary relational database;
+all source fields matched after re-export (3 months, 21 entries, 3 templates and
+2 history items). Migration tests cover adding a column, rebuilding a referenced
+table without losing related rows, and rolling back failed SQL. Windows runtime
+verification requires Windows CI. No release was published.

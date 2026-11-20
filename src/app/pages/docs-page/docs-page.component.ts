@@ -1,4 +1,4 @@
-import { BackupRepository } from '../../storage/repositories';
+import {DATABASE_CLIENT} from '../../data/database';
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { UserManualComponent } from '../../components/user-manual/user-manual.component';
 import { NavbarComponent } from "../../components/navbar/navbar.component";
@@ -18,13 +18,13 @@ import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
     styleUrl: './docs-page.component.scss'
 })
 export class DocsPageComponent {
-  private readonly storage = inject(BackupRepository);
+  private readonly database = inject(DATABASE_CLIENT);
   private _snackBar = inject(MatSnackBar);
 
 
   async clearLocalStorage() {
-    await this.storage.clear();
-    this._snackBar.open('Local storage cleared', 'Dismiss', {
+    await this.database.reset();
+    this._snackBar.open('Saved data cleared', 'Dismiss', {
       duration: 2000,
     })
   }

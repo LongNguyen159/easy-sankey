@@ -1,7 +1,6 @@
 import {TestBed} from '@angular/core/testing';
 import {DatePipe} from '@angular/common';
 import {testDatabase} from '../testing/database';
-import {CategoryRepository,FixedCostRepository} from '../storage/repositories';
 import {CategoryService,CATEGORY_COLORS} from './category.service';
 import {DataService} from './data.service';
 import {UiService} from './ui.service';

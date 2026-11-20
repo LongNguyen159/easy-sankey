@@ -1,4 +1,4 @@
-import { SettingsRepository } from '../../storage/repositories';
+import {SettingsService} from '../../services/settings.service';
 import { CategoryService } from '../../services/category.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -36,7 +36,7 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './budget-list.component.scss'
 })
 export class BudgetListComponent implements OnInit{
-  private readonly storage = inject(SettingsRepository);
+  private readonly preferences = inject(SettingsService);
   colorService = inject(ColorService)
   budgetService = inject(BudgetService)
   uiService = inject(UiService)
@@ -47,8 +47,8 @@ export class BudgetListComponent implements OnInit{
 
   budgets: Budget[] = [];
 
-  protected view: 'cards' | 'list' = this.storage.read('budgetView') === 'list' ? 'list' : 'cards';
-  protected sortOrder = resolveAmountSort(this.storage.read('budgetSort'));
+  protected view: 'cards' | 'list' = this.preferences.read('budgetView') === 'list' ? 'list' : 'cards';
+  protected sortOrder = resolveAmountSort(this.preferences.read('budgetSort'));
   private manualOrder: string[] = [];
 
   constructor(private dialog: MatDialog) {}
@@ -56,7 +56,7 @@ export class BudgetListComponent implements OnInit{
   ngOnInit(): void {
     this.budgets = this.budgetService.getBudgets();
     try {
-      const stored: unknown = this.storage.read('budgetManualOrder') ?? [];
+      const stored: unknown = this.preferences.read('budgetManualOrder') ?? [];
       if (Array.isArray(stored) && stored.every(id => typeof id === 'string')) this.manualOrder = stored;
     } catch {
       // Use the category order if the saved order cannot be read.
@@ -65,12 +65,12 @@ export class BudgetListComponent implements OnInit{
 
   protected async setView(view: 'cards' | 'list'): Promise<void> {
     this.view = view;
-    await this.storage.write('budgetView', view);
+    await this.preferences.write('budgetView', view);
   }
 
   protected async setSort(order: AmountSort): Promise<void> {
     this.sortOrder = order;
-    await this.storage.write('budgetSort', order);
+    await this.preferences.write('budgetSort', order);
   }
 
   protected get orderedCategories(): ExpenseCategoryDetails[] {
@@ -104,7 +104,7 @@ export class BudgetListComponent implements OnInit{
     const order = categories.map(category => category.value);
     moveItemInArray(order, from, to);
     this.manualOrder = order;
-    await this.storage.write('budgetManualOrder', order);
+    await this.preferences.write('budgetManualOrder', order);
     void this.announcer.announce(`${categories[from].label} moved to position ${to + 1} of ${order.length}.`);
     return true;
   }

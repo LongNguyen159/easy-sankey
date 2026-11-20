@@ -1,5 +1,5 @@
-import { BackupRepository } from '../../../storage/repositories';
-import { SessionStore } from '../../../storage/session-store';
+import {DATABASE_CLIENT} from '../../../data/database';
+import { SessionStore } from '../../../services/session.service';
 import { Component, inject, OnInit, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -35,7 +35,7 @@ import { readBackup } from '../../../utils/data-transfer';
     encapsulation: ViewEncapsulation.None
 })
 export class SettingsDialogComponent implements OnInit{
-  private readonly storage = inject(BackupRepository);
+  private readonly database = inject(DATABASE_CLIENT);
   private readonly sessionStore = inject(SessionStore);
   colorService = inject(ColorService)
   currencyService = inject(CurrencyService)
@@ -90,7 +90,7 @@ export class SettingsDialogComponent implements OnInit{
     }
     let json: string;
     try {
-      json = (await this.storage.exportBackup());
+      json = (await this.database.exportBackup());
     } catch {
       this.uiService.showSnackBar('Could not create the backup.');
       return;
@@ -130,7 +130,7 @@ export class SettingsDialogComponent implements OnInit{
       if (!confirmed) return;
 
       try {
-        await this.storage.restoreBackup(backup);
+        await this.database.restore(backup);
       } catch {
         this.uiService.showSnackBar('Could not restore the backup.');
         return;
@@ -158,7 +158,7 @@ export class SettingsDialogComponent implements OnInit{
     }
     this.uiService.openConfirmDialog(dialogData).subscribe(async (confirmed: boolean | undefined) => {
       if (confirmed) {
-        await this.storage.clear();
+        await this.database.reset();
         this.sessionStore.clear();
         location.replace(new URL('index.html', document.baseURI));
       }

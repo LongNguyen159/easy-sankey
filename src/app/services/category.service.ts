@@ -1,9 +1,8 @@
-import { CategoryRepository } from '../storage/repositories';
+import { DATABASE_CLIENT, CONFIGURATION } from '../data/database';
 import { computed, Injectable, signal, inject } from '@angular/core';
 import { v4 as uuid } from 'uuid';
-import { ExpenseCategoryDetails, expenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
+import { ExpenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
 import { removeSystemPrefix } from '../utils/utils';
-import { categoryStorageKey } from '../utils/data-transfer';
 
 export const CATEGORY_COLORS = [
   { name: 'Blue', colorLight: '#1976d2', colorDark: '#90caf9' },
@@ -79,8 +78,9 @@ export const CATEGORY_ICON_GROUPS = [
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
-  private readonly storage = inject(CategoryRepository);
-  private readonly definitions = signal<ExpenseCategoryDetails[]>(this.load());
+  private readonly database=inject(DATABASE_CLIENT);
+  private readonly initial=inject(CONFIGURATION).categories;
+  private readonly definitions = signal<ExpenseCategoryDetails[]>(this.initial.map(category=>category.icon==='card_giftcard'?{...category,icon:'redeem'}:category));
   readonly categories = this.definitions.asReadonly();
 
   private readonly byId = computed(() =>
@@ -108,8 +108,8 @@ export class CategoryService {
       colorLight: color.colorLight,
       colorDark: color.colorDark,
     };
-    if(id)await this.storage.update(category);else await this.storage.create(category);
-    this.definitions.set(this.storage.list());
+    if(id)await this.database.command(()=>this.database.api.categories.update({id,changes:category}));else await this.database.command(()=>this.database.api.categories.create({item:category}));
+    await this.reload();
     return category;
   }
 
@@ -123,14 +123,14 @@ export class CategoryService {
     const reordered = [...categories];
     const [category] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, category);
-    await this.storage.reorder(reordered.map(category=>category.value));
-    this.definitions.set(this.storage.list());
+    await this.database.command(()=>this.database.api.categories.reorder({ids:reordered.map(category=>category.value)}));
+    this.definitions.set(reordered);
     return true;
   }
 
   async remove(id: string): Promise<void> {
-    await this.storage.remove(id);
-    await this.reloadFromStorage();
+    await this.database.command(()=>this.database.api.categories.delete({id}));
+    await this.reload();
   }
 
   /** Clear references from old copies or forms that were opened before a deletion. */
@@ -144,26 +144,8 @@ export class CategoryService {
     });
   }
 
-  async reloadFromStorage(): Promise<void> {
-    await this.storage.reload();
-    this.definitions.set(this.load());
-  }
-
-  private load(): ExpenseCategoryDetails[] {
-    try {
-      const stored = this.storage.list();
-      if (stored) {
-        const categories: unknown = stored;
-        if (Array.isArray(categories)) {
-          return categories.map(category => category?.icon === 'card_giftcard'
-            ? { ...category, icon: 'redeem' }
-            : category);
-        }
-      }
-    } catch (error) {
-      console.error('Could not load expense categories', error);
-    }
-    return Object.values(expenseCategoryDetails);
+  async reload(): Promise<void> {
+    this.definitions.set((await this.database.api.categories.list()).items);
   }
 
 }

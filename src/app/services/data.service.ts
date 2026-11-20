@@ -1,8 +1,10 @@
 import { calculateMonth } from '../utils/month-calculation';
-import { SettingsRepository, FixedCostRepository, CategoryRepository } from '../storage/repositories';
-import { SessionStore } from '../storage/session-store';
-import {StoredMonth,HistoryItem} from '../storage/database-api';
-import { MonthRepository } from '../storage/month.repository';
+import {DATABASE_CLIENT} from '../data/database';
+import {SettingsService} from './settings.service';
+import {FixedCostService} from './fixed-cost.service';
+import { SessionStore } from '../services/session.service';
+import {StoredMonth,HistoryItem} from '../data/database';
+
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
 import { EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
@@ -29,11 +31,11 @@ import { v4 as uuid } from 'uuid';
  */
 export class DataService {
     private inputSaveQueue:Promise<unknown>=Promise.resolve();
-    private readonly storage = inject(SettingsRepository);
+    private readonly preferences = inject(SettingsService);
     private readonly sessionStore = inject(SessionStore);
-    private readonly months = inject(MonthRepository);
-    private readonly fixedCosts=inject(FixedCostRepository);
-    private readonly categoryRepository=inject(CategoryRepository);
+    private readonly database=inject(DATABASE_CLIENT);
+    private readonly fixedCosts=inject(FixedCostService);
+
     readonly loading=signal(true);
     readonly loadError=signal<string|null>(null);
     readonly ready:Promise<void>;
@@ -145,12 +147,12 @@ export class DataService {
     }
     
     isFirstTimeUser(): boolean {
-        const firstTime = this.storage.read('firstTime');
+        const firstTime = this.preferences.read('firstTime');
         return firstTime == null || firstTime === 'true' || firstTime == undefined;
     }
 
     isOldVersion(): boolean {
-        const storedVersion = this.storage.read('appVersion');
+        const storedVersion = this.preferences.read('appVersion');
         if (!storedVersion) return true; // Treat as outdated if version is missing
     
         const [major, minor] = storedVersion.split('.').map(Number);
@@ -292,8 +294,8 @@ export class DataService {
         const updatedMonths = { ...this.monthlyData, [month]: data };
 
         if (changed && !this.isDemo()) {
-            if(userDefinedLinks.length) {const saved=await this.months.save({month,entries:userDefinedLinks,lastUpdated:new Date(lastUpdated).toISOString(),base:savedSource?.entries??[],history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined});this.sources.set(month,saved);}
-            else if(savedSource) {await this.months.delete(month);this.sources.delete(month);}
+            if(userDefinedLinks.length) {const saved=(await this.database.command(()=>this.database.api.months.save({month,entries:userDefinedLinks,lastUpdated:new Date(lastUpdated).toISOString(),expectedRevision:savedSource?.revision??null,history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined}))).value;this.sources.set(month,saved);}
+            else if(savedSource) {(await this.database.command(()=>this.database.api.months.remove({month}))).value;this.sources.delete(month);}
             this.logService.commitPending(month,history);
             this.multiMonthEntries$.next(Object.fromEntries(Object.entries(updatedMonths).filter(([,value])=>value.rawInput.length)));
             this.dataSaved$.next(true);
@@ -315,12 +317,14 @@ export class DataService {
       if(!original)throw new Error('Entry does not exist.');
       const updated={...original,value,lastEditedAt:Date.now()};
       const timestamp=new Date().toLocaleString('en-GB',{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-      const saved=await this.months.updateEntry(month,updated,{timestamp,value:expression},original);
+      await this.database.command(()=>this.database.api.entries.update({month,id:updated.id,changes:{value,lastEditedAt:updated.lastEditedAt},expected:original,history:{[updated.id]:{timestamp,value:expression}}}));
+      const saved=await this.database.api.months.get(month);
+      if(!saved)throw new Error('Month does not exist.');
       this.sources.set(month,saved);
       const data=this.project(saved);this.monthlyData={...this.monthlyData,[month]:data};
       this.multiMonthEntries$.next(this.monthlyData);
       if(this.processedSingleMonthEntries$.value.month===month)this.processedSingleMonthEntries$.next(data);
-      await this.logService.reloadFromStorage();this.dataSaved$.next(true);
+      await this.logService.reload();this.dataSaved$.next(true);
     }
 
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
@@ -337,8 +341,8 @@ export class DataService {
             return uncategorized;
         });
 
-        await this.categoryRepository.remove(id);
-        await Promise.all([this.categories.reloadFromStorage(),this.budgets.reload(),this.tracking.reloadFromStorage(),this.fixedCosts.reload(),this.storage.reload()]);
+        await this.categories.remove(id);
+        await Promise.all([this.budgets.reload(),this.tracking.reload(),this.fixedCosts.reload(),this.preferences.reload()]);
         this.tracking.categoriesToTrack.update(ids=>ids.filter(value=>value!==id));
         this.demoLinks=clear(this.demoLinks);
         const copied=this.retrieveCopiedLinks();if(copied)this.storeCopiedLinks(clear(copied));
@@ -380,11 +384,11 @@ export class DataService {
     private project(source:StoredMonth):SingleMonthData {return this.calculateMonth(source.entries,source.month,source.lastUpdated);}
 
     async loadData():Promise<MonthlyData> {
-      const sources=await this.months.list();this.sources=new Map(sources.map(source=>[source.month,source]));
+      const sources=(await this.database.api.months.range()).value;this.sources=new Map(sources.map(source=>[source.month,source]));
       return Object.fromEntries(sources.map(source=>[source.month,this.project(source)]));
     }
     async loadSingleMonth(month:string):Promise<SingleMonthData|null> {
-      const source=await this.months.get(month);if(!this.failedDrafts.has(month)){if(source)this.sources.set(month,source);else this.sources.delete(month);}return source?this.project(source):null;
+      const source=await this.database.api.months.get(month);if(!this.failedDrafts.has(month)){if(source)this.sources.set(month,source);else this.sources.delete(month);}return source?this.project(source):null;
     }
     /** Querying a month never saves it. Stale responses cannot replace the active selection. */
     async selectMonth(month:string):Promise<void> {
@@ -397,8 +401,8 @@ export class DataService {
 
     /** Delete persisted entries, then update the runtime views. */
     async removeMonth(month: string): Promise<void> {
-        if (!(await this.months.delete(month))) return;
-        await this.logService.reloadFromStorage();
+        if (!((await this.database.command(()=>this.database.api.months.remove({month}))).value)) return;
+        await this.logService.reload();
         const empty=this.calculateMonth([],month,'-');
         this.monthlyData={...await this.loadData(),[month]:empty};
         this.processedSingleMonthEntries$.next(empty);
@@ -445,11 +449,11 @@ export class DataService {
         const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id));
         const savedMonths = { ...this.monthlyData, [month]: data };
         const addedCategories = definitions.size > currentCategories.length;
-        const saved=await this.months.importMonth({month:data.month,entries:links,lastUpdated:new Date(data.lastUpdated).toISOString(),base:this.sources.get(month)?.entries??[]}, addedCategories ? [...definitions.values()] : undefined);
+        const saved=(await this.database.command(()=>this.database.api.months.save({month:data.month,entries:links,lastUpdated:new Date(data.lastUpdated).toISOString(),expectedRevision:this.sources.get(month)?.revision??null,categories:addedCategories?[...definitions.values()]:undefined,clearHistory:true}))).value;
         this.sources.set(month,saved);
 
-        if (addedCategories) await this.categories.reloadFromStorage();
-        await this.logService.reloadFromStorage();
+        if (addedCategories) await this.categories.reload();
+        await this.logService.reload();
         this.monthlyData = { ...this.monthlyData, ...savedMonths };
         this.isDemo.set(false);
         this.hasDataCycle.set(false);

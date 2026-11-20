@@ -1,11 +1,11 @@
-import { SettingsRepository } from '../storage/repositories';
+import {SettingsService} from '../services/settings.service';
 import { Injectable, inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CurrencyService {
-  private readonly storage = inject(SettingsRepository);
+  private readonly preferences = inject(SettingsService);
 
   private readonly currencyKey = 'selectedCurrency';
   private readonly defaultCurrency = 'EUR';
@@ -21,13 +21,13 @@ export class CurrencyService {
 
 
   getSelectedCurrency(): string {
-    return this.storage.read(this.currencyKey) || this.defaultCurrency;
+    return this.preferences.read(this.currencyKey) || this.defaultCurrency;
   }
   getCurrencySymbol(currency: string = this.getSelectedCurrency()): string {
       return this.currencySymbols[currency] || '';
   }
 
   async setSelectedCurrency(currency: string): Promise<void> {
-      await this.storage.write(this.currencyKey, currency);
+      await this.preferences.write(this.currencyKey, currency);
   }
 }

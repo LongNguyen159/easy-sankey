@@ -14,8 +14,8 @@ Edit Built App configs (windows size etc.) at `main.js` in root directory
 Run `npm start` to start Angular with live reload and launch Electron. Closing the
 Electron development window or pressing Ctrl+C stops the development session.
 
-Development data lives in `.local/finance.sqlite` in this project. The whole
-`.local/` folder (database, WAL/SHM files, browser profile, and recovery copies) is
+Development data lives in `.local/finance-relational.sqlite` in this project. The whole
+`.local/` folder (database, WAL/SHM files, browser profile, and migration marker) is
 ignored by Git. The installed app keeps its own database in Electron's application
 data folder. Development never automatically imports data from the installed app;
 use an explicit backup export/import if you want a copy.
@@ -65,3 +65,11 @@ Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To u
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Database development
+
+Prisma models and relations live in `prisma/schema.prisma`. See [the architecture](docs/storage.md) and [developer guide](docs/orm-development.md) for tables, columns, migrations, API operations and consumers.
+
+Follow [the worked database workflow](docs/database-workflow-example.md) for a complete
+example of adding a related table, CRUD operations, an API and an Angular consumer,
+then adding or changing a column.

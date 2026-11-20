@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Month {
+  id          String  @id
+  lastUpdated String? @map("last_updated")
+  revision    Int     @default(0)
+  entries     Entry[]
+  @@map("finance_months")
+}
+
+model Category {
+  id             String @id
+  label          String
+  icon           String?
+  colorLight     String? @map("color_light")
+  colorDark      String? @map("color_dark")
+  position       Int
+  isEssential    Boolean @default(false) @map("is_essential")
+  budgetPosition Int? @map("budget_position")
+  entries        Entry[]
+  templates      FixedCostTemplate[]
+  budget         Budget?
+  trackingTarget TrackingTarget?
+  @@map("categories")
+}
+
+model Entry {
+  monthId       String @map("month_id")
+  id            String
+  type          String
+  name          String
+  normalizedName String @map("normalized_name")
+  amount        Float
+  position      Int
+  categoryId    String? @map("category_id")
+  parentEntryId String? @map("parent_entry_id")
+  isFixedCost   Boolean? @map("is_fixed_cost")
+  demo          Boolean?
+  lastEditedAt  BigInt? @map("last_edited_at_ms")
+  revision      Int @default(0)
+  month         Month @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  parent        Entry? @relation("EntryHierarchy", fields: [monthId, parentEntryId], references: [monthId, id], onDelete: NoAction, onUpdate: NoAction)
+  children      Entry[] @relation("EntryHierarchy")
+  history       EntryHistory[]
+  @@id([monthId, id])
+  @@unique([monthId, normalizedName])
+  @@index([monthId, position])
+  @@index([monthId, parentEntryId])
+  @@index([categoryId])
+  @@map("finance_entries")
+}
+
+model FixedCostTemplate {
+  id             String @id
+  type           String
+  name           String
+  normalizedName String @unique @map("normalized_name")
+  amount         Float
+  position       Int
+  categoryId     String? @map("category_id")
+  parentId       String? @map("parent_template_id")
+  isFixedCost    Boolean? @map("is_fixed_cost")
+  demo           Boolean?
+  lastEditedAt   BigInt? @map("last_edited_at_ms")
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  parent         FixedCostTemplate? @relation("TemplateHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children       FixedCostTemplate[] @relation("TemplateHierarchy")
+  @@index([position])
+  @@index([categoryId])
+  @@map("fixed_cost_templates")
+}
+
+model Budget {
+  position   Int @default(0)
+  categoryId String @id @map("category_id")
+  amount     Float
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@map("budgets")
+}
+
+model TrackingTarget {
+  id           String @id
+  categoryId   String? @unique @map("category_id")
+  subjectLabel String? @unique @map("subject_label")
+  targetAmount Float @map("target_amount")
+  position     Int
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@index([position])
+  @@map("tracking_targets")
+}
+
+model TrackingSettings {
+  id            Int @id @default(1)
+  targetSurplus Float @default(0) @map("target_surplus")
+  averageIncome Float @default(0) @map("average_income")
+  @@map("tracking_settings")
+}
+
+model EntryHistory {
+  id            String @id
+  monthId       String @map("month_id")
+  entryId       String @map("entry_id")
+  position      Int
+  timestampText String @map("timestamp_text")
+  valueText     String? @map("value_text")
+  valueNumber   Float? @map("value_number")
+  entry         Entry @relation(fields: [monthId, entryId], references: [monthId, id], onDelete: Cascade)
+  @@unique([monthId, entryId, position])
+  @@map("finance_entry_history")
+}
+
+model AppSettings {
+  id                Int @id @default(1)
+  selectedCurrency  String? @map("selected_currency")
+  entryView         String? @map("entry_view")
+  budgetView        String? @map("budget_view")
+  budgetSort        String? @map("budget_sort")
+  fixedCostSort     String? @map("fixed_cost_sort")
+  themeMode         String? @map("theme_mode")
+  isDarkMode        Boolean? @map("is_dark_mode")
+  manualThemeSet    Boolean? @map("manual_theme_set")
+  firstTime         Boolean? @map("first_time")
+  appVersion        String? @map("app_version")
+  @@map("app_settings")
+}
+
+model ImportState {
+  id                          Int @id @default(1)
+  localStorageImportCompleted  Boolean @default(false) @map("local_storage_import_completed")
+  revision                    Int @default(0)
+  sourceFormat                String? @map("source_format")
+  @@map("import_state")
+}

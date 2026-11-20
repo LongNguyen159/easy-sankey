@@ -3,7 +3,7 @@
   "version": "2.0.4",
   "description": "A finance management tool for tracking expenses and managing budgets. Easy Sankey helps you create clear and simple financial visualisations without the need for Excel or technical skills. Just a few easy inputs, and you can see where your money goes!",
   "author": "Long Nguyen",
-  "main": "main.js",
+  "main": ".electron-dist/main.cjs",
   "scripts": {
     "ng": "ng",
     "start": "node scripts/start-dev.cjs",
@@ -16,18 +16,22 @@
     "spell-check": "cspell \"src/**/*.ts\" \"src/**/*.html\"",
     "circular-check": "npx madge --circular --extensions ts ./",
     "deploy-mac": "node scripts/deploy-mac.js",
-    "deploy-win": "ng build && electron-builder --win",
+    "deploy-win": "npm run build && electron-builder --win",
     "test:database": "node scripts/test-database.cjs",
     "rebuild:electron": "electron-builder install-app-deps",
     "test:packaged": "node scripts/smoke-packaged.cjs",
     "postinstall": "electron-builder install-app-deps",
-    "prebuild": "node scripts/generate-database-api.cjs && node scripts/sync-default-categories.cjs",
-    "generate:api": "node scripts/generate-database-api.cjs",
-    "pretest": "node scripts/generate-database-api.cjs",
-    "pretest:database": "node scripts/generate-database-api.cjs",
-    "prestart": "node scripts/generate-database-api.cjs",
-    "preelectron": "node scripts/generate-database-api.cjs",
-    "dev:serve": "ng serve --host 127.0.0.1 --port 4200"
+    "prebuild": "npm run build:electron",
+    "pretest": "npm run build:electron",
+    "pretest:database": "prisma generate",
+    "prestart": "npm run build:electron",
+    "preelectron": "npm run build:electron",
+    "dev:serve": "ng serve --host 127.0.0.1 --port 4200",
+    "orm:generate": "prisma generate",
+    "orm:migrate": "prisma migrate dev",
+    "orm:studio": "prisma studio",
+    "build:electron": "prisma generate && node scripts/build-electron.cjs",
+    "predev:serve": "npm run build:electron"
   },
   "private": true,
   "dependencies": {
@@ -41,6 +45,7 @@
     "@angular/platform-browser": "^22.2.6",
     "@angular/platform-browser-dynamic": "^22.2.6",
     "@angular/router": "^22.2.6",
+    "@prisma/client": "6.19.0",
     "arima": "^0.2.5",
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
@@ -68,6 +73,7 @@
     "cspell": "^8.16.0",
     "electron": "^32.1.2",
     "electron-builder": "^25.1.7",
+    "esbuild": "0.28.2",
     "istanbul-lib-instrument": "^6.0.3",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
@@ -76,6 +82,7 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.4.47",
+    "prisma": "6.19.0",
     "tailwindcss": "^3.4.13",
     "typescript": "~6.0.3"
   },
@@ -90,11 +97,9 @@
     },
     "files": [
       "dist/easy-sankey/**/*",
-      "main.js",
-      "preload.js",
-      "electron/storage/**/*.js",
-      "!electron/storage/**/*.test.js",
-      "electron/storage/*.json"
+      ".electron-dist/**/*",
+      "generated/prisma/**/*",
+      "prisma/migrations/**/*"
     ],
     "directories": {
       "output": "releases/v${version}/${platform}/${arch}"

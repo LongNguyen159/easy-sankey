@@ -1,4 +1,4 @@
-import {FixedCostRepository} from '../../storage/repositories';
+import {FixedCostService} from '../../services/fixed-cost.service';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
@@ -44,8 +44,8 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
-  private fixedCosts=inject(FixedCostRepository);
-  protected sortOrder = resolveAmountSort(this.storage.read('fixCostSort'));
+  private fixedCosts=inject(FixedCostService);
+  protected sortOrder = resolveAmountSort(this.preferences.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
 
@@ -84,7 +84,7 @@ export class FixCostInputComponent extends InputListComponent {
 
   protected async setSort(order: AmountSort): Promise<void> {
     this.sortOrder = order;
-    await this.storage.write('fixCostSort', order);
+    await this.preferences.write('fixCostSort', order);
   }
 
   protected override visibleEntries(isFixCost?: boolean): FormGroup[] {

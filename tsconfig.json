@@ -6,6 +6,8 @@
     "outDir": "./dist/out-tsc",
     "types": ["node"],
     "strict": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "strictPropertyInitialization": false,

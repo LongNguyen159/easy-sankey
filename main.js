@@ -1,4 +1,4 @@
-const { registerDatabaseApi } = require('./electron/storage/ipc');
+const { registerDatabaseApi } = require('./electron/ipc');
 const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
@@ -25,7 +25,7 @@ if (!app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance', () => { if(win) { if(win.isMinimized()) win.restore(); win.focus(); } });
 
 
-const smokeLegacySeed=storageSmoke && !require('node:fs').existsSync(path.join(app.getPath('userData'),'finance.sqlite'));
+const smokeLegacySeed=storageSmoke && !require('node:fs').existsSync(path.join(app.getPath('userData'),'finance-relational.sqlite'));
 
 //#region Server Setup
 /** Set up server to host the Machine Learning model. */
@@ -140,7 +140,7 @@ function createWindow() {
     minWidth: 450,
     minHeight: 300,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       additionalArguments: smokeLegacySeed ? ['--storage-smoke-legacy=' + encodeURIComponent(JSON.stringify({
         firstTime:'false',appVersion:version,selectedCurrency:'USD',budgetView:'list',
         monthlyData:JSON.stringify({'2024-01':{month:'2024-01',lastUpdated:'2024-01-15T12:00:00.000Z',
@@ -158,7 +158,7 @@ function createWindow() {
 
   // Load the Angular app (dist folder)
   if(developmentURL) win.loadURL(developmentURL);
-  else win.loadFile(path.join(__dirname, 'dist/easy-sankey/browser/index.html'));
+  else win.loadFile(path.join(app.getAppPath(), 'dist/easy-sankey/browser/index.html'));
 
   if (development && !storageSmoke) {
     win.webContents.openDevTools({ mode: 'detach' });
@@ -233,7 +233,7 @@ app.on('ready', () => {
   }
   createWindow();
   if (storageSmoke) {
-    require('./electron/storage/smoke').runSmoke(win, app).then(() => app.exit(0)).catch(error => { console.error(error); app.exit(1); });
+    require('./tests/desktop/packaged-smoke').runSmoke(win, app).then(() => app.exit(0)).catch(error => { console.error(error); app.exit(1); });
   }
   // setupAutoUpdater();
 });
@@ -250,8 +250,9 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  databaseApi?.close();
+let databaseClosed=false;
+app.on('before-quit', event => {
+  if(databaseApi&&!databaseClosed){event.preventDefault();databaseClosed=true;databaseApi.close().finally(()=>app.quit());return;}
   serverInstance.close(() => {
     console.log('Express server closed before quit');
   });
