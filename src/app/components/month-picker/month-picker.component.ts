@@ -38,8 +38,6 @@ export class MonthPickerComponent extends BasePageComponent implements OnInit {
   colorService = inject(ColorService)
   dataService = inject(DataService)
 
-  // Track previous date to compare with the current date
-  private previousDate: Date = new Date();
 
 
   cellClass = (date: Date): string => {
@@ -64,9 +62,8 @@ export class MonthPickerComponent extends BasePageComponent implements OnInit {
     /** Retrieve the selected data state from service */
     this.selectedDate.set(this.dataService.selectedActiveDate);
     // Set the previous date to the selected date (current date) initially to avoid null values.
-    this.previousDate = this.selectedDate();
     this.monthSelected.emit({
-      previousMonth: this.previousDate,
+      previousMonth: this.selectedDate(),
       currentMonth: this.selectedDate()
     });
 
@@ -88,15 +85,13 @@ export class MonthPickerComponent extends BasePageComponent implements OnInit {
 
   previousMonth() {
     const currentDate = this.selectedDate();
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() - 1);
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     this.notifyMonthChanges(newDate);
   }
 
   nextMonth() {
     const currentDate = this.selectedDate();
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + 1);
+    const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     this.notifyMonthChanges(newDate);
   }
 
@@ -124,16 +119,13 @@ export class MonthPickerComponent extends BasePageComponent implements OnInit {
   notifyMonthChanges(date: Date) {
     /** Reset data cycle flag for new month */
     this.dataService.hasDataCycle.set(false)
-    // Emit both the previous and current month
-    this.monthSelected.emit({
-      previousMonth: this.previousDate,
-      currentMonth: date
-    });
-    
-    // Update selected and previous dates
-    this.previousDate = this.selectedDate();
+    const previousMonth = this.selectedDate();
     this.selectedDate.set(date);
     this.dataService.selectedActiveDate = date;
+    this.monthSelected.emit({
+      previousMonth,
+      currentMonth: date
+    });
   }
 
   // Handle year selection (optional)

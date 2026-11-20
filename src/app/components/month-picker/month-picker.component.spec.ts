@@ -26,4 +26,22 @@ describe('MonthPickerComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('reports the immediately preceding month on consecutive selections', () => {
+    const emit = spyOn(component.monthSelected, 'emit');
+    component.selectedDate.set(new Date(2026, 0, 1));
+    component.nextMonth();
+    component.nextMonth();
+    expect(emit.calls.mostRecent().args[0]).toEqual({
+      previousMonth: new Date(2026, 1, 1), currentMonth: new Date(2026, 2, 1),
+    });
+  });
+
+  it('moves exactly one month from the end of a long month', () => {
+    component.selectedDate.set(new Date(2026, 0, 31));
+    component.nextMonth();
+    expect(component.selectedDate()).toEqual(new Date(2026, 1, 1));
+    component.previousMonth();
+    expect(component.selectedDate()).toEqual(new Date(2026, 0, 1));
+  });
 });

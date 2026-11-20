@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { takeUntil } from 'rxjs';
 import { InputListComponent } from '../../input-list/input-list.component';
 import { DataService } from '../../../services/data.service';
-import { MonthlyData, SingleMonthData } from '../../models';
 import { BasePageComponent } from '../../../base-components/base-page/base-page.component';
 import {formatYearMonthToLongDate } from '../../../utils/utils';
 import { NavigationStart, Router } from '@angular/router';
@@ -25,21 +25,14 @@ export class InputListDialogComponent extends BasePageComponent implements OnIni
   dialogRef = inject(MatDialogRef)
   uiService = inject(UiService)
 
-  monthString: string = ''
-  singleMonthData: SingleMonthData
-  allMonthsData: MonthlyData
-
-  currentMonth: string = ''
+  private readonly monthData = toSignal(this.dataService.getSingleMonthData(), {requireSync: true});
+  readonly monthString = computed(() => {
+    const month = this.monthData().month;
+    return month ? formatYearMonthToLongDate(month) : '';
+  });
 
 
   ngOnInit(): void {
-    this.dataService.getSingleMonthData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
-      if (data) {
-        this.singleMonthData = data
-        this.monthString = formatYearMonthToLongDate(data.month)
-      }
-    })
-
     this.router.events.pipe(takeUntil(this.componentDestroyed$)).subscribe(event => {
       if (event instanceof NavigationStart) {
         this.dialogRef.close();

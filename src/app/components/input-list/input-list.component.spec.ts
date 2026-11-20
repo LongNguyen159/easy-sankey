@@ -38,7 +38,8 @@ describe('InputListComponent manual sorting', () => {
     save = jasmine.createSpy('processInputData');
     TestBed.configureTestingModule({ providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase(),
       { provide: DataService, useValue: { demoLinks: [], nonAllowedNames: [], isDemo: () => false,
-        hasDataCycle: { set: () => {} }, saveMonthDraft: save } },
+        hasDataCycle: { set: () => {} }, saveMonthDraft: save,
+        selectMonth: jasmine.createSpy('selectMonth').and.resolveTo() } },
       { provide: UiService, useValue: { showSnackBar: jasmine.createSpy('showSnackBar') } },
       { provide: ColorService, useValue: {} },
       { provide: LogsService, useValue: {} },
@@ -53,6 +54,38 @@ describe('InputListComponent manual sorting', () => {
   });
 
   afterEach(async () => (await component.ngOnDestroy()));
+
+  it('saves edits to the displayed month and lets the latest selection win during a slow save', async () => {
+    component.populateInputFields({rawInput: [entry('edited')]} as SingleMonthData);
+    component.hasChanges = true;
+    let finishSave!: () => void;
+    const saving = new Promise<void>(resolve => finishSave = resolve);
+    const persist = spyOn(component, 'processMonthBeforeMonthChanges').and.returnValue(saving);
+    const first = component.onMonthChanges({
+      previousMonth: new Date(2026, 9, 1), currentMonth: new Date(2026, 11, 1),
+    });
+    await Promise.resolve();
+    const latest = component.onMonthChanges({
+      previousMonth: new Date(2026, 11, 1), currentMonth: new Date(2027, 0, 1),
+    });
+    finishSave();
+    await Promise.all([first, latest]);
+    expect(persist.calls.count()).toBe(1);
+    expect(persist.calls.first().args[0]).toBe('2026-11');
+    expect(component.dataService.selectMonth).toHaveBeenCalledOnceWith('2027-01');
+  });
+
+  it('keeps the displayed month and draft when validation blocks navigation', async () => {
+    component.populateInputFields({rawInput: [entry('')]} as SingleMonthData);
+    component.hasChanges = true;
+    await component.onMonthChanges({
+      previousMonth: new Date(2026, 10, 1), currentMonth: new Date(2026, 11, 1),
+    });
+    expect(component.dataService.selectMonth).not.toHaveBeenCalled();
+    expect(component.dataService.selectedActiveDate).toEqual(new Date(2026, 10, 1));
+    expect(component.hasChanges).toBeTrue();
+    component.hasChanges = false;
+  });
 
   it('writes a stable newest-first manual order and saves it across reopening', async () => {
     component.populateInputFields({ rawInput: [entry('undated'), entry('older', 100), entry('newest', 200), entry('tie', 200), entry('also-undated')] } as SingleMonthData);

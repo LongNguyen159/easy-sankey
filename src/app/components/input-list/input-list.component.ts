@@ -2,7 +2,7 @@ import {SettingsService} from '../../services/settings.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
-import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, Input, OnDestroy, OnInit, QueryList, TemplateRef, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, signal, OnDestroy, OnInit, QueryList, TemplateRef, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
@@ -25,7 +25,6 @@ import { addImplicitPlusSigns, formatDateToYYYYMM, processStringAmountToNumber }
 import { MatCardModule } from '@angular/material/card';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { ColorService } from '../../services/color.service';
-import { onMonthChanges } from '../../utils/data-utils';
 import { Router } from '@angular/router';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { MatDividerModule } from '@angular/material/divider';
@@ -122,7 +121,6 @@ enum ErrorType {
 
 export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
   protected readonly preferences = inject(SettingsService);
-  @Input() triggeredMonthByDialog: string = ''
 
   dataService = inject(DataService)
   uiService = inject(UiService)
@@ -167,7 +165,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   isVariableCostsExpanded: boolean = true;
 
   dataMonth: string = '' // Month to process, in YYYY-MM format
-  singleMonthData: SingleMonthData // Data for the current month
+  readonly singleMonthData = signal<SingleMonthData | null>(null);
   allMonthsData: MonthlyData // Data for all months
 
   /** Save the current input values every time user changes the input.
@@ -245,19 +243,23 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
      * exceed their parent.
      */
     this.dataService.getSingleMonthData().pipe(takeUntil(this.componentDestroyed$)).subscribe(data => {
-      this.singleMonthData = data;
       this.fixedLinks = this.dataService.retrieveFixCostsLinks();
       this.dataMonth = data.month
       this.taxNodeExists = this._hasTaxNode(data.rawInput);
 
       /** Populate links with predefined data */
       this.populateInputFields(data)
+      this.savedFormValues = this.linkArray.getRawValue() as UserDefinedLink[];
+      this.hasChanges = false;
+      this.linkForm.markAsPristine();
+      // IPC completion can happen outside Angular's event handlers. Publish only
+      // after rebuilding the form so its rows and month metadata render together.
+      this.singleMonthData.set(data);
     });
 
     
     /** Listen to changes in value. If changes, save the current form value immediately. */
-    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(()=>this.hasChanges=true);
-    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(300)).subscribe((formData) => {
+    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(() => {
       this.updateSavedFormValuesOnFormChanges()
     })
   }
@@ -272,7 +274,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * so every onMonthChanges, we will process the form values, which is inefficient.
    */
   protected updateSavedFormValuesOnFormChanges() {
-    this.savedFormValues = this.linkArray.value.slice();
+    this.savedFormValues = this.linkArray.getRawValue() as UserDefinedLink[];
     this.hasChanges = true;
   }
 
@@ -419,17 +421,40 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
 
   //#region Month Changes
-  async onMonthChanges(selectedMonth: DateChanges) {
-    const currentMonth = formatDateToYYYYMM(selectedMonth.currentMonth)
-    const prevMonth = formatDateToYYYYMM(selectedMonth.previousMonth)
-    if(currentMonth!==prevMonth && this.hasChanges) {
-      if(!this.linkForm.valid) {this.uiService.showSnackBar('Correct the current month before switching.');return;}
-      await this.processMonthBeforeMonthChanges(prevMonth,this.linkArray.getRawValue() as UserDefinedLink[]);
-      this.hasChanges=false;
-    }
-    await onMonthChanges(selectedMonth.currentMonth,this.allMonthsData,this.singleMonthData,this.dataService);
+  @ViewChild(MonthPickerComponent) private monthPicker?: MonthPickerComponent;
+  private monthNavigation: Promise<void> = Promise.resolve();
+  private monthRequest = 0;
+  onMonthChanges(selectedMonth: DateChanges): Promise<void> {
+    const request = ++this.monthRequest;
+    const month = formatDateToYYYYMM(selectedMonth.currentMonth);
+    const navigate = async () => {
+      if (request !== this.monthRequest || this.destroyRef.destroyed) return;
+      // The form belongs to dataMonth, even if the picker has already moved ahead.
+      if (month !== this.dataMonth && this.hasChanges) {
+        if (!this.linkForm.valid) {
+          this.uiService.showSnackBar('Correct the current month before switching.');
+          this.restoreSelectedMonth();
+          return;
+        }
+        await this.processMonthBeforeMonthChanges(this.dataMonth, this.linkArray.getRawValue() as UserDefinedLink[]);
+        this.hasChanges = false;
+      }
+      if (request !== this.monthRequest || this.destroyRef.destroyed) return;
+      await this.dataService.selectMonth(month);
+      if (request === this.monthRequest) this.savedFormValues = this.linkArray.getRawValue() as UserDefinedLink[];
+    };
+    const result = this.monthNavigation.then(navigate);
+    this.monthNavigation = result.catch(() => {});
+    return result.catch(error => {
+      if (request === this.monthRequest) this.restoreSelectedMonth();
+      this.uiService.showSnackBar(`Could not switch month: ${error.message}`);
+    });
+  }
 
-    this.savedFormValues = this.linkForm.value.links.slice();
+  private restoreSelectedMonth() {
+    if (!this.dataMonth) return;
+    this.dataService.selectedActiveDate = new Date(`${this.dataMonth}-01T00:00:00`);
+    this.monthPicker?.selectedDate.set(this.dataService.selectedActiveDate);
   }
 
   /** This function is used to process the previous month (in compare to current month).

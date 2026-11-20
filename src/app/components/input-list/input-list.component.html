@@ -1,3 +1,4 @@
+@let monthData = singleMonthData();
 @if((!linkForm.valid && linkForm.touched) || hasDuplicates || hasInValidRows) {
   <div class="flex flex-row w-full justify-center">
     <div class="fixed top-6 z-[100]">
@@ -12,12 +13,12 @@
 
     <!-- LAST UPDATED DATE -->
     <div class="flex flex-row items-center justify-start gap-2">
-      @if (singleMonthData && singleMonthData.lastUpdated && singleMonthData.lastUpdated !== '-') {
+      @if (monthData && monthData.lastUpdated && monthData.lastUpdated !== '-') {
         <div class="text-sm flex flex-row items-center gap-1" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400' : 'text-neutral-500'">
           <mat-icon fontSet="material-symbols-outlined">history</mat-icon>
           <!-- <span>Last updated</span> -->
           <span matTooltip="Last edited" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}" class="text-highlight">
-            {{ singleMonthData.lastUpdated | date: 'dd. MMM yyyy' }}
+            {{ monthData.lastUpdated | date: 'dd. MMM yyyy' }}
           </span>
         </div>
       }
