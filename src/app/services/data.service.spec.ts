@@ -104,7 +104,7 @@ describe('envelope editing and month copying', () => {
 });
 
 describe('global envelope spending', () => {
-  it('shows a shared allowance in every month while counting spending independently', async () => {
+  it('makes a shared allowance available every month and charts each month’s spending independently', async () => {
     const fake=testDatabase();
     TestBed.configureTestingModule({providers:[...fake.providers,DatePipe,
       {provide:UiService,useValue:{showSnackBar:()=>{},openConfirmDialog:()=>{}}}]});
@@ -120,7 +120,7 @@ describe('global envelope spending', () => {
     await data.selectMonth('2026-12');
     let active!:SingleMonthData;const subscription=data.getSingleMonthData().subscribe(value=>active=value);
     expect(active.envelopes).toEqual([global]);
-    expect(active.sankeyData.nodes.find(node=>node.envelopeId)?.spent).toBe(0);
+    expect(active.sankeyData.nodes.find(node=>node.envelopeId)).toBeUndefined();
     await data.saveMonthDraft(entries(90),'2026-12');
     expect(active.sankeyData.nodes.find(node=>node.envelopeId)?.spent).toBe(90);
     expect(active.remainingBalance).toBe('910');

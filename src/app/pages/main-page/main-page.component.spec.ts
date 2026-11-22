@@ -28,7 +28,7 @@ describe('MainPageComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
-  it('shows stable envelope budgets without category budgets, including unused allowances', async () => {
+  it('shows gauges only for budgets with spending', async () => {
     await component.dataService.ready;
     const envelopes=[{id:'revolut',name:'Revolut spending',budget:500,isGlobal:true},
       {id:'holiday',name:'Holiday',budget:200}];
@@ -39,9 +39,9 @@ describe('MainPageComponent', () => {
     ],'2026-11','-',id => id === ExpenseCategory.Restaurants || id === ExpenseCategory.Groceries,envelopes);
     component.pieChartDataNetto=component.entriesOfOneMonth.pieData;
     fixture.detectChanges();
-    expect(component.envelopeBudgets.map(item=>item.spent)).toEqual([40,0]);
+    expect(component.envelopeBudgets.map(item=>item.spent)).toEqual([40]);
     const section=fixture.nativeElement.querySelector('[aria-label="Budgets"]');
-    expect(section.querySelectorAll('app-budget-gauge-chart').length).toBe(2);
+    expect(section.querySelectorAll('app-budget-gauge-chart').length).toBe(1);
     expect(section.textContent).toContain('Global budget');
     expect(fixture.nativeElement.textContent).not.toContain('No budgets set yet!');
     // Cover both direct category gauges and envelope gauges with captions.

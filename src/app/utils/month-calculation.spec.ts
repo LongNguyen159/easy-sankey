@@ -73,10 +73,14 @@ describe('monthly spending envelopes', () => {
     expect(entries[1].value).toBe(40);
   });
 
-  it('shows unused envelopes and spending above the allowance without adding synthetic expenses', () => {
-    const unused = calculateMonth(entries.map(entry => ({...entry, envelopeId: null})), '2026-11', '-', id => id === category, [envelope]);
-    expect(unused.sankeyData.nodes.find(node => node.envelopeId)?.spent).toBe(0);
-    expect(unused.remainingBalance).toBe('900');
+  it('hides unused envelopes and shows spending above the allowance without adding synthetic expenses', () => {
+    const unused = calculateMonth(entries.map(entry => entry.envelopeId === envelope.id
+      ? {...entry, value: 0}
+      : entry), '2026-11', '-', id => id === category, [envelope]);
+    expect(unused.sankeyData.nodes.find(node => node.envelopeId)).toBeUndefined();
+    const nodeNames = new Set(unused.sankeyData.nodes.map(node => node.name));
+    expect(unused.sankeyData.links.every(link => nodeNames.has(link.source) && nodeNames.has(link.target))).toBeTrue();
+    expect(unused.remainingBalance).toBe('940');
     const overspent = calculate(20);
     expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.value).toBe(40);
     expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.budget).toBe(20);

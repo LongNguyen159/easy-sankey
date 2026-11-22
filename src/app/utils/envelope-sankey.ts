@@ -45,8 +45,8 @@ export function envelopeSankey(base: SankeyData, entries: UserDefinedLink[], env
     const descendants = children.get(entry.target) ?? [];
     // A parent may contain an amount above its children. Only this residual is its own spending.
     const ownAmount = (total.get(entry.id) ?? entry.value) - descendants.reduce((sum, child) => sum + (total.get(child.id) ?? child.value), 0);
-    if (ownAmount > 0 || !descendants.length) {
-      const scope = entry.envelopeId && envelopeMap.has(entry.envelopeId) ? entry.envelopeId : '';
+    const scope = entry.envelopeId && envelopeMap.has(entry.envelopeId) ? entry.envelopeId : '';
+    if (ownAmount > 0 || (!descendants.length && (!scope || ownAmount !== 0))) {
       let source = scope ? JSON.stringify(['envelope', scope]) : root;
       if (scope) nodes.get(source)!.spent! += ownAmount;
       if (categoryId) {
@@ -68,9 +68,14 @@ export function envelopeSankey(base: SankeyData, entries: UserDefinedLink[], env
   for (const node of nodes.values()) {
     // Overspending must remain visible; capacity is a floor, never a cap on actual flows.
     if (node.envelopeId) {
+      const linkKey = JSON.stringify([root, node.name]);
+      if (node.spent === 0) {
+        nodes.delete(node.name);
+        links.delete(linkKey);
+        continue;
+      }
       node.value = Math.max(node.budget!, node.spent!);
-      const link = links.get(JSON.stringify([root, node.name]))!;
-      link.value = node.value;
+      links.get(linkKey)!.value = node.value;
     }
   }
   // Preserve real income values for labels and tooltips; planning bands may exceed actual income.

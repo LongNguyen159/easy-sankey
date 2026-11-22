@@ -54,7 +54,7 @@
           </button>
         </div>
         @if (!envelopeBudgets.length) {
-          <p class="text-center">No budgets set for this month.</p>
+          <p class="text-center">{{ entriesOfOneMonth?.envelopes?.length ? 'No budget spending this month.' : 'No budgets set for this month.' }}</p>
         }
 
         @if (envelopeBudgets.length) {

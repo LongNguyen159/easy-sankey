@@ -11,6 +11,7 @@ import { MonthlyData, SingleMonthData } from '../models';
 import { DateChanges, EntryType, ExpenseCategoryDetails, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { CurrencyService } from '../../services/currency.service';
 import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatSelectModule} from '@angular/material/select';
@@ -123,6 +124,7 @@ enum ErrorType {
 
 export class InputListComponent extends BasePageComponent implements OnInit, OnDestroy {
   protected readonly preferences = inject(SettingsService);
+  protected readonly currencyService = inject(CurrencyService);
 
   dataService = inject(DataService)
   uiService = inject(UiService)

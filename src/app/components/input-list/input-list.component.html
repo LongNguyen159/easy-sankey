@@ -84,7 +84,7 @@
       <mat-menu #envelopeMenu="matMenu">
         @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
           <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
-            {{ envelope.name }} · {{ envelope.isGlobal ? 'All months' : 'This month' }}
+            {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
           </button>
         }
         @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
@@ -330,6 +330,11 @@
             [matMenuTriggerFor]="entryEnvelopeMenu">
             <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
           </button>
+          @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
+            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
+              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+            </button>
+          }
           <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
             <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
           </button>
@@ -340,7 +345,7 @@
               [class.entry-budget-selected]="linkGroup.get('envelopeId')?.value === envelope.id"
               [attr.aria-current]="linkGroup.get('envelopeId')?.value === envelope.id ? 'true' : null">
               <mat-icon fontSet="material-symbols-outlined">{{ linkGroup.get('envelopeId')?.value === envelope.id ? 'check' : 'account_balance_wallet' }}</mat-icon>
-              {{ envelope.name }} · {{ envelope.isGlobal ? 'All months' : 'This month' }}
+              {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
             </button>
           }
           @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }

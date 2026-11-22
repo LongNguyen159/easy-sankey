@@ -141,7 +141,7 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   get envelopeBudgets() {
     return (this.entriesOfOneMonth?.envelopes ?? []).map(envelope => ({...envelope,
       spent: this.entriesOfOneMonth.sankeyData.nodes.find(node => node.envelopeId === envelope.id)?.spent ?? 0,
-    }));
+    })).filter(envelope => envelope.spent !== 0);
   }
 
   navigateToBudgetList() {
