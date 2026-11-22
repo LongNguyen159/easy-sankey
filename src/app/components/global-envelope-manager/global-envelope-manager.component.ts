@@ -1,5 +1,5 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { v4 as uuid } from 'uuid';
 import { BudgetEnvelope } from '../models';
 import { DataService } from '../../services/data.service';
+import { UiService } from '../../services/ui.service';
 
 @Component({
   selector: 'app-global-envelope-manager',
@@ -17,18 +18,18 @@ import { DataService } from '../../services/data.service';
       <h2>Global budgets</h2>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>
       @if (loading()) { <p>Loading budgets…</p> }
-      @if (!loading() && !rows.length) { <p>No global budgets yet.</p> }
-      @for (row of rows.controls; track row) {
+      @if (!loading() && !visibleRows().length) { <p>No global budgets yet.</p> }
+      @for (row of visibleRows(); track row) {
         <div class="envelope-fields" [formGroup]="row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Name</mat-label>
             <input matInput formControlName="name" [maxLength]="100">
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Monthly allowance</mat-label>
+            <mat-label>Monthly amount</mat-label>
             <input matInput formControlName="budget" type="number" min="0.01" step="0.01">
           </mat-form-field>
-          <button mat-icon-button type="button" [disabled]="saving()" (click)="rows.removeAt($index)"
+          <button mat-icon-button type="button" [disabled]="saving()" (click)="remove(row)"
             [attr.aria-label]="'Delete ' + row.controls.name.value">
             <mat-icon fontSet="material-symbols-outlined">delete_outline</mat-icon>
           </button>
@@ -56,6 +57,8 @@ import { DataService } from '../../services/data.service';
 })
 export class GlobalEnvelopeManagerComponent implements OnInit {
   private readonly service = inject(DataService);
+  private readonly uiService = inject(UiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder).nonNullable;
   private base: BudgetEnvelope[] = [];
   readonly loading = signal(true);
@@ -67,8 +70,24 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
       budget:[item.budget,[Validators.required,Validators.min(0.01)]]});
   }
   readonly rows = new FormArray<ReturnType<GlobalEnvelopeManagerComponent['group']>>([]);
+  protected readonly visibleRows = signal([...this.rows.controls]);
   constructor() {
+    effect(() => {
+      const globals = this.service.globalEnvelopes();
+      if (this.loading() || this.saving()) return;
+
+      // Drop externally deleted rows without discarding drafts for other budgets.
+      const currentIds = new Set(globals.map(item => item.id));
+      const deletedIds = new Set(this.base.filter(item => !currentIds.has(item.id)).map(item => item.id));
+      if (!deletedIds.size) return;
+
+      this.base = this.base.filter(item => !deletedIds.has(item.id));
+      for (let index = this.rows.length - 1; index >= 0; index--) {
+        if (deletedIds.has(this.rows.at(index).controls.id.value)) this.rows.removeAt(index);
+      }
+    });
     this.rows.valueChanges.pipe(takeUntilDestroyed()).subscribe(()=>{
+      this.visibleRows.set([...this.rows.controls]);
       if (!this.saving()) this.saved.set(false);
     });
   }
@@ -81,6 +100,42 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
     finally { this.loading.set(false); }
   }
   add() { this.rows.push(this.group({id:uuid(),name:'',budget:500})); this.saved.set(false); }
+  protected remove(row: ReturnType<GlobalEnvelopeManagerComponent['group']>): void {
+    if (this.saving()) return;
+    const id = row.controls.id.value;
+    const removeRow = () => {
+      const index = this.rows.controls.indexOf(row);
+      if (index >= 0) this.rows.removeAt(index);
+    };
+    if (!this.base.some(item => item.id === id)) {
+      removeRow();
+      return;
+    }
+
+    this.uiService.openConfirmDialog({
+      title: `Delete “${row.controls.name.value.trim() || 'Untitled budget'}”?`,
+      message: 'This budget will be deleted from every month.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      confirmColor: 'warn',
+    }, '440px', 'auto').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async confirmed => {
+      if (confirmed !== true || this.saving() || !this.rows.controls.includes(row)) return;
+      this.saving.set(true);
+      this.error.set('');
+      this.saved.set(false);
+      this.rows.disable();
+      try {
+        await this.service.saveGlobalEnvelopes(this.base.filter(item => item.id !== id), this.base);
+        this.base = structuredClone(this.service.globalEnvelopes());
+        removeRow();
+      } catch {
+        this.error.set('Could not delete the budget. Try again.');
+      } finally {
+        this.rows.enable();
+        this.saving.set(false);
+      }
+    });
+  }
   async save() {
     if(this.rows.invalid || this.loading() || this.saving())return;
     const items=this.rows.getRawValue().map(row=>({...row,name:row.name.trim(),isGlobal:true}));

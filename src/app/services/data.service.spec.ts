@@ -77,7 +77,8 @@ describe('envelope editing and month copying', () => {
     expect(copy.envelopes?.[0].id).not.toBe('personal');
     expect(copy.entries[1].envelopeId).toBe(copy.envelopes?.[0].id);
     expect(copy.entries[1].source).toBe('Restaurants@__system/category__');
-    await data.saveEnvelopes('2026-11', []);
+    await data.deleteLocalEnvelope('2026-11', 'personal');
+    expect(data.monthlyData['2026-11'].envelopes).toEqual([]);
     expect(fake.months.get('2026-11')?.entries[1].envelopeId).toBeNull();
     expect(fake.months.get('2026-11')?.entries[1].source).toBe('Restaurants@__system/category__');
     expect(data.monthlyData['2026-11'].remainingBalance).toBe('960');

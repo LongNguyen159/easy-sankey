@@ -1,3 +1,6 @@
+import { provideZonelessChangeDetection } from '@angular/core';
+import { Subject } from 'rxjs';
+import { UiService } from '../../../services/ui.service';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -24,7 +27,7 @@ describe('monthly envelope editor', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Budgets for November 2026');
     expect(fixture.nativeElement.querySelector('mat-slide-toggle')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Monthly allowance');
+    expect(fixture.nativeElement.textContent).toContain('Amount');
     await editor.save();
     expect(editor.error).toContain('Could not save');
     expect(editor.rows.getRawValue()[0].budget).toBe(500);
@@ -82,6 +85,33 @@ describe('monthly envelope editor', () => {
     expect(save.calls.mostRecent().args[1]).toEqual([{id:'local',name:'Holiday',budget:120}]);
     expect(save.calls.mostRecent().args[2]).toEqual([{id:'global',name:'Revolut',budget:600,isGlobal:true}]);
     expect(save.calls.mostRecent().args[3]).toEqual([{id:'global',name:'Revolut',budget:500,isGlobal:true}]);
+  });
+
+  it('refreshes the budget rows when the confirmation closes asynchronously', async () => {
+    const confirmation = new Subject<boolean>();
+    const deleteLocalEnvelope = jasmine.createSpy('deleteLocalEnvelope').and.resolveTo();
+    await TestBed.configureTestingModule({imports: [EnvelopeDialogComponent], providers: [
+      provideNoopAnimations(), provideZonelessChangeDetection(),
+      {provide: DataService, useValue: {deleteLocalEnvelope}},
+      {provide: UiService, useValue: {openConfirmDialog: () => confirmation}},
+      {provide: MAT_DIALOG_DATA, useValue: {...emptyMonth, month: '2026-11', envelopes: [
+        {id: 'local', name: 'Holiday', budget: 100},
+      ]}},
+      {provide: MatDialogRef, useValue: {}},
+    ]}).compileComponents();
+
+    const fixture = TestBed.createComponent(EnvelopeDialogComponent);
+    fixture.autoDetectChanges();
+    const deleteButton = () => fixture.nativeElement.querySelector('button[aria-label="Delete Holiday"]');
+    deleteButton().click();
+    await fixture.whenStable();
+    expect(deleteButton()).not.toBeNull();
+
+    confirmation.next(true);
+    confirmation.complete();
+    await fixture.whenStable();
+    expect(deleteLocalEnvelope).toHaveBeenCalledOnceWith('2026-11', 'local');
+    expect(deleteButton()).toBeNull();
   });
 
   it('creates a global budget from the month dialog while retaining existing budgets', async () => {

@@ -344,8 +344,25 @@ export class DataService {
     }
 
     async saveEnvelopes(month: string, envelopes: BudgetEnvelope[], globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
+      return this.queueEnvelopeSave(month, () => envelopes, globals, expectedGlobals);
+    }
+
+    async deleteLocalEnvelope(month: string, id: string): Promise<void> {
+      return this.queueEnvelopeSave(month, (source) => {
+        const envelopes = source?.envelopes ?? [];
+        if (envelopes.some(envelope => envelope.id === id)) {
+          return envelopes.filter(envelope => envelope.id !== id);
+        }
+        return undefined;
+      });
+    }
+
+    private queueEnvelopeSave(month: string, getEnvelopes: (source: StoredMonth | undefined) => BudgetEnvelope[] | undefined,
+        globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
       const operation = this.inputSaveQueue.then(async () => {
         const source = this.sources.get(month);
+        const envelopes = getEnvelopes(source);
+        if (!envelopes) return;
         const ids = new Set([...envelopes, ...(globals ?? this.globalEnvelopes())].map(envelope => envelope.id));
         const entries = (source?.entries ?? this.monthlyData[month]?.rawInput ?? []).map(entry =>
           entry.envelopeId && !ids.has(entry.envelopeId) ? {...entry, envelopeId: null} : entry);

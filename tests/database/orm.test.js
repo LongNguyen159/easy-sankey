@@ -477,6 +477,7 @@ test('central global-envelope editing needs no month and preserves actual entrie
     assert.deepEqual((await store.crud.months.get('2026-11')).entries,[{...entry('dinner',40),source:category,envelopeId:'shared'}]);
     await assert.rejects(store.crud.envelopes.replaceGlobal({items:[],base:[global]}),/CONFLICT/);
     await store.crud.envelopes.replaceGlobal({items:[],base:[changed]});
+    assert.deepEqual(await store.crud.envelopes.listGlobal(),[]);
     const retained=(await store.crud.months.get('2026-11')).entries[0];
     assert.equal(retained.value,40);assert.equal(retained.source,category);assert.equal(retained.envelopeId,undefined);
   }));
