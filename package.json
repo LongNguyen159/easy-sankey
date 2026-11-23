@@ -48,9 +48,9 @@
     "@angular/cli": "^22.3.0",
     "@angular/compiler-cli": "^22.3.0",
     "@cspell/dict-en-gb": "^4.1.51",
+    "@tailwindcss/postcss": "^4.3.2",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^22.7.5",
-    "autoprefixer": "^10.4.20",
     "cspell": "^8.16.0",
     "electron": "^45.4.1",
     "electron-builder": "^26.18.0",
@@ -64,7 +64,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.4.47",
     "prisma": "7.10.1",
-    "tailwindcss": "^4.3.5",
+    "tailwindcss": "^4.3.2",
     "typescript": "~6.0.3"
   },
   "overrides": {

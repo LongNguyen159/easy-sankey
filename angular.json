@@ -27,6 +27,7 @@
             "inlineStyleLanguage": "scss",
             "assets": ["src/assets"],
             "styles": [
+              "src/tailwind.css",
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
@@ -82,6 +83,7 @@
             "inlineStyleLanguage": "scss",
             "assets": ["src/assets"],
             "styles": [
+              "src/tailwind.css",
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
