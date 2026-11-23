@@ -98,6 +98,49 @@ test("malformed legacy data rolls back and remains retryable after reopening", (
       "EUR",
     );
   }));
+test("legacy import retains entries and history when a parent or category is missing", () =>
+  fixture(async ({ store, reopen }) => {
+    const expense = (id, target, source) => ({
+      id, target, type: "expense", value: 12.345, ...(source ? { source } : {}),
+    });
+    const missingParent = expense("internet", "Internet", "Deleted parent");
+    const missingCategory = expense("rent", "Rent", "Deleted@__system/category__");
+    const category = "Housing@__system/category__";
+    const parent = expense("utilities", "Utilities", category);
+    const child = expense("electricity", "Electricity", "Utilities");
+    const template = expense("template", "Phone", "Utilities");
+    const directExpense = {
+      id: "e29d5689-8932-4b7e-ac95-2941caad4c40",
+      type: "expense",
+      target: "Rest Kaution",
+      value: 200,
+      isFixCost: false,
+    };
+    const logs = { "2025-04": { internet: [{ timestamp: "Apr 01", value: 12.345 }] } };
+    await store.initialize({
+      expenseCategories: JSON.stringify([{ value: category, label: "Housing" }]),
+      monthlyData: JSON.stringify({
+        "2025-04": {
+          ...month,
+          rawInput: [missingParent, missingCategory, child, parent, { ...directExpense, source: "-- None --" }],
+        },
+      }),
+      fixCosts: JSON.stringify([template]),
+      logs: JSON.stringify(logs),
+    });
+    const opened = await reopen();
+    const state = await opened.snapshot();
+    assert.equal(state.initialized, true);
+    assert.deepEqual(state.data.monthlyData["2025-04"].rawInput, [
+      expense("internet", "Internet"),
+      expense("rent", "Rent"),
+      child,
+      parent,
+      directExpense,
+    ]);
+    assert.deepEqual(state.data.fixCosts, [expense("template", "Phone")]);
+    assert.deepEqual(state.data.logs, logs);
+  }));
 test("reset and missing database never resurrect obsolete LocalStorage; explicit restore recovers", () =>
   fixture(async ({ store, file, reopen }) => {
     await store.initialize({

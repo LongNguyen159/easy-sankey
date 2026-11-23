@@ -1,3 +1,4 @@
+const defaults = require("./default-categories.json");
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textKeys = new Set(['selectedCurrency','entryView','fixCostSort','firstTime','appVersion']);
@@ -128,7 +129,23 @@ function legacyData(legacy) {
         throw new Error("Invalid legacy value.");
       data[key] = textKeys.has(key) ? legacy[key] : JSON.parse(legacy[key]);
     }
-  return sourceData(data);
+  const parsed = sourceData(data);
+  const categories = new Set((parsed.expenseCategories ?? defaults).map(item => item.value));
+  const clearMissingSources = (items) => {
+    const names = new Set(items.map(item => item.target.trim().toLowerCase()));
+    return items.map(item => {
+      const { source, ...uncategorized } = item;
+      if (source !== "-- None --" && (item.type !== "expense" || !source
+        || categories.has(source) || names.has(source.trim().toLowerCase()))) return item;
+      // The old selector used "-- None --" for direct expenses. Legacy storage
+      // could also retain references to removed parents or categories.
+      return uncategorized;
+    });
+  };
+  for (const record of Object.values(parsed.monthlyData ?? {}))
+    record.rawInput = clearMissingSources(record.rawInput);
+  if (parsed.fixCosts) parsed.fixCosts = clearMissingSources(parsed.fixCosts);
+  return parsed;
 }
 function entryDto(row) {
   if (!row) return null;
