@@ -1,5 +1,5 @@
 import {FixedCostService} from '../../services/fixed-cost.service';
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -13,7 +13,7 @@ import { CategorySelectComponent } from '../category-select/category-select.comp
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { UserDefinedLink } from '../models';
-import { debounceTime, takeUntil } from 'rxjs';
+import { debounceTime, takeUntil, tap } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
@@ -45,6 +45,8 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
 })
 export class FixCostInputComponent extends InputListComponent {
   private fixedCosts=inject(FixedCostService);
+  protected readonly saveStatus = signal<'Saving…' | 'Saved' | ''>('');
+  private saveVersion = 0;
   protected sortOrder = resolveAmountSort(this.preferences.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
   fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
@@ -65,7 +67,14 @@ export class FixCostInputComponent extends InputListComponent {
       this.linkArray.push(this._createLinkGroup({ ...link, isFixCost: true }), { emitEvent: false });
     }
 
-    this.linkForm.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(250)).subscribe(async () => {
+    this.linkForm.valueChanges.pipe(
+      tap(() => {
+        this.saveVersion++;
+        this.saveStatus.set('');
+      }),
+      takeUntil(this.componentDestroyed$),
+      debounceTime(250),
+    ).subscribe(async () => {
      
       if (this.linkForm.valid) {
         await this.saveTemplates();
@@ -135,9 +144,17 @@ export class FixCostInputComponent extends InputListComponent {
 
 
   async saveTemplates() {
+    const version = ++this.saveVersion;
+    this.saveStatus.set('');
     if (!this.linkForm.valid) return;
     const links = this.linkArray.value.map((link: UserDefinedLink) => ({ ...link, isFixCost: true }));
-    await this.fixedCosts.save(this.categoryService.clearMissingSources(links));
+    this.saveStatus.set('Saving…');
+    try {
+      await this.fixedCosts.save(this.categoryService.clearMissingSources(links));
+      if (version === this.saveVersion) this.saveStatus.set('Saved');
+    } finally {
+      if (version === this.saveVersion && this.saveStatus() === 'Saving…') this.saveStatus.set('');
+    }
   }
 
   override async ngOnDestroy(): Promise<void> {

@@ -17,7 +17,10 @@ import { UiService } from '../../services/ui.service';
   imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
   template: `
     <section class="global-envelope-manager">
-      <h2>Global budgets</h2>
+      <div class="flex flex-wrap items-center gap-2">
+        <h2>Global budgets</h2>
+        <span class="save-status ml-4" role="status">{{ saving() ? 'Saving…' : saved() ? 'Saved' : '' }}</span>
+      </div>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>
       @if (loading()) { <p>Loading budgets…</p> }
       @if (!loading() && !visibleRows().length) { <p>No global budgets yet.</p> }
@@ -43,7 +46,6 @@ import { UiService } from '../../services/ui.service';
         <button mat-button [disabled]="loading()" (click)="add()">
           <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add budget
         </button>
-        <span class="save-status" role="status">{{ saving() ? 'Saving…' : saved() ? 'Saved' : '' }}</span>
       </div>
       @if (error()) { <p role="alert">{{ error() }}</p> }
     </section>

@@ -20,6 +20,7 @@
       <button mat-icon-button class="!flex flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
         <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
       </button>
+      <span class="text-xs text-[var(--mat-sys-on-surface-variant)] ml-2" role="status">{{ saveStatus() }}</span>
       <app-amount-sort class="ml-auto" [value]="sortOrder" (valueChange)="setSort($event)"></app-amount-sort>
       <button mat-icon-button type="button" class="shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
         <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
