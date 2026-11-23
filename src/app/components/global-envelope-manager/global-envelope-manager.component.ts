@@ -18,7 +18,7 @@ import { UiService } from '../../services/ui.service';
   template: `
     <section class="global-envelope-manager">
       <div class="flex flex-wrap items-center gap-2">
-        <h2>Global budgets</h2>
+        <h1 class="!m-0 text-2xl font-bold">Global budgets</h1>
         <span class="save-status ml-4" role="status">{{ saving() ? 'Saving…' : saved() ? 'Saved' : '' }}</span>
       </div>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>
@@ -52,7 +52,7 @@ import { UiService } from '../../services/ui.service';
   `,
   styles: `
     .global-envelope-manager { display:flex; flex-direction:column; gap:1rem; }
-    h2, p { margin:0; }
+    p { margin:0; }
     .scope-note { color:var(--mat-sys-on-surface-variant); }
     .envelope-fields { display:flex; align-items:center; gap:.75rem; }
     mat-form-field { min-width:0; flex:1 1 0; }
