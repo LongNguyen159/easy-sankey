@@ -1,68 +1,15 @@
-import { GlobalEnvelopeManagerComponent } from '../../components/global-envelope-manager/global-envelope-manager.component';
-import { AfterViewInit, Component, ElementRef, inject, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { StorageManagerComponent } from '../../components/storage-manager/storage-manager.component';
-import { NavbarComponent } from "../../components/navbar/navbar.component";
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { FixCostInputComponent } from "../../components/fix-cost-input/fix-cost-input.component";
-import { CommonModule } from '@angular/common';
+import { NavbarComponent } from '../../components/navbar/navbar.component';
 import { ColorService } from '../../services/color.service';
-import { ActivatedRoute, Router } from '@angular/router';
-import { CategoryManagerComponent } from '../../components/category-manager/category-manager.component';
 import { RoutePath } from '../../components/models';
 
 @Component({
-    selector: 'app-storage-page',
-    imports: [StorageManagerComponent, NavbarComponent, MatTabsModule, MatButtonModule, MatIconModule, FixCostInputComponent,
-        CommonModule, CategoryManagerComponent, GlobalEnvelopeManagerComponent],
-    templateUrl: './storage-page.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrl: './storage-page.component.scss'
+  selector: 'app-storage-page',
+  imports: [StorageManagerComponent, NavbarComponent],
+  templateUrl: './storage-page.component.html',
 })
-export class StoragePageComponent implements OnInit, AfterViewInit {
-  colorService = inject(ColorService)
-
-  @ViewChild('toTop') toTop!: ElementRef;
-  RoutePath = RoutePath
-
-  selectedTabIndex = 0;
-
-  constructor(private route: ActivatedRoute, private router: Router) {}
-
-  ngOnInit(): void {
-    /** Subscribe to query params */
-    this.route.queryParams.subscribe(params => {
-      const tab = params['tab'];
-      if (tab !== undefined) {
-        this.selectedTabIndex = +tab;  // Convert the query parameter to a number
-      }
-    });
-
-  }
-
-  ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.scrollToTop();
-    }, 120)
-  }
-
-  onTabChange(index: number) {
-    this.selectedTabIndex = index;
-    this.updateQueryParams(index);
-  }
-
-  scrollToTop(): void {
-    if (!this.toTop) return
-    this.toTop.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /** update query params on search bar link */
-  updateQueryParams(index: number) {
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { tab: index },
-      queryParamsHandling: 'merge' // Preserve other existing query parameters
-    });
-  }
+export class StoragePageComponent {
+  protected readonly colorService = inject(ColorService);
+  protected readonly RoutePath = RoutePath;
 }

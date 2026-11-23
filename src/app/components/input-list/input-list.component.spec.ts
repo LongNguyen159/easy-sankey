@@ -270,7 +270,7 @@ describe('InputListComponent manual sorting', () => {
     component.edit();component.select('dinner');await component.manage();
     expect(component.isEditing()).toBeFalse();
     expect(component.selectedIds()).toEqual([]);
-    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/storage'],{queryParams:{tab:3}});
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/budgets']);
   });
 
   it('exits edit mode after removing an assignment and retains selection if saving fails', async () => {

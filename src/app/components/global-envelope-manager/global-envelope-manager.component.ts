@@ -51,7 +51,7 @@ import { UiService } from '../../services/ui.service';
     </section>
   `,
   styles: `
-    .global-envelope-manager { max-width:46rem; margin-inline:auto; display:flex; flex-direction:column; gap:1rem; }
+    .global-envelope-manager { display:flex; flex-direction:column; gap:1rem; }
     h2, p { margin:0; }
     .scope-note { color:var(--mat-sys-on-surface-variant); }
     .envelope-fields { display:flex; align-items:center; gap:.75rem; }

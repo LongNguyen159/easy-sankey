@@ -54,6 +54,9 @@ export enum RoutePath {
   WelcomePage = '/welcome',
   WhatsNewPage = '/updates',
   FinanceManagerPage = '/storage',
+  BudgetsPage = '/budgets',
+  FixCostsPage = '/fix-costs',
+  CategoriesPage = '/categories',
   HighlightedFeaturesPage = '/highlights',
   SmartBudgeterPage = '/smart-budgeter',
 }

@@ -1,7 +1,7 @@
-<section class="category-manager mx-auto max-w-3xl" [attr.aria-labelledby]="showHeading() ? 'categories-heading' : null">
+<section class="category-manager" [attr.aria-labelledby]="showHeading() ? 'categories-heading' : null">
   <header class="flex flex-wrap items-center justify-between gap-3 pb-4">
     @if (showHeading()) {
-      <h1 id="categories-heading" class="text-xl font-bold">Categories</h1>
+      <h1 id="categories-heading" class="!m-0 text-2xl font-bold">Categories</h1>
     }
     <button mat-flat-button type="button" class="ml-auto" (click)="openEditor()">
       <mat-icon fontSet="material-symbols-outlined">add</mat-icon>

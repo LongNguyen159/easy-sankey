@@ -42,19 +42,34 @@
 
         <!-- Main Menu: settingsMenu -->
         <mat-menu #settingsMenu="matMenu" class="app-menu">
-            <!-- Finance Manager link -->
+            <a mat-menu-item [routerLink]="RoutePath.MainPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'" [routerLinkActiveOptions]="{exact: true}">
+                <mat-icon fontSet="material-symbols-outlined">home</mat-icon>
+                <span>Main</span>
+            </a>
             @if (showStorage) {
                 <a mat-menu-item [routerLink]="RoutePath.FinanceManagerPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'" class="flex flex-row justify-center items-center gap-2">
                     <mat-icon fontSet="material-symbols-outlined">monitoring</mat-icon>
                     <span>Finance Manager</span>
                 </a>
+                <a mat-menu-item [routerLink]="RoutePath.BudgetsPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'">
+                    <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>
+                    <span>Budgets</span>
+                </a>
+                <a mat-menu-item [routerLink]="RoutePath.FixCostsPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'">
+                    <mat-icon fontSet="material-symbols-outlined">calendar_today</mat-icon>
+                    <span>Fix Costs</span>
+                </a>
+                <a mat-menu-item [routerLink]="RoutePath.CategoriesPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'">
+                    <mat-icon fontSet="material-symbols-outlined">category</mat-icon>
+                    <span>Categories</span>
+                </a>
             }
 
 
-            <a mat-menu-item [routerLink]="RoutePath.SmartBudgeterPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'"  class="flex flex-row justify-center items-center gap-2">
+            <!-- <a mat-menu-item [routerLink]="RoutePath.SmartBudgeterPage" [routerLinkActive]="colorService.isDarkMode() ? 'active-link-dark' : 'active-link-light'"  class="flex flex-row justify-center items-center gap-2">
                 <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon>
                 <span>Smart Budget Planner</span>
-            </a>
+            </a> -->
 
 
         

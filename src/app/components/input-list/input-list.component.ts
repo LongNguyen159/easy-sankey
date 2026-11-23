@@ -398,7 +398,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (!await this.flushPendingEdits()) return;
     this.finishEditing();
     this.dialog.closeAll();
-    await this.router.navigate([RoutePath.FinanceManagerPage], {queryParams: {tab: 3}});
+    await this.router.navigate([RoutePath.BudgetsPage]);
   }
 
   protected async manageMonthlyEnvelopes(): Promise<void> {
@@ -1217,9 +1217,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   navigateToFixCosts() {
     this.dataService.setNavigateFixCostState(true)
-    this.router.navigate([RoutePath.FinanceManagerPage], {
-      queryParams: { tab: 1 }
-    });
+    this.router.navigate([RoutePath.FixCostsPage]);
     this.dataService.setNavigateFixCostState(false)
   }
 
