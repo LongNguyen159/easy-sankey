@@ -100,6 +100,12 @@ h3 { font-size: large; }
 
   --app-form-field-background: #{mat.get-theme-color($theme, surface-container-highest)};
   --app-category-heading-hover-background: #{mat.get-theme-color($theme, surface-container)};
+  --app-budget-progress-fill: #{mat.get-theme-color($theme, primary)};
+  --app-budget-progress-under: #{if(sass(mat.get-theme-type($theme) == dark): #b0ebc5; else: #67ad5b)};
+  --app-budget-progress-over: #{mat.get-theme-color($theme, error)};
+  --app-budget-progress-over-fill: #{if(sass(mat.get-theme-type($theme) == light): rgb(198, 115, 120); else: mat.get-theme-color($theme, error))};
+  --app-budget-progress-track: #{mat.get-theme-color($theme, surface-container-highest)};
+  --app-budget-progress-muted: #{mat.get-theme-color($theme, on-surface-variant)};
 
   @include mat.tooltip-overrides((
     container-color: mat.get-theme-color($theme, surface-container-high),

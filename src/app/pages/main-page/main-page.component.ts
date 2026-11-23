@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, Input, OnChanges, OnInit, SimpleChanges, signal, ViewEncapsulation } from '@angular/core';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -17,7 +17,8 @@ import { PieChartComponent } from '../../components/charts/pie-chart/pie-chart.c
 import { SankeyChartComponent } from '../../components/charts/sankey-chart/sankey-chart.component';
 import { DialogsService } from '../../services/dialogs.service';
 import { DateChanges } from '../../components/models';
-import { BudgetGaugeChartComponent } from "../../components/charts/budget-gauge-chart/budget-gauge-chart.component";
+import { BudgetRadarChartComponent } from "../../components/charts/budget-radar-chart/budget-radar-chart.component";
+import { CurrencyService } from "../../services/currency.service";
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -30,7 +31,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     imports: [SankeyChartComponent, PieChartComponent,
         MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
         NavbarComponent, MonthPickerComponent,
-        MatChipsModule, BudgetGaugeChartComponent,
+        MatChipsModule, BudgetRadarChartComponent,
         MatSlideToggleModule, FormsModule, TreemapChartComponent,
         MatTooltipModule],
     templateUrl: './main-page.component.html',
@@ -51,7 +52,16 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
 
   router = inject(Router)
 
-  entriesOfOneMonth: SingleMonthData
+  protected readonly currencyService = inject(CurrencyService);
+  private readonly monthData = signal<SingleMonthData>(undefined!);
+
+  get entriesOfOneMonth(): SingleMonthData {
+    return this.monthData();
+  }
+
+  set entriesOfOneMonth(data: SingleMonthData) {
+    this.monthData.set(data);
+  }
   monthlyData: MonthlyData = {};
   highlightMonths: string[] = []
 
@@ -138,11 +148,12 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   }
 
 
-  get envelopeBudgets() {
-    return (this.entriesOfOneMonth?.envelopes ?? []).map(envelope => ({...envelope,
-      spent: this.entriesOfOneMonth.sankeyData.nodes.find(node => node.envelopeId === envelope.id)?.spent ?? 0,
-    })).filter(envelope => envelope.spent !== 0);
-  }
+  readonly envelopeBudgets = computed(() => {
+    const month = this.monthData();
+    return (month?.envelopes ?? []).map(envelope => ({...envelope,
+      spent: month.sankeyData.nodes.find(node => node.envelopeId === envelope.id)?.spent ?? 0,
+    })).filter(envelope => envelope.spent > 0);
+  });
 
   navigateToBudgetList() {
     this.router.navigate([RoutePath.FinanceManagerPage], {
