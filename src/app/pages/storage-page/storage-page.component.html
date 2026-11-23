@@ -17,6 +17,20 @@
                 </div>
             }
         </mat-tab>
+
+        <mat-tab>
+            <ng-template mat-tab-label>
+                <mat-icon fontSet="material-symbols-outlined" class="mr-3" [ngStyle]="{'color': colorService.isDarkMode() ? '#a5d6a7' : '#4caf50'}" fontSet="material-symbols-outlined">savings</mat-icon>
+                Budgets
+            </ng-template>
+
+            <!-- PAGE CONTENTS -->
+            @if (selectedTabIndex == 1) {
+                <div class="p-4" #toTop>
+                    <app-global-envelope-manager></app-global-envelope-manager>
+                </div>
+            }
+        </mat-tab>
       
 
 
@@ -27,7 +41,7 @@
             </ng-template>
 
             <!-- PAGE CONTENTS -->
-            @if (selectedTabIndex == 1) {
+            @if (selectedTabIndex == 2) {
                 <div class="p-4">
                     <app-fix-cost-input></app-fix-cost-input>
                 </div>
@@ -39,24 +53,12 @@
                 <mat-icon fontSet="material-symbols-outlined" class="mr-3" [style.color]="colorService.isDarkMode() ? '#e1bee7' : '#9c27b0'">category</mat-icon>
                 Categories
             </ng-template>
-            @if (selectedTabIndex == 2) {
+            @if (selectedTabIndex == 3) {
                 <div class="p-4">
                     <app-category-manager></app-category-manager>
                 </div>
             }
         </mat-tab>
-        <mat-tab>
-            <ng-template mat-tab-label>
-                <mat-icon fontSet="material-symbols-outlined" class="mr-3" [ngStyle]="{'color': colorService.isDarkMode() ? '#a5d6a7' : '#4caf50'}" fontSet="material-symbols-outlined">savings</mat-icon>
-                Budgets
-            </ng-template>
-
-            <!-- PAGE CONTENTS -->
-            @if (selectedTabIndex == 3) {
-                <div class="p-4" #toTop>
-                    <app-global-envelope-manager></app-global-envelope-manager>
-                </div>
-            }
-        </mat-tab>
+        
     </mat-tab-group>
 </div>

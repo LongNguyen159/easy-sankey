@@ -21,8 +21,8 @@ import { BudgetRadarChartComponent } from "../../components/charts/budget-radar-
 import { CurrencyService } from "../../services/currency.service";
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { RoutePath } from '../../components/models';
+import { MatDialog } from '@angular/material/dialog';
+import { EnvelopeDialogComponent } from '../../components/dialogs/envelope-dialog/envelope-dialog.component';
 import { TreemapChartComponent } from "../../components/charts/treemap-chart/treemap-chart.component";
 import { calculateDifferences, getLastMonth } from '../../utils/utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -50,7 +50,7 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   colorService = inject(ColorService)
   dialogService = inject(DialogsService)
 
-  router = inject(Router)
+  private readonly dialog = inject(MatDialog);
 
   protected readonly currencyService = inject(CurrencyService);
   private readonly monthData = signal<SingleMonthData>(undefined!);
@@ -155,10 +155,10 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
     })).filter(envelope => envelope.spent > 0);
   });
 
-  navigateToBudgetList() {
-    this.router.navigate([RoutePath.FinanceManagerPage], {
-      queryParams: { tab: 3 }
-    });
+  protected manageBudgets(): void {
+    const data = this.monthData();
+    if (!data?.month) return;
+    this.dialog.open(EnvelopeDialogComponent, {data, width: '44rem', maxWidth: '95vw'});
   }
 
 

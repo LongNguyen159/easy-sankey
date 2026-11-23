@@ -7,7 +7,7 @@
             </button>
         }
     </div>
-    @if (sankeyData?.categoryView) {
+    @if (sankeyData.categoryView) {
         <mat-slide-toggle [checked]="showEnvelopes" (change)="toggleEnvelopes()" hideIcon
             matTooltip="Group expenses by budget">Budgets</mat-slide-toggle>
     }

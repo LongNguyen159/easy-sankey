@@ -1,9 +1,9 @@
 import { provideZonelessChangeDetection } from '@angular/core';
-import { Subject } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { UiService } from '../../../services/ui.service';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { provideTestDatabase } from '../../../testing/database';
 import { emptyMonth } from '../../../testing/fixtures';
 import { DataService } from '../../../services/data.service';
@@ -15,15 +15,22 @@ describe('monthly envelope editor', () => {
   it('saves allowances, rejects duplicate names, and retains a failed draft for retry', async () => {
     const save = jasmine.createSpy('saveEnvelopes').and.rejectWith(new Error('Save failed'));
     const close = jasmine.createSpy('close');
+    const open = jasmine.createSpy('open').and.returnValue({
+      afterClosed: () => of({id: 'personal', name: 'Personal', budget: 500}),
+    });
     await TestBed.configureTestingModule({imports:[EnvelopeDialogComponent], providers:[
       provideNoopAnimations(), ...provideTestDatabase(),
       {provide:DataService,useValue:{saveEnvelopes:save}},
+      {provide:MatDialog,useValue:{open}},
       {provide:MAT_DIALOG_DATA,useValue:{...emptyMonth,month:'2026-11',envelopes:[]}},
       {provide:MatDialogRef,useValue:{close,disableClose:false}},
     ]}).compileComponents();
     const fixture=TestBed.createComponent(EnvelopeDialogComponent);
     const editor=fixture.componentInstance;
-    editor.add(); editor.rows.at(0).patchValue({name:'Personal',budget:500});
+    editor.add();
+    expect(open).toHaveBeenCalledWith(EnvelopeDialogComponent, jasmine.objectContaining({
+      data: jasmine.objectContaining({month: '2026-11', createEnvelope: 'draft'}),
+    }));
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Budgets for November 2026');
     expect(fixture.nativeElement.querySelector('mat-slide-toggle')).toBeNull();
@@ -32,7 +39,8 @@ describe('monthly envelope editor', () => {
     expect(editor.error).toContain('Could not save');
     expect(editor.rows.getRawValue()[0].budget).toBe(500);
     expect(close).not.toHaveBeenCalled();
-    editor.add(); editor.rows.at(1).patchValue({name:' personal ',budget:100});
+    open.and.returnValue({afterClosed: () => of({id: 'second', name: 'Other', budget: 100})});
+    editor.add(); editor.rows.at(1).patchValue({name:' personal '});
     await editor.save();
     expect(editor.error).toContain('different name');
     expect(save).toHaveBeenCalledTimes(1);

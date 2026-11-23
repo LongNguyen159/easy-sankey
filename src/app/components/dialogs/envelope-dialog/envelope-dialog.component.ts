@@ -2,7 +2,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ChangeDetectorRef, Component, DestroyRef, inject } from '@angular/core';
 import { formatDate, NgTemplateOutlet } from '@angular/common';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,10 +12,11 @@ import { v4 as uuid } from 'uuid';
 import { BudgetEnvelope, SingleMonthData } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { UiService } from '../../../services/ui.service';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-envelope-dialog',
-  imports: [NgTemplateOutlet, MatSelectModule, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule],
+  imports: [NgTemplateOutlet, MatSelectModule, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatDividerModule],
   template: `
     <h2 mat-dialog-title>{{ data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
     <mat-dialog-content>
@@ -35,6 +36,7 @@ import { UiService } from '../../../services/ui.service';
               <p class="envelope-empty">No budgets yet.</p>
             }
           </section>
+          <mat-divider></mat-divider>
         }
       }
       <ng-template #budgetFields let-row>
@@ -55,7 +57,7 @@ import { UiService } from '../../../services/ui.service';
               </button>
             }
           </div>
-          @if (isNew(row.controls.id.value)) {
+          @if (data.createEnvelope) {
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Applies to</mat-label>
               <mat-select formControlName="isGlobal">
@@ -67,7 +69,7 @@ import { UiService } from '../../../services/ui.service';
         </div>
       </ng-template>
       @if (!data.createEnvelope) {
-        <button mat-button type="button" [disabled]="saving" (click)="add()">
+        <button matButton type="button" class="mt-2" [disabled]="saving" (click)="add()">
           <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add budget
         </button>
       }
@@ -75,7 +77,9 @@ import { UiService } from '../../../services/ui.service';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close [disabled]="saving">Cancel</button>
-      <button mat-flat-button [disabled]="saving || rows.invalid" (click)="save()">{{ saving ? 'Saving…' : data.createEnvelope ? 'Create budget' : 'Save' }}</button>
+      <button mat-flat-button [disabled]="saving || rows.invalid" (click)="save()">
+        {{ saving ? 'Saving…' : data.createEnvelope === 'draft' ? 'Add budget' : data.createEnvelope ? 'Create budget' : 'Save' }}
+      </button>
     </mat-dialog-actions>
   `,
   styles: `
@@ -90,13 +94,14 @@ import { UiService } from '../../../services/ui.service';
   `,
 })
 export class EnvelopeDialogComponent {
-  readonly data = inject<SingleMonthData & {createEnvelope?: boolean}>(MAT_DIALOG_DATA);
+  readonly data = inject<SingleMonthData & {createEnvelope?: true | 'draft'}>(MAT_DIALOG_DATA);
   readonly monthLabel = formatDate(`${this.data.month}-01`, 'MMMM yyyy', 'en-US');
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly service = inject(DataService);
   private readonly uiService = inject(UiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly dialog = inject(MatDialog);
   private readonly ref = inject(MatDialogRef<EnvelopeDialogComponent>);
   private group(envelope: BudgetEnvelope) {
     return this.fb.group({id: envelope.id, isGlobal: envelope.isGlobal ?? false, name: [envelope.name, [Validators.required, Validators.pattern(/\S/)]],
@@ -105,7 +110,7 @@ export class EnvelopeDialogComponent {
   protected readonly newEnvelopeId = this.data.createEnvelope ? uuid() : undefined;
   private base = this.data.envelopes ?? [];
   readonly rows = new FormArray([
-    ...this.base,
+    ...(this.data.createEnvelope === 'draft' ? [] : this.base),
     ...(this.newEnvelopeId ? [{id: this.newEnvelopeId, name: '', budget: 500}] : []),
   ].map(envelope => this.group(envelope)));
   readonly scopes = [
@@ -116,7 +121,18 @@ export class EnvelopeDialogComponent {
   isNew(id: string) { return !this.base.some(row => row.id === id); }
   saving = false;
   error = '';
-  add() { this.rows.push(this.group({id: uuid(), name: '', budget: 500})); }
+  add(): void {
+    this.dialog.open<EnvelopeDialogComponent, typeof this.data, BudgetEnvelope>(EnvelopeDialogComponent, {
+      data: {...this.data, envelopes: this.rows.getRawValue(), createEnvelope: 'draft'},
+      width: '32rem',
+      maxWidth: '95vw',
+    }).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(budget => {
+      if (!budget) return;
+      this.rows.push(this.group(budget));
+      this.error = '';
+      this.changeDetector.markForCheck();
+    });
+  }
   protected remove(row: ReturnType<EnvelopeDialogComponent['group']>): void {
     if (this.saving) return;
     const id = row.controls.id.value;
@@ -169,18 +185,25 @@ export class EnvelopeDialogComponent {
   async save() {
     if (this.rows.invalid || this.saving) return;
     const envelopes = this.rows.getRawValue().map(row => ({...row, name: row.name.trim()}));
+    if (this.data.createEnvelope === 'draft') {
+      const [budget] = envelopes;
+      if (this.base.some(row => !!row.isGlobal === budget.isGlobal
+          && row.name.trim().toLowerCase() === budget.name.toLowerCase())) {
+        this.error = 'Choose a different name for each budget.';
+        return;
+      }
+      this.ref.close(budget);
+      return;
+    }
     if (new Set(envelopes.map(row => `${row.isGlobal}:${row.name.toLowerCase()}`)).size !== envelopes.length) {
       this.error = 'Choose a different name for each budget.'; return;
     }
+    const created = envelopes.find(row => row.id === this.newEnvelopeId);
     this.saving = true; this.error = ''; this.rows.disable(); this.ref.disableClose = true;
     try { await this.service.saveEnvelopes(this.data.month,
       envelopes.filter(row => !row.isGlobal).map(({isGlobal, ...row}) => row),
       envelopes.filter(row => row.isGlobal),
       this.base.filter(row => row.isGlobal));
-      const created = this.data.createEnvelope
-        ? envelopes.find(row => row.id === this.newEnvelopeId)
-          ?? envelopes.find(row => this.isNew(row.id))
-        : undefined;
       this.ref.close(created ? {envelopeId: created.id} : true); }
     catch { this.error = 'Could not save budgets. Your changes are still here; try again.'; }
     finally {

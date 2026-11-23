@@ -44,8 +44,8 @@
         <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
 
 
-
-        <button mat-button class="self-center" (click)="navigateToBudgetList()">Manage global budgets</button>
+        <h2 class="text-2xl font-bold text-center mt-4">Budgets</h2>
+        <button mat-button class="self-center" (click)="manageBudgets()">Manage budgets</button>
         @let budgets = envelopeBudgets();
         @if (budgets.length) {
           @let currency = currencyService.getSelectedCurrency();
@@ -86,7 +86,7 @@
             </ul>
           </section>
         } @else {
-          <p class="text-center">{{ entriesOfOneMonth?.envelopes?.length ? 'No budget spending this month.' : 'No budgets set for this month.' }}</p>
+          <p class="text-center">{{ entriesOfOneMonth.envelopes?.length ? 'No budget spending this month.' : 'No budgets set for this month.' }}</p>
         }
 
         <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>

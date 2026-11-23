@@ -39,13 +39,9 @@
       </button>
 
       <mat-menu #menu="matMenu" xPosition="before">
-        <button mat-menu-item type="button" (click)="manageEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">mail</mat-icon>
-          <span>Global budgets</span>
-        </button>
         <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>
-          <span>Budgets for this month</span>
+          <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>
+          <span>Manage budgets</span>
         </button>
         <button mat-menu-item (click)="copyLinks()" [disabled]="dataService.hasDataCycle()">
           <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
@@ -323,12 +319,12 @@
           [attr.aria-label]="'Actions for ' + (linkGroup.get('target')?.value || 'new entry')"
           [matTooltip]="envelopeName(linkGroup.get('envelopeId')?.value) || 'Entry actions'"
           [matMenuTriggerFor]="entryMenu">
-          <mat-icon fontSet="material-symbols-outlined">{{ envelopeName(linkGroup.get('envelopeId')?.value) ? 'account_balance_wallet' : 'more_vert' }}</mat-icon>
+          <mat-icon fontSet="material-symbols-outlined">{{ envelopeName(linkGroup.get('envelopeId')?.value) ? 'savings' : 'more_vert' }}</mat-icon>
         </button>
         <mat-menu #entryMenu="matMenu">
           <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
             [matMenuTriggerFor]="entryEnvelopeMenu">
-            <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
+            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
           </button>
           @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
             <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
@@ -344,7 +340,7 @@
             <button mat-menu-item type="button" (click)="assignSelectedEnvelope(envelope.id, linkGroup)"
               [class.entry-budget-selected]="linkGroup.get('envelopeId')?.value === envelope.id"
               [attr.aria-current]="linkGroup.get('envelopeId')?.value === envelope.id ? 'true' : null">
-              <mat-icon fontSet="material-symbols-outlined">{{ linkGroup.get('envelopeId')?.value === envelope.id ? 'check' : 'account_balance_wallet' }}</mat-icon>
+              <mat-icon fontSet="material-symbols-outlined">{{ linkGroup.get('envelopeId')?.value === envelope.id ? 'check' : 'savings' }}</mat-icon>
               {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
             </button>
           }
