@@ -33,6 +33,9 @@ async function start(){
  const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
  desktop=spawn(require('electron'),['.','--dev'],{cwd:root,env,stdio:'inherit'});
  desktop.on('error',error=>{console.error(error);stop(1);});
- desktop.on('exit',code=>stop(code??1));
+ desktop.on('exit',(code,signal)=>{
+  if(!stopping)console.error(`Electron exited (code: ${code}, signal: ${signal ?? 'none'}).`);
+  stop(code??1);
+ });
 }
 start().catch(error=>{console.error(error.message);stop(1);});

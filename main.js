@@ -1,5 +1,5 @@
 const { registerDatabaseApi } = require('./electron/ipc');
-const { app, BrowserWindow, clipboard, ipcMain } = require('electron');
+const { app, BrowserWindow, clipboard, ipcMain, crashReporter } = require('electron');
 const { screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { version, enableDevTools } = require('./package.json');
@@ -20,6 +20,47 @@ if (development && !storageSmoke) {
   app.setPath('userData',localData);
   console.log(`Development database: ${path.join(localData,'finance.sqlite')}`);
 }
+
+// Keep diagnostics outside the renderer: DevTools disappears with a crashed page.
+const diagnosticPath = path.join(app.getPath('userData'), 'electron-diagnostics.log');
+function logDiagnostic(event, details = {}) {
+  const line = `${new Date().toISOString()} ${event} ${JSON.stringify(details)}\n`;
+  console.error(line.trimEnd());
+  try {
+    const fs = require('node:fs');
+    fs.mkdirSync(path.dirname(diagnosticPath), { recursive: true });
+    // Bound the log so repeated failures cannot fill the user's disk.
+    if (fs.existsSync(diagnosticPath) && fs.statSync(diagnosticPath).size > 5 * 1024 * 1024) {
+      fs.renameSync(diagnosticPath, `${diagnosticPath}.previous`);
+    }
+    fs.appendFileSync(diagnosticPath, line);
+  } catch (error) {
+    console.error('Could not write Electron diagnostics:', error.message);
+  }
+}
+console.log(`Electron diagnostics: ${diagnosticPath}`);
+// Start before creating any renderer so intermittent native crashes leave a dump.
+const crashDumpPath = path.join(app.getPath('userData'), 'crash-dumps');
+try {
+  require('node:fs').mkdirSync(crashDumpPath, { recursive: true });
+  app.setPath('crashDumps', crashDumpPath);
+  crashReporter.start({ uploadToServer: false });
+  logDiagnostic('crash-reporter-ready', { crashDumpPath, uploadToServer: false });
+} catch (error) {
+  logDiagnostic('crash-reporter-failed', { message: error.message });
+}
+logDiagnostic('app-start', {
+  appVersion: version,
+  electronVersion: process.versions.electron,
+  chromeVersion: process.versions.chrome,
+  platform: process.platform,
+  arch: process.arch,
+  liveDevelopment,
+});
+process.on('uncaughtExceptionMonitor', error => {
+  logDiagnostic('main-process-exception', { message: error.message, stack: error.stack });
+});
+app.on('child-process-gone', (_event, details) => logDiagnostic('child-process-gone', details));
 
 if (!app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance', () => { if(win) { if(win.isMinimized()) win.restore(); win.focus(); } });
@@ -156,9 +197,23 @@ function createWindow() {
     resizable: true,     // Allow resizing the window (optional)
   });
 
+  win.webContents.on('render-process-gone', (_event, details) => {
+    logDiagnostic('render-process-gone', details);
+  });
+  win.webContents.on('unresponsive', () => logDiagnostic('renderer-unresponsive'));
+  win.webContents.on('responsive', () => logDiagnostic('renderer-responsive'));
+  win.webContents.on('preload-error', (_event, preloadPath, error) => {
+    logDiagnostic('preload-error', { preloadPath, message: error.message, stack: error.stack });
+  });
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, _url, isMainFrame) => {
+    logDiagnostic('did-fail-load', { errorCode, errorDescription, isMainFrame });
+  });
+
   // Load the Angular app (dist folder)
-  if(developmentURL) win.loadURL(developmentURL);
-  else win.loadFile(path.join(app.getAppPath(), 'dist/easy-sankey/browser/index.html'));
+  const loading = developmentURL
+    ? win.loadURL(developmentURL)
+    : win.loadFile(path.join(app.getAppPath(), 'dist/easy-sankey/browser/index.html'));
+  loading.catch(error => logDiagnostic('window-load-failed', { message: error.message }));
 
   if (development && !storageSmoke) {
     win.webContents.openDevTools({ mode: 'detach' });
