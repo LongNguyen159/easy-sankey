@@ -2,14 +2,15 @@ import { CategoryService } from '../../services/category.service';
 
 import { Component, inject, NgZone, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsType } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from './echarts.provider';
 import { ColorService } from '../../services/color.service';
 
 @Component({
     selector: 'app-base-chart',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
     ],
     templateUrl: './base-chart.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,

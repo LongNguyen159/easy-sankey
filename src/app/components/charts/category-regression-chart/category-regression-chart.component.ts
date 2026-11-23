@@ -1,6 +1,7 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
 import { EChartsOption, EChartsType } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { AbnormalityChartData } from '../../models';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
@@ -17,7 +18,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         MatButtonModule
     ],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './category-regression-chart.component.html',

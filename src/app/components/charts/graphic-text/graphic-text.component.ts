@@ -1,14 +1,15 @@
 
 import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { ColorService } from '../../../services/color.service';
 
 @Component({
     selector: 'app-graphic-text',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
     ],
     templateUrl: './graphic-text.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,

@@ -1,6 +1,7 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { formatBigNumber } from '../../../utils/utils';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
@@ -9,7 +10,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
     selector: 'app-budget-gauge-chart',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './budget-gauge-chart.component.html',

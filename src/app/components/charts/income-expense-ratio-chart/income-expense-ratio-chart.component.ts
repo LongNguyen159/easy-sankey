@@ -1,7 +1,8 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, EChartsType, SeriesOption } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
 import { CurrencyService } from '../../../services/currency.service';
@@ -12,7 +13,7 @@ import { formatBigNumber } from '../../../utils/utils';
     selector: 'app-income-expense-ratio-chart',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './income-expense-ratio-chart.component.html',

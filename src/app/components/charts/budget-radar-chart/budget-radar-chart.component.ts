@@ -1,13 +1,14 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { format, type EChartsOption } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { ColorService } from '../../../services/color.service';
 import { CurrencyService } from '../../../services/currency.service';
 
 @Component({
   selector: 'app-budget-radar-chart',
   imports: [NgxEchartsDirective],
-  providers: [provideEcharts()],
+  providers: [provideAppEcharts()],
   template: `
     <div echarts [options]="options()" class="budget-radar"
       role="img" aria-label="Radar chart comparing budget and actual spending. Exact amounts are listed below.">

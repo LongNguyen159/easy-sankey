@@ -1,6 +1,7 @@
 import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, format } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
@@ -11,7 +12,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
     selector: 'app-pie-chart',
     imports: [NgxEchartsDirective, CommonModule],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './pie-chart.component.html',

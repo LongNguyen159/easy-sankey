@@ -1,6 +1,7 @@
 import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, format } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { TreeNode } from '../../models';
 import { ColorService } from '../../../services/color.service';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,7 +21,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
         MatTooltipModule
     ],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './treemap-chart.component.html',

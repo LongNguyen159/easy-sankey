@@ -1,6 +1,7 @@
 import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetectionStrategy, output } from '@angular/core';
 import { EChartsOption, EChartsType } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { TrendsLineChartData } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { CurrencyPipe } from '@angular/common';
@@ -11,7 +12,7 @@ import { MONTHS_TO_PREDICT } from '../../../utils/utils';
     selector: 'app-total-surplus-line-chart',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './total-surplus-line-chart.component.html',

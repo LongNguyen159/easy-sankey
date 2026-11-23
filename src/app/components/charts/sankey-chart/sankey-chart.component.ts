@@ -1,7 +1,8 @@
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption, EChartsType, format } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { DifferenceItem, SankeyData, SankeyNode } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
@@ -24,7 +25,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatTooltipModule
     ],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './sankey-chart.component.html',

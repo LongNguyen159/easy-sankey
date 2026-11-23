@@ -1,6 +1,7 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
 import { BarSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
-import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { TrendsLineChartData } from '../../models';
 import { MONTHS_TO_PREDICT } from '../../../utils/utils';
@@ -12,7 +13,7 @@ import { isArray } from 'mathjs';
     selector: 'app-trends-line-chart',
     imports: [NgxEchartsDirective],
     providers: [
-        provideEcharts(),
+        provideAppEcharts(),
         CurrencyPipe
     ],
     templateUrl: './trends-line-chart.component.html',
