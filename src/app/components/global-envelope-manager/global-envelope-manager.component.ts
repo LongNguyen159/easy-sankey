@@ -18,12 +18,12 @@ import { UiService } from '../../services/ui.service';
   template: `
     <section class="global-envelope-manager">
       <div class="flex flex-wrap items-center gap-2">
-        <h1 class="!m-0 text-2xl font-bold">Global budgets</h1>
+        <h1 class="!m-0 text-2xl font-bold">Monthly budgets</h1>
         <span class="save-status ml-4" role="status">{{ saving() ? 'Saving…' : saved() ? 'Saved' : '' }}</span>
       </div>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>
       @if (loading()) { <p>Loading budgets…</p> }
-      @if (!loading() && !visibleRows().length) { <p>No global budgets yet.</p> }
+      @if (!loading() && !visibleRows().length) { <p>No monthly budgets yet.</p> }
       @for (row of visibleRows(); track row) {
         <div class="envelope-fields" [formGroup]="row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -36,7 +36,7 @@ import { UiService } from '../../services/ui.service';
             <input #amountInput matInput formControlName="budget" type="number" min="0.01" step="0.01"
               (blur)="saveRow(row)" (keydown.enter)="amountInput.blur()">
           </mat-form-field>
-          <button mat-icon-button type="button" (click)="remove(row)"
+          <button mat-icon-button type="button" class="app-button-warn" (click)="remove(row)"
             [attr.aria-label]="'Delete ' + row.controls.name.value">
             <mat-icon fontSet="material-symbols-outlined">delete_outline</mat-icon>
           </button>
@@ -109,7 +109,7 @@ export class GlobalEnvelopeManagerComponent implements OnInit {
       await this.service.ready;
       this.base=structuredClone(this.service.globalEnvelopes());
       this.base.forEach(item=>this.rows.push(this.group(item)));
-    } catch { this.error.set('Could not load global budgets.'); }
+    } catch { this.error.set('Could not load monthly budgets.'); }
     finally { this.loading.set(false); }
   }
   async add(): Promise<void> {

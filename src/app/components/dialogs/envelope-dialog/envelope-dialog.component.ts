@@ -22,7 +22,7 @@ export type EnvelopeDialogData =
   selector: 'app-envelope-dialog',
   imports: [NgTemplateOutlet, MatSelectModule, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatDividerModule],
   template: `
-    <h2 mat-dialog-title>{{ globalDraft ? 'New global budget' : data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
+    <h2 mat-dialog-title>{{ globalDraft ? 'New monthly budget' : data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
     <mat-dialog-content>
       @if (data.createEnvelope) {
         @for (row of rows.controls; track row) {
