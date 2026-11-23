@@ -288,33 +288,36 @@ app.on('ready', () => {
   }
   createWindow();
   if (storageSmoke) {
-    require('./tests/desktop/packaged-smoke').runSmoke(win, app).then(() => app.exit(0)).catch(error => { console.error(error); app.exit(1); });
+    require('./tests/desktop/packaged-smoke').runSmoke(win, app).then(() => app.quit()).catch(error => { console.error(error); app.exit(1); });
   }
   // setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' || liveDevelopment) {
-
-    serverInstance.close(() => {
-      console.log('Express server closed');
-    });
-
-
     app.quit();
   }
 });
 
-let databaseClosed=false;
-app.on('before-quit', event => {
-  if(databaseApi&&!databaseClosed){event.preventDefault();databaseClosed=true;databaseApi.close().finally(()=>app.quit());return;}
-  serverInstance.close(() => {
-    console.log('Express server closed before quit');
-  });
+let shuttingDown = false;
+app.on('will-quit', async event => {
+  event.preventDefault();
+  if (shuttingDown) return;
+  shuttingDown = true;
+  serverInstance.close();
+
+  // Keep the IPC handlers available until Electron has closed the windows.
+  try {
+    await databaseApi?.close();
+  } catch (error) {
+    logDiagnostic('database-close-failed', { message: error.message });
+  } finally {
+    app.exit(0);
+  }
 });
 
 app.on('activate', () => {
-  if (win === null) {
+  if (win === null && !shuttingDown) {
     createWindow();
   }
 });
