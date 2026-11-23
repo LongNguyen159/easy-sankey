@@ -34,7 +34,7 @@
     "electron-updater": "^6.3.9",
     "express": "^4.21.2",
     "material-symbols": "^0.49.0",
-    "mathjs": "^13.2.1",
+    "mathjs": "^15.3.0",
     "ml-regression-polynomial": "^3.0.1",
     "ngx-echarts": "^22.0.0",
     "ngx-mat-select-search": "^9.0.0",
