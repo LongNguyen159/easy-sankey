@@ -41,7 +41,7 @@
           ></app-sankey-chart>
         </section>
 
-        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
 
         <h2 class="text-2xl font-bold text-center mt-4">Budgets</h2>
@@ -89,7 +89,7 @@
           <p class="text-center">{{ entriesOfOneMonth.envelopes?.length ? 'No budget spending this month.' : 'No budgets set for this month.' }}</p>
         }
 
-        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
 
         <!-- NETTO CHART -->
@@ -122,7 +122,7 @@
 
 
 
-        <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
         @if (showGrossIncomePieChart) {
           <section>

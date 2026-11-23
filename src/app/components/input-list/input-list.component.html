@@ -115,14 +115,14 @@
 
   <!-- LINKS CONTAINER -->
   <div>
-    <mat-divider class="!mb-4" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+    <mat-divider class="mb-4!" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
     <div class="entry-cost-header" [class.entry-cost-header-compact]="groupByCategory">
       @if (!groupByCategory) {
         <button mat-icon-button type="button" class="mr-2" aria-label="Fix Costs"
           [attr.aria-expanded]="isFixCostsExpanded || isSearching" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isFixCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
-        <p class="font-bold text-2xl !m-0 cursor-pointer" (click)="isFixCostsExpanded = !isFixCostsExpanded">
+        <p class="font-bold text-2xl m-0! cursor-pointer" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           Fix Costs ({{ fixCosts.length }})
         </p>
       }
@@ -188,13 +188,13 @@
         }
       </mat-card>
 
-      <mat-divider class="!mb-4" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+      <mat-divider class="mb-4!" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
       <div class="flex flex-row items-center w-full mb-2">
         <button mat-icon-button type="button" class="mr-2" aria-label="Variable Costs"
           [attr.aria-expanded]="isVariableCostsExpanded || isSearching" (click)="isVariableCostsExpanded = !isVariableCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isVariableCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
-        <p class="font-bold text-2xl !m-0 cursor-pointer" (click)="isVariableCostsExpanded = !isVariableCostsExpanded">Variable Costs</p>
+        <p class="font-bold text-2xl m-0! cursor-pointer" (click)="isVariableCostsExpanded = !isVariableCostsExpanded">Variable Costs</p>
       </div>
       <mat-card class="mb-4 material-background-dialog-custom" [@expandCollapse]="isVariableCostsExpanded || isSearching ? 'expanded' : 'collapsed'">
         @if (isVariableCostsExpanded || isSearching) {
@@ -274,7 +274,7 @@
         <!-- Value -->
         <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
-          <input matInput class="!w-max" formControlName="value" type="text" placeholder="Value" (keypress)="validateKeyPress($event)" (paste)="validatePaste($event)" (keydown.enter)="updateInput(linkGroup)" (blur)="updateInput(linkGroup)" />
+          <input matInput class="w-max!" formControlName="value" type="text" placeholder="Value" (keypress)="validateKeyPress($event)" (paste)="validatePaste($event)" (keydown.enter)="updateInput(linkGroup)" (blur)="updateInput(linkGroup)" />
           @if (!linkGroup.get('isFixCost')?.value) {
             <!-- button to toggle logs. Only show logs of one input row (determined by ID) -->
             <button
@@ -291,10 +291,10 @@
             <div class="flex flex-col gap-1 mr-4 break-words">
               <mat-divider></mat-divider>
               @if(!logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)) || logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)).length == 0) {
-                <p class="!m-0">No changes in the past 30 days.</p>
+                <p class="m-0!">No changes in the past 30 days.</p>
               }
               @for (log of logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)); track $index) {
-                <p class="!m-0">
+                <p class="m-0!">
                   <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
                 </p>
               }

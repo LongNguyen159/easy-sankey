@@ -6,7 +6,7 @@
     </button>
 </div>
 <div class="flex flex-row w-full justify-center">
-  <mat-menu #calendarMenu="matMenu" class="!w-fit !max-w-none p-4" (closed)="calendarVisible.set(false)">
+  <mat-menu #calendarMenu="matMenu" class="w-fit! max-w-none! p-4" (closed)="calendarVisible.set(false)">
     @if (calendarVisible()) {
         <mat-calendar class="w-80" startView="year"
             [selected]="selectedDate()"

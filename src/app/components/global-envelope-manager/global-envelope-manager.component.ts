@@ -18,7 +18,7 @@ import { UiService } from '../../services/ui.service';
   template: `
     <section class="global-envelope-manager">
       <div class="flex flex-wrap items-center gap-2">
-        <h1 class="!m-0 text-2xl font-bold">Monthly budgets</h1>
+        <h1 class="m-0! text-2xl font-bold">Monthly budgets</h1>
         <span class="save-status ml-4" role="status">{{ saving() ? 'Saving…' : saved() ? 'Saved' : '' }}</span>
       </div>
       <p class="scope-note">Available every month. Spending is tracked separately for each month.</p>

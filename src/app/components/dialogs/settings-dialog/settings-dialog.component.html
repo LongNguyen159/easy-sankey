@@ -1,8 +1,8 @@
 <div class="mb-4 flex flex-row items-center justify-between pr-6 w-full">
-  <h2 mat-dialog-title class="!font-bold text-xl">
+  <h2 mat-dialog-title class="font-bold! text-xl">
     Settings
   </h2>
-  <button mat-icon-button aria-label="Close settings dialog" class="!flex flex-row items-center" [mat-dialog-close]="true">
+  <button mat-icon-button aria-label="Close settings dialog" class="flex! flex-row items-center" [mat-dialog-close]="true">
     <mat-icon>close</mat-icon>
   </button>
 </div>
@@ -34,7 +34,7 @@
             <!-- RADIO LABEL -->
             <div class="flex flex-col gap-2 items-center h-full justify-center">
               <div class="flex flex-row justify-center items-center">
-                <mat-icon fontSet="material-symbols-outlined" class="!m-0">light_mode</mat-icon>
+                <mat-icon fontSet="material-symbols-outlined" class="m-0!">light_mode</mat-icon>
               </div>
               <span>Light</span>
             </div>
@@ -54,7 +54,7 @@
             <!-- RADIO LABEL -->
             <div class="flex flex-col gap-2 items-center h-full justify-center">
               <div class="flex flex-row justify-center items-center">
-                <mat-icon fontSet="material-symbols-outlined" class="!m-0">dark_mode</mat-icon>
+                <mat-icon fontSet="material-symbols-outlined" class="m-0!">dark_mode</mat-icon>
               </div>
               <span>Dark</span>
             </div>
@@ -74,7 +74,7 @@
             <!-- RADIO LABEL -->
             <div class="flex flex-col gap-2 items-center h-full justify-center">
               <div class="flex flex-row justify-center items-center">
-                <mat-icon fontSet="material-symbols-outlined" class="!m-0">routine</mat-icon>
+                <mat-icon fontSet="material-symbols-outlined" class="m-0!">routine</mat-icon>
               </div>
               <span>System</span>
             </div>
@@ -89,7 +89,7 @@
       </mat-card-header>
       <mat-card-content>
         <div class="flex flex-col justify-center items-start">
-          <p class="!mb-6">
+          <p class="mb-6!">
             Select the currency you want to use in the application.
           </p>
           <mat-form-field appearance="outline">
@@ -115,7 +115,7 @@
       </mat-card-header>
       <mat-card-content>
         <div class="flex flex-col items-start gap-4">
-          <p class="!mb-0">Download a full JSON backup or restore one from another Easy Sankey instance.</p>
+          <p class="mb-0!">Download a full JSON backup or restore one from another Easy Sankey instance.</p>
           <div class="flex flex-wrap gap-2">
             <button mat-stroked-button (click)="exportData()">Export full backup</button>
             <button mat-stroked-button (click)="backupFile.click()" [disabled]="importing">Import full backup</button>

@@ -17,7 +17,7 @@
         Show predictions
       </mat-slide-toggle>
       <mat-form-field appearance="outline">
-        <mat-select class="!w-100" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
+        <mat-select class="w-100!" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
           @for (option of availableOptions; track option) {
             <mat-option [value]="option.value">
               {{ option.label }}
@@ -47,7 +47,7 @@
     </button>
   </div>
 
-  <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+  <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
   @if (showReports) {
     <!-- REPORTING/INSIGHTS SECTION -->
@@ -62,7 +62,7 @@
           <app-income-expense-ratio-chart class="w-full" [totalExpense]="totalExpenses" [totalIncome]="totalNetIncome"></app-income-expense-ratio-chart>
         </div>
 
-        <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
+        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
 
         <!-- INCOME GROWTH & EXPENSE TRENDS -->
@@ -114,7 +114,7 @@
                 @for (category of firstHalf; track $index) {
                   <mat-expansion-panel class="no-shadows" [expanded]="anomalyReportsExpanded">
                     <mat-expansion-panel-header class="custom-header">
-                      <mat-panel-title class="!text-xl">
+                      <mat-panel-title class="text-xl!">
                         <div class="flex flex-row items-center gap-2">
                           <span class="flex flex-row items-center">
                             <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? $safeNavigationMigration(category.categoryConfig?.colorDark) : $safeNavigationMigration(category.categoryConfig?.colorLight) }">{{ category.categoryConfig?.icon }}</mat-icon>
@@ -182,7 +182,7 @@
                 @for (category of secondHalf; track $index) {
                   <mat-expansion-panel class="no-shadows" [expanded]="anomalyReportsExpanded">
                     <mat-expansion-panel-header class="custom-header">
-                      <mat-panel-title class="!text-xl">
+                      <mat-panel-title class="text-xl!">
                         <div class="flex flex-row items-center gap-2">
                           <span class="flex flex-row items-center">
                             <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? $safeNavigationMigration(category.categoryConfig?.colorDark) : $safeNavigationMigration(category.categoryConfig?.colorLight) }">{{ category.categoryConfig?.icon }}</mat-icon>
@@ -249,7 +249,7 @@
         </div>
 
 
-        <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
 
         <!-- TREEMAP CHART -->
         <div class="flex flex-col w-full justify-center items-center">
@@ -259,7 +259,7 @@
 
       </div>
     </section>
-    <mat-divider class="!my-10 w-full" [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
+    <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
   }
 
 
@@ -268,7 +268,7 @@
 
     <div class="flex flex-row gap-4 items-center flex-wrap">
       <div class="flex flex-row items-center justify-end">
-        <button class="!flex flex-row items-center" mat-icon-button [matMenuTriggerFor]="settingsMenu">
+        <button class="flex! flex-row items-center" mat-icon-button [matMenuTriggerFor]="settingsMenu">
           <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>
         </button>
         <span [matMenuTriggerFor]="settingsMenu" class="cursor-pointer">Display Settings</span>

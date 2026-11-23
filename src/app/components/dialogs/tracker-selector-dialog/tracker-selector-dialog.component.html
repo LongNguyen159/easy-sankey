@@ -1,6 +1,6 @@
-<h2 mat-dialog-title class="!font-bold text-2xl">Choose Categories to track</h2>
+<h2 mat-dialog-title class="font-bold! text-2xl">Choose Categories to track</h2>
 <mat-dialog-content>
-  <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? '!text-neutral-400' : 'text-gray-500' ">
+  <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">
     Selected: {{ selectedCategories.length }} / {{ allCategories().length }}
   </p>
   <button mat-button (click)="toggleSelectAll(categoryList)">
