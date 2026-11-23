@@ -223,7 +223,7 @@
 
 <ng-template #entryList let-rows>
   <div cdkDropList [cdkDropListData]="rows" (cdkDropListDropped)="dropEntries($event)">
-    @for (linkGroup of rows; track linkGroup; let index = $index) {
+    @for (linkGroup of rows; track linkGroup.get('id').value; let index = $index) {
       <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="editMode() || bulkBusy() || rows.length < 2">
         @if (editMode()) {
           <mat-checkbox class="entry-selection" [checked]="selectedEntryIds.has(linkGroup.get('id')?.value)" [disabled]="bulkBusy()"
