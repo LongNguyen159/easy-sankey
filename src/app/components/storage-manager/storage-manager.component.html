@@ -1,5 +1,5 @@
 <div class="p-4">
-  <div class="flex flex-row w-full justify-between items-baseline">
+  <div class="flex flex-wrap w-full justify-between items-center gap-x-4">
     <div class="flex flex-row gap-4 items-center">
       <div class="flex flex-row gap-2 items-center font-bold">
         <span>From: </span>
@@ -12,7 +12,10 @@
     </div>
 
     <!-- TIMEFRAME FILTER OPTIONS -->
-    <div>
+    <div class="flex flex-wrap items-center gap-x-4">
+      <mat-slide-toggle [checked]="showPredictions()" (change)="setShowPredictions($event.checked)">
+        Show predictions
+      </mat-slide-toggle>
       <mat-form-field appearance="outline">
         <mat-select class="!w-100" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
           @for (option of availableOptions; track option) {
@@ -26,7 +29,7 @@
   </div>
 
   <!-- SURPLUS & BALANCE LINE CHART -->
-  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
+  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData()" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
 
   <!-- ALL TIME BALANCE -->
   <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
@@ -77,7 +80,7 @@
               {{ showIncomeGrowth ? 'View Category Trends' : 'View Income Growth' }}
             </button>
           </div>
-          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"
+          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData()" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"
             (monthSelected)="getMonthsDetails($event)"></app-trends-line-chart>
 
 

@@ -4,7 +4,7 @@ import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { AbnormalityChartData } from '../../models';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
-import { evaluateMetrics, getNextMonths, MONTHS_TO_PREDICT } from '../../../utils/utils';
+import { evaluateMetrics, getNextMonths } from '../../../utils/utils';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -107,8 +107,8 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
             width: 4,
             color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4', // Blue for both dark and light modes
           }
-        }, 
-      ]
+        },
+      ].filter(item => this.chartData?.details.predictedValues?.forecast[0]?.length || item.name === 'Actual Spending')
       },
       xAxis: {
         type: 'category',
@@ -176,11 +176,10 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
   }
 
   updateChart() {  
-    // Get the next X months (e.g., 3 months ahead) from the last date in xAxisData
-    const nextMonths: string[] = getNextMonths(this.chartData.xAxisData[this.chartData.xAxisData.length - 1], MONTHS_TO_PREDICT);
-    /** Push into xAxis the months to predict also, to contain the 'Prediction' line */
-    const xAxisData: string[] = [...this.chartData.xAxisData];
-    xAxisData.push(...nextMonths);
+    const forecast = this.chartData.details.predictedValues?.forecast[0] ?? [];
+    const actualMonths = this.chartData.xAxisData;
+    const nextMonths = forecast.length > 0 ? getNextMonths(actualMonths[actualMonths.length - 1], forecast.length) : [];
+    const xAxisData = [...actualMonths, ...nextMonths];
     // const fittedValues = this.chartData.details.fittedValues;
   
     /** Map data to [index, value] pairs:
@@ -189,7 +188,6 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
     const rawDataMapped: number[][] = this.chartData.rawValues.map((value, index) => [index, value]);
     // const fittedValuesMapped = this.chartData.details.fittedValues.map((value, index) => [index, value]);
 
-    const forecast: number[] = this.chartData.details.predictedValues?.forecast[0] || []
     const positiveForecast: number[] = forecast.map((value) => Math.max(0, value));
 
     const errors: number[] = this.chartData.details.predictedValues?.forecast[1] || [];
@@ -220,8 +218,9 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
 
 
     // Update chart options with the mapped data
+    const baseOption = this.getBaseOption();
     this.mergeOption = {
-      ...this.getBaseOption(),
+      ...baseOption,
       xAxis: {
         type: 'category',
         data: xAxisData,
@@ -232,6 +231,7 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
         },
       },
       legend: {
+        ...baseOption.legend,
         selectedMode: false,
         selected: {
           'Upper Bound': this.isBoundSelected,
@@ -281,7 +281,7 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
             color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4', // Blue for both dark and light modes
           },
           smooth: true,
-          data: mappedUpperBound,
+          data: forecast.length ? mappedUpperBound : [],
           showSymbol: false,
           z: -1,
         },
@@ -292,10 +292,10 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
           clip: true,
           smooth: true,
           showSymbol: false,
-          data: [
+          data: forecast.length ? [
             ...mappedUpperBound, // Upper Bound in normal order
             ...mappedLowerBound.reverse(), // Lower Bound in reverse order
-          ],
+          ] : [],
           areaStyle: {
             color: this.colorService.isDarkMode()
               ? 'rgba(30,144,255)'
@@ -318,7 +318,7 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
         {
           name: `Forecast`,
           type: 'line',
-          data: predictedDataMapped,
+          data: forecast.length ? predictedDataMapped : [],
           showSymbol: false,
           itemStyle: {
             borderType: 'dashed',
@@ -345,7 +345,7 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
           itemStyle: {
             color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4', // Blue for both dark and light modes
           },
-          data: mappedLowerBound,
+          data: forecast.length ? mappedLowerBound : [],
           showSymbol: false,
           z: -1
         },

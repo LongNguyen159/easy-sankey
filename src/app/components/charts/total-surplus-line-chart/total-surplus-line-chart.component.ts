@@ -95,7 +95,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
               color: 'inherit',
             }
           }, 
-        ]
+        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted'))
       },
       xAxis: {
         type: 'category',
@@ -316,7 +316,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
                 }
               ],
             ]
-          } : undefined,
+          } : { data: [] },
         },
 
         {

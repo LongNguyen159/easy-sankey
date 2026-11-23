@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, Input, OnChanges, signal, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { SankeyChartComponent } from "../../components/charts/sankey-chart/sankey-chart.component";
 import { PieChartComponent } from "../../components/charts/pie-chart/pie-chart.component";
 import { ColorService } from '../../services/color.service';
@@ -24,6 +24,8 @@ import { MatButtonModule } from '@angular/material/button';
 export class MainPageSingleMonthComponent implements OnChanges {
   @Input() chartData: SingleMonthData
   @Input() highlightedCategoryId?: string;
+
+  protected readonly isSankeyVertical = signal(false);
 
   colorService = inject(ColorService)
 

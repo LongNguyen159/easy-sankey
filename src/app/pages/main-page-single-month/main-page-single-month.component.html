@@ -1,12 +1,21 @@
 <div class="flex flex-col gap-8">
-    <app-sankey-chart
-        [sankeyData]="chartData.sankeyData"
-        [remainingBalance]="chartData.remainingBalance"
-        [highlightedCategoryId]="highlightedCategoryId"
-        [showTooltip]="false"
-        [allowInteractiveEdit]="false"
-        [showInsights]="false"
-    ></app-sankey-chart>
+    <section>
+        <div class="flex justify-end">
+            <button mat-button type="button" (click)="isSankeyVertical.set(!isSankeyVertical())">
+                <mat-icon fontSet="material-symbols-outlined">{{ isSankeyVertical() ? 'swap_horiz' : 'swap_vert' }}</mat-icon>
+                {{ isSankeyVertical() ? 'Horizontal View' : 'Vertical View' }}
+            </button>
+        </div>
+        <app-sankey-chart
+            [sankeyData]="chartData.sankeyData"
+            [remainingBalance]="chartData.remainingBalance"
+            [orientation]="isSankeyVertical() ? 'vertical' : 'horizontal'"
+            [highlightedCategoryId]="highlightedCategoryId"
+            [showTooltip]="false"
+            [allowInteractiveEdit]="false"
+            [showInsights]="false"
+        ></app-sankey-chart>
+    </section>
     <mat-divider [ngClass]="colorService.isDarkMode() ? '!border-gray-700' : '!border-gray-300'"></mat-divider>
 
     <!-- NETTO CHART -->

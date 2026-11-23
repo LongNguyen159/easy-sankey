@@ -1,7 +1,7 @@
 import { calculateMonth } from '../../utils/month-calculation';
 import { SessionStore } from '../../services/session.service';
 import { CategoryService } from '../../services/category.service';
-import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
 import { outputToObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -127,7 +127,13 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   allFilteredMonths: string[] = [];
 
   /** Chart data to plot the surplus and balance of each month  */
-  trendsLineChartData: TrendsLineChartData[] = [];
+  private readonly chartData = signal<TrendsLineChartData[]>([]);
+  readonly showPredictions = signal(true);
+  readonly trendsLineChartData = computed(() => {
+    const data = this.chartData();
+    return this.showPredictions() ? data : data.filter(entry => !entry.isPrediction);
+  });
+  private chartDataRequest = 0;
   private projectionsSubscription: Subscription | null = null;
 
   MONTHS_IN_ADVANCE_TO_PREDICT = MONTHS_TO_PREDICT;
@@ -142,7 +148,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   showReports: boolean = false;
 
   /** Anomalies Report, used Machine Learning and Statistic to detect Spikes and predict future values */
-  anomalyReports: AbnormalityAnalysis[] = [];
+  private readonly anomalyReports = signal<AbnormalityAnalysis[]>([]);
   anomalyReportsExpanded: boolean = false;
 
 
@@ -382,6 +388,8 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
    * trend line chart, and anomalies detection.
    */
   async populateChartData(allMonths: string[] = []) {
+    const request = ++this.chartDataRequest;
+    this.projectionsSubscription?.unsubscribe();
     // Filter and process data
     const filteredData = this.filterMonthlyData(this.allMonthsData, allMonths);
 
@@ -389,7 +397,10 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     this.updateTotals(filteredData);
 
     // Aggregate yearly tree map data
-    this.treeMapData = (await this.aggregateYearlyTree(filteredData));
+    const treeMapData = await this.aggregateYearlyTree(filteredData);
+    if (request !== this.chartDataRequest) return;
+
+    this.treeMapData = treeMapData;
 
     // Prepare sorted surplus data
     const sortedData = this.prepareSortedTrendsData(filteredData);
@@ -398,13 +409,17 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     this.updateDateRange(sortedData);
 
     // Compute and update surplus chart data
-    this.trendsLineChartData = this.computeSurplusChartData(sortedData);
+    const historicalData = this.computeSurplusChartData(sortedData);
 
     // Adjust chart scale
     this.getScaleValue();
 
     // Include missing months in the chart data
-    this.includeMissingMonths();
+    this.includeMissingMonths(historicalData);
+    this.chartData.set(historicalData);
+    if (this.showPredictions() && historicalData.length > 0) {
+      this.gatherCalculatedMetrics();
+    }
 
     const sortedArray = allMonths.sort((a, b) => {
       const dateA = new Date(a + '-01'); // Append a dummy day to ensure valid date
@@ -415,11 +430,12 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
 
     /** Get Anomalies Detection. Filter out months with missing data (no input from users) to ensure prediction accuracy. */
-    ;detectAbnormalities(this.trendsLineChartData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.predictionService, this.uiService, name => this.categoryService.label(name))
+    ;detectAbnormalities(historicalData.filter(item => !item.isMissing), sortedArray, this.currencyService.getCurrencySymbol(this.currencyService.getSelectedCurrency()), this.showPredictions() ? this.predictionService : null, this.uiService, name => this.categoryService.label(name))
       .then(insights => {
-        this.anomalyReports = insights;
+        if (request !== this.chartDataRequest) return;
+
         /** Add configs (colour, icons, etc.) for display purposes */
-        this.anomalyReports = this.anomalyReports.map(category => {
+        this.anomalyReports.set(insights.map(category => {
           const categoryDetails = this.categoryService.get(category.categoryName);
           
           // Add category-specific icon and color at root level
@@ -437,28 +453,31 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
               config: this.getAnomaliesConfig(abnormality.type),  // Keep anomaly type-related icon and color logic
             })),
           };
-        });
-
-
-        this.gatherCalculatedMetrics();
+        }));
       });
   }
 
 
-  gatherCalculatedMetrics() {
+  setShowPredictions(enabled: boolean): void {
+    this.showPredictions.set(enabled);
+    void this.populateChartData(this.allFilteredMonths);
+  }
+
+  override ngOnDestroy(): void {
+    this.chartDataRequest++;
+    this.projectionsSubscription?.unsubscribe();
+    super.ngOnDestroy();
+  }
+
+  private gatherCalculatedMetrics() {
     // const avgMonthlyIncome = this.totalNetIncome / this.allFilteredMonths.length;
     // const avgMonthlyExpense = this.totalExpenses / this.allFilteredMonths.length;
     // const avgMonthlySurplus = avgMonthlyIncome - avgMonthlyExpense;
   
-    // const avgSpendOnShopping = this.anomalyReports.find(category => category.categoryName === ExpenseCategory.Shopping)?.averageSpending || 0;
+    // const avgSpendOnShopping = this.anomalyReports().find(category => category.categoryName === ExpenseCategory.Shopping)?.averageSpending || 0;
   
-    const monthlyIncomeData = this.trendsLineChartData.map(entry => entry.totalNetIncome);
-    const monthlyExpensesData = this.trendsLineChartData.map(entry => entry.totalExpenses);
-  
-    // Prevent double subscription
-    if (this.projectionsSubscription) {
-      this.projectionsSubscription.unsubscribe();
-    }
+    const monthlyIncomeData = this.chartData().map(entry => entry.totalNetIncome);
+    const monthlyExpensesData = this.chartData().map(entry => entry.totalExpenses);
   
     // Fetch projections for income and expenses
     const incomeProjection$ = this.predictionService.getPrediction(monthlyIncomeData, this.MONTHS_IN_ADVANCE_TO_PREDICT);
@@ -473,7 +492,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
       const projectedData: TrendsLineChartData[] = nextMonths.map((month, index) => {
         // Avoid duplicate entries
-        if (this.trendsLineChartData.some(data => data.month === month)) {
+        if (this.chartData().some(data => data.month === month)) {
           return null
         }
   
@@ -501,7 +520,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
         };
       }).filter((entry): entry is TrendsLineChartData => entry !== null);
       // Get the last balance from the existing data
-      let lastBalance = this.trendsLineChartData.length > 0 ? this.trendsLineChartData[this.trendsLineChartData.length - 1].balance : 0;
+      const lastBalance = this.chartData().at(-1)?.balance ?? 0;
 
       // Compute the balance for each month
       for (let i = 0; i < projectedData.length; i++) {
@@ -515,30 +534,21 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       }
 
   
-      // Add projected data to the chart
-      this.trendsLineChartData.push(...projectedData);
-
-      // Sort the categories based on value
-      this.trendsLineChartData.forEach(item => {
+      const chartData = [...this.chartData(), ...projectedData];
+      chartData.forEach(item => {
         item.categories.sort((a, b) => b.value - a.value);
       });
-
-
-      /** Reassign to trigger change detection in template.
-       * Pushing directly modify the array, so the reference is the same,
-       * hence Angular does not detect the change.
-       */
-      this.trendsLineChartData = [...this.trendsLineChartData];
+      this.chartData.set(chartData);
     });
   }
   
   // Utility: Calculate category proportions based on historical data
   calculateCategoryProportions(): { [categoryName: string]: number } {
-    const totalExpenses = this.trendsLineChartData.reduce((sum, data) => sum + data.totalExpenses, 0);
+    const totalExpenses = this.chartData().reduce((sum, data) => sum + data.totalExpenses, 0);
     const categoryTotals: { [categoryName: string]: number } = {};
   
     // Accumulate totals for each category
-    this.trendsLineChartData.forEach(data => {
+    this.chartData().forEach(data => {
       data.categories.forEach(category => {
         categoryTotals[category.name] = (categoryTotals[category.name] || 0) + category.value;
       });
@@ -558,7 +568,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
    * @param categoryName: string: Name of the category (raw, with system prefix to pinpoint instead of confusion)
    */
   getCategoryPlotData(categoryName: string) {
-    const matchingCategory = this.anomalyReports.find(category => category.categoryName === categoryName);
+    const matchingCategory = this.anomalyReports().find(category => category.categoryName === categoryName);
 
     if (!matchingCategory) {
       return;
@@ -569,7 +579,10 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       categoryName: this.categoryService.label(categoryName),
       rawValues: matchingCategory.rawValues,
       xAxisData: matchingCategory.xAxisData,
-      details: matchingCategory.detailedAnalysis,
+      details: {
+        ...matchingCategory.detailedAnalysis,
+        predictedValues: this.showPredictions() ? matchingCategory.detailedAnalysis.predictedValues : null,
+      },
     }
     const dialogRef = this.dialogService.openPatternAnalysisDialog(chartData);
     outputToObservable(dialogRef.componentInstance.monthSelected)
@@ -638,7 +651,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   /** Helper function to find the missing months in the selected time frame. If found missing, 
    * set all values to 0 and flag them isMissing = true.
    */
-  includeMissingMonths() {
+  private includeMissingMonths(chartData: TrendsLineChartData[]) {
     const allMonthsSet = new Set(this.allFilteredMonths);
     const startDate = new Date(this.startMonthDate.getFullYear(), this.startMonthDate.getMonth(), 1);
     const endDate = new Date(this.endMonthDate.getFullYear(), this.endMonthDate.getMonth(), 1);
@@ -652,7 +665,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     }
   
     missingMonths.forEach(month => {
-      this.trendsLineChartData.push({
+      chartData.push({
         month,
         totalNetIncome: 0,
         totalExpenses: 0,
@@ -664,8 +677,8 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       });
     });
 
-    // Sort the trendsLineChartData to ensure missing months are in the correct order
-    this.trendsLineChartData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+    // Sort the chart data to ensure missing months are in the correct order
+    chartData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
   }
 
   //#region Tree Map
@@ -930,11 +943,11 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
   /** Display first half and second half in the template */
   get firstHalf() {
-    return this.anomalyReports.slice(0, Math.ceil(this.anomalyReports.length / 2));
+    return this.anomalyReports().slice(0, Math.ceil(this.anomalyReports().length / 2));
   }
 
   get secondHalf() {
-    return this.anomalyReports.slice(Math.ceil(this.anomalyReports.length / 2));
+    return this.anomalyReports().slice(Math.ceil(this.anomalyReports().length / 2));
   }
 
 

@@ -147,7 +147,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
               color: 'inherit',
             }
           }, 
-        ] : [
+        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted')) : [
           ...this.chartData.flatMap(data => data.categories.map(cat => cat.name))
         ]
       },
@@ -298,7 +298,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
             }
           ],
         ]
-      } : undefined,
+      } : { data: [] },
       data: this.xAxisData.map(month => {
         // Find the month's data
         const monthData = this.chartData.find(data => data.month === month);
@@ -427,7 +427,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
               }
             ],
           ]
-        } : undefined,
+        } : { data: [] },
       },
       {
         name: 'Net Income',

@@ -1,9 +1,10 @@
-<div class="flex flex-row w-full items-center justify-end">
-    <button mat-button (click)="isBoundSelected = !isBoundSelected; updateChart()">
-        {{ isBoundSelected ? 'Hide uncertainty' : 'Show uncertainty' }}
-    </button>
-
-</div>
+@if (chartData.details.predictedValues?.forecast[0]?.length) {
+    <div class="flex flex-row w-full items-center justify-end">
+        <button mat-button (click)="isBoundSelected = !isBoundSelected; updateChart()">
+            {{ isBoundSelected ? 'Hide uncertainty' : 'Show uncertainty' }}
+        </button>
+    </div>
+}
 <div
     echarts
     [options]="chartOption"

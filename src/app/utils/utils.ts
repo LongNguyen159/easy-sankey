@@ -259,7 +259,7 @@ export async function detectAbnormalities(
   data: TrendsLineChartData[],
   allMonths: string[],
   currencySymbol: string = '',
-  predictService: PredictService,
+  predictService: PredictService | null,
   uiService: UiService,
   categoryLabel: (id: string) => string = removeSystemPrefix
 ): Promise<AbnormalityAnalysis[]> {
@@ -610,7 +610,7 @@ async function detectTrend(
   smoothingWindow: number = 5,
   sensitivity: number = 1.5,
   isSingleOccurrence: boolean = false,
-  predictService: PredictService,
+  predictService: PredictService | null,
   uiService: UiService
 ): Promise<TrendAnalysis> {
   // Step 0: Handle insufficient data
