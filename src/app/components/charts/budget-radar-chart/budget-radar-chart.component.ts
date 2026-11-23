@@ -13,7 +13,7 @@ import { CurrencyService } from '../../../services/currency.service';
       role="img" aria-label="Radar chart comparing budget and actual spending. Exact amounts are listed below.">
     </div>
   `,
-  styles: '.budget-radar { height: clamp(280px, 45vw, 400px); width: 100%; }',
+  styles: '.budget-radar { height: clamp(320px, 50vw, 460px); width: 100%; }',
 })
 export class BudgetRadarChartComponent {
   readonly budgets = input.required<ReadonlyArray<{name: string; budget: number; spent: number}>>();
@@ -75,7 +75,7 @@ export class BudgetRadarChartComponent {
       },
       radar: {
         center: ['50%', '54%'],
-        radius: '57%',
+        radius: '66%',
         // shape: 'circle',
         splitNumber: 6,
         axisName: {color: textColor, width: 96, overflow: 'truncate'},
@@ -87,7 +87,7 @@ export class BudgetRadarChartComponent {
           },
         },
         splitArea: {
-          show: true,
+          show: false,
           areaStyle: {
             color: dark
               ? ['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.09)']
