@@ -33,7 +33,7 @@ export type EnvelopeDialogData =
       } @else {
         @for (scope of scopes; track scope.global) {
           <section [attr.aria-label]="scope.label" class="py-3">
-            <h3 class="mb-2">{{ scope.label }}</h3>
+            <h3 class="mb-2 text-lg font-bold">{{ scope.label }}</h3>
             @for (row of rowsForScope(scope.global); track row) {
               <ng-container *ngTemplateOutlet="budgetFields; context: {$implicit: row}"></ng-container>
             } @empty {
@@ -120,8 +120,8 @@ export class EnvelopeDialogComponent {
     ...(this.newEnvelopeId ? [{id: this.newEnvelopeId, name: '', budget: 500, isGlobal: this.globalDraft}] : []),
   ].map(envelope => this.group(envelope)));
   readonly scopes = [
-    {global:false, label:'This month only (Local)'},
-    {global:true, label:'For every month (Global)'},
+    {global:false, label:'This month only'},
+    {global:true, label:'For every month'},
   ];
   rowsForScope(isGlobal: boolean) { return this.rows.controls.filter(row => row.controls.isGlobal.value === isGlobal); }
   isNew(id: string) { return !this.base.some(row => row.id === id); }

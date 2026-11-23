@@ -83,8 +83,8 @@ describe('monthly envelope editor', () => {
     const editor=fixture.componentInstance;
     fixture.detectChanges();
     expect(editor.rows.length).toBe(2);
-    const local=fixture.nativeElement.querySelector('[aria-label="This month only (Local)"]');
-    const global=fixture.nativeElement.querySelector('[aria-label="For every month (Global)"]');
+    const local=fixture.nativeElement.querySelector('[aria-label="This month only"]');
+    const global=fixture.nativeElement.querySelector('[aria-label="For every month"]');
     expect(local.querySelector('input[formControlName="name"]').value).toBe('Holiday');
     expect(global.querySelector('input[formControlName="name"]').value).toBe('Revolut');
     editor.rows.at(0).patchValue({budget:600});
