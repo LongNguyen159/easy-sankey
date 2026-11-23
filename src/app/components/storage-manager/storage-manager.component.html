@@ -12,12 +12,12 @@
     </div>
 
     <!-- TIMEFRAME FILTER OPTIONS -->
-    <div class="flex flex-wrap items-baseline gap-x-4">
+    <div class="flex flex-wrap items-baseline gap-x-4 min-w-0 max-w-full">
       <mat-slide-toggle [checked]="showPredictions()" (change)="setShowPredictions($event.checked)">
         Show predictions
       </mat-slide-toggle>
-      <mat-form-field appearance="outline">
-        <mat-select class="w-100!" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
+      <mat-form-field appearance="outline" class="w-64 max-w-full">
+        <mat-select [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
           @for (option of availableOptions; track option) {
             <mat-option [value]="option.value">
               {{ option.label }}

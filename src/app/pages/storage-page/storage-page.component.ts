@@ -8,6 +8,7 @@ import { RoutePath } from '../../components/models';
   selector: 'app-storage-page',
   imports: [StorageManagerComponent, NavbarComponent],
   templateUrl: './storage-page.component.html',
+  styles: [':host { display: block; }'],
 })
 export class StoragePageComponent {
   protected readonly colorService = inject(ColorService);
