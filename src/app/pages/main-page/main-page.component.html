@@ -63,23 +63,23 @@
                     <span class="budget-progress-name">
                       {{ envelope.name }}
                       @if (!envelope.isGlobal) {
-                        <small>This month</small>
+                        <small>• This month</small>
                       }
                     </span>
-                    <span class="budget-progress-amount">{{ spent }} <span>/ {{ limit }}</span></span>
-                  </div>
-                  <div class="budget-progress-detail">
-                    <progress max="1" [value]="remaining <= 0 ? 1 : envelope.spent / envelope.budget"
-                      [attr.aria-label]="envelope.name" [attr.aria-valuetext]="spent + ' spent of ' + limit"></progress>
                     <span class="budget-progress-status">
                       @if (remaining < 0) {
-                        {{ -remaining | currency: currency }} over
+                        - {{ -remaining | currency: currency }}
                       } @else if (remaining > 0) {
-                        {{ remaining | currency: currency }} left
+                        {{ remaining | currency: currency }}
                       } @else {
                         On budget
                       }
                     </span>
+                  </div>
+                  <div class="budget-progress-detail">
+                    <progress max="1" [value]="remaining <= 0 ? 1 : envelope.spent / envelope.budget"
+                      [attr.aria-label]="envelope.name" [attr.aria-valuetext]="spent + ' spent of ' + limit"></progress>
+                    <span class="budget-progress-amount text-neutral-400">{{ spent }} / {{ limit }}</span>
                   </div>
                 </li>
               }

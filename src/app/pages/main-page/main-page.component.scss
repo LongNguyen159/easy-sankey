@@ -20,13 +20,14 @@
     --budget-fill: var(--app-budget-progress-under);
   }
 
+  > li:not(.budget-over-limit) {
+    .budget-progress-status {
+      background: color-mix(in srgb, var(--app-budget-progress-under) var(--app-budget-progress-green-pill-strength), transparent);
+    }
+  }
+
   > .budget-over-limit {
     --budget-fill: var(--app-budget-progress-over-fill);
-
-    .budget-progress-status {
-      color: var(--app-budget-progress-over);
-      font-weight: 600;
-    }
   }
 
   progress {
@@ -67,10 +68,10 @@
   gap: 0.125rem 1rem;
 }
 
-.budget-progress-name,
-.budget-progress-amount {
-  font-weight: 600;
-}
+// .budget-progress-name,
+// .budget-progress-status {
+//   font-weight: 600;
+// }
 
 .budget-progress-name {
   overflow-wrap: anywhere;
@@ -86,24 +87,26 @@
   font-variant-numeric: tabular-nums;
 }
 
-.budget-progress-amount span,
-.budget-progress-name small,
 .budget-progress-status {
-  color: var(--app-budget-progress-muted);
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-budget-progress-track) 45%, transparent);
+}
+
+.budget-progress-name small,
+.budget-progress-amount {
+  // color: var(--app-budget-progress-muted);
   font-weight: 400;
 }
 
 .budget-progress-detail {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) min(8rem, 42%);
-  align-items: center;
-  gap: 0.75rem;
+  gap: 0.25rem;
   margin-block-start: 0.25rem;
   font-size: 0.8125rem;
 
-  .budget-progress-status {
+  .budget-progress-amount {
     text-align: end;
-    overflow-wrap: anywhere;
   }
 }
 
