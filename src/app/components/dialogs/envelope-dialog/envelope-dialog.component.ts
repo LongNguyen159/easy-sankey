@@ -14,11 +14,15 @@ import { DataService } from '../../../services/data.service';
 import { UiService } from '../../../services/ui.service';
 import { MatDividerModule } from '@angular/material/divider';
 
+export type EnvelopeDialogData =
+  | (Pick<SingleMonthData, 'month' | 'envelopes'> & {createEnvelope?: true | 'draft'})
+  | {createEnvelope: 'global-draft'; envelopes: BudgetEnvelope[]};
+
 @Component({
   selector: 'app-envelope-dialog',
   imports: [NgTemplateOutlet, MatSelectModule, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatDividerModule],
   template: `
-    <h2 mat-dialog-title>{{ data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
+    <h2 mat-dialog-title>{{ globalDraft ? 'New global budget' : data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
     <mat-dialog-content>
       @if (data.createEnvelope) {
         @for (row of rows.controls; track row) {
@@ -57,7 +61,7 @@ import { MatDividerModule } from '@angular/material/divider';
               </button>
             }
           </div>
-          @if (data.createEnvelope) {
+          @if (data.createEnvelope && !globalDraft) {
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Applies to</mat-label>
               <mat-select formControlName="isGlobal">
@@ -78,7 +82,7 @@ import { MatDividerModule } from '@angular/material/divider';
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close [disabled]="saving">Cancel</button>
       <button mat-flat-button [disabled]="saving || rows.invalid" (click)="save()">
-        {{ saving ? 'Saving…' : data.createEnvelope === 'draft' ? 'Add budget' : data.createEnvelope ? 'Create budget' : 'Save' }}
+        {{ saving ? 'Saving…' : isDraft ? 'Add budget' : data.createEnvelope ? 'Create budget' : 'Save' }}
       </button>
     </mat-dialog-actions>
   `,
@@ -94,8 +98,10 @@ import { MatDividerModule } from '@angular/material/divider';
   `,
 })
 export class EnvelopeDialogComponent {
-  readonly data = inject<SingleMonthData & {createEnvelope?: true | 'draft'}>(MAT_DIALOG_DATA);
-  readonly monthLabel = formatDate(`${this.data.month}-01`, 'MMMM yyyy', 'en-US');
+  readonly data = inject<EnvelopeDialogData>(MAT_DIALOG_DATA);
+  protected readonly globalDraft = this.data.createEnvelope === 'global-draft';
+  protected readonly isDraft = this.globalDraft || this.data.createEnvelope === 'draft';
+  readonly monthLabel = 'month' in this.data ? formatDate(`${this.data.month}-01`, 'MMMM yyyy', 'en-US') : '';
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly service = inject(DataService);
   private readonly uiService = inject(UiService);
@@ -110,8 +116,8 @@ export class EnvelopeDialogComponent {
   protected readonly newEnvelopeId = this.data.createEnvelope ? uuid() : undefined;
   private base = this.data.envelopes ?? [];
   readonly rows = new FormArray([
-    ...(this.data.createEnvelope === 'draft' ? [] : this.base),
-    ...(this.newEnvelopeId ? [{id: this.newEnvelopeId, name: '', budget: 500}] : []),
+    ...(this.isDraft ? [] : this.base),
+    ...(this.newEnvelopeId ? [{id: this.newEnvelopeId, name: '', budget: 500, isGlobal: this.globalDraft}] : []),
   ].map(envelope => this.group(envelope)));
   readonly scopes = [
     {global:false, label:'This month only (Local)'},
@@ -122,6 +128,7 @@ export class EnvelopeDialogComponent {
   saving = false;
   error = '';
   add(): void {
+    if (this.data.createEnvelope) return;
     this.dialog.open<EnvelopeDialogComponent, typeof this.data, BudgetEnvelope>(EnvelopeDialogComponent, {
       data: {...this.data, envelopes: this.rows.getRawValue(), createEnvelope: 'draft'},
       width: '32rem',
@@ -134,7 +141,8 @@ export class EnvelopeDialogComponent {
     });
   }
   protected remove(row: ReturnType<EnvelopeDialogComponent['group']>): void {
-    if (this.saving) return;
+    if (this.saving || this.data.createEnvelope) return;
+    const {month} = this.data;
     const id = row.controls.id.value;
     const removeRow = () => {
       const index = this.rows.controls.indexOf(row);
@@ -168,7 +176,7 @@ export class EnvelopeDialogComponent {
           const globals = this.base.filter(item => item.isGlobal);
           await this.service.saveGlobalEnvelopes(globals.filter(item => item.id !== id), globals);
         } else {
-          await this.service.deleteLocalEnvelope(this.data.month, id);
+          await this.service.deleteLocalEnvelope(month, id);
         }
         this.base = this.base.filter(item => item.id !== id);
         removeRow();
@@ -185,7 +193,7 @@ export class EnvelopeDialogComponent {
   async save() {
     if (this.rows.invalid || this.saving) return;
     const envelopes = this.rows.getRawValue().map(row => ({...row, name: row.name.trim()}));
-    if (this.data.createEnvelope === 'draft') {
+    if (this.data.createEnvelope === 'draft' || this.data.createEnvelope === 'global-draft') {
       const [budget] = envelopes;
       if (this.base.some(row => !!row.isGlobal === budget.isGlobal
           && row.name.trim().toLowerCase() === budget.name.toLowerCase())) {
