@@ -76,32 +76,43 @@ export class BudgetRadarChartComponent {
       radar: {
         center: ['50%', '54%'],
         radius: '57%',
-        splitNumber: 4,
+        // shape: 'circle',
+        splitNumber: 6,
         axisName: {color: textColor, width: 96, overflow: 'truncate'},
-        axisLine: {lineStyle: {color: gridColor}},
-        splitLine: {lineStyle: {color: gridColor}},
-        splitArea: {show: false},
+        axisLine: {lineStyle: {color: dark ? 'rgba(204, 204, 204, 0.7)' : '#909090'}},
+        splitLine: {
+          lineStyle: {
+            // ECharts also counts the zero-radius tick when assigning ring colours.
+            color: [1, 0.8, 0.6, 0.4, 0.2, 0.1, 0.2].map(opacity => `rgba(144, 144, 144, ${opacity})`),
+          },
+        },
+        splitArea: {
+          show: true,
+          areaStyle: {
+            color: dark
+              ? ['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.09)']
+              : ['rgba(250, 250, 250, 0.2)', 'rgba(210, 219, 238, 0.2)'],
+          },
+        },
         indicator: budgets.map(({name}) => ({name, min: 0, max: maximum})),
       },
       series: [{
         type: 'radar',
-        symbolSize: 5,
+        symbol: 'none',
         data: [
+          {
+            name: 'Actual spending',
+            value: budgets.map(({spent}) => spent),
+            itemStyle: {color: spendingColor},
+            lineStyle: {color: spendingColor, width: 2, cap: 'round'},
+            areaStyle: {color: spendingColor, opacity: 0.25},
+          },
           {
             name: 'Budget',
             value: budgets.map(({budget}) => budget),
             itemStyle: {color: budgetColor},
             lineStyle: {color: budgetColor, width: 2, type: 'dashed'},
-            symbol: 'diamond',
-            areaStyle: {color: budgetColor, opacity: 0.16},
-          },
-          {
-            name: 'Actual spending',
-            value: budgets.map(({spent}) => spent),
-            itemStyle: {color: spendingColor},
-            lineStyle: {color: spendingColor, width: 2},
-            symbol: 'circle',
-            areaStyle: {color: spendingColor, opacity: 0.2},
+            areaStyle: {color: budgetColor, opacity: 0.12},
           },
         ],
       }],
