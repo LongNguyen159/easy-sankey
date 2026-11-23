@@ -73,6 +73,7 @@
     [merge]="sankeyMerge"
     [style]="'height: ' + chartHeight"
     (chartInit)="onChartInit($event)"
+    (chartFinished)="applyCategoryEmphasis()"
 ></div>
 <h3 class="font-bold flex flex-row items-center gap-2">
     <span>Surplus: </span>

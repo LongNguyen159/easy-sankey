@@ -3,5 +3,6 @@
     echarts
     [options]="chartOptions"
     [merge]="mergeOptions"
+    (chartInit)="onChartInit($event)"
     style="height: 400px; width: 100%;"
 ></div>

@@ -2,6 +2,7 @@ import { calculateMonth } from '../../utils/month-calculation';
 import { SessionStore } from '../../services/session.service';
 import { CategoryService } from '../../services/category.service';
 import { ChangeDetectionStrategy, Component, inject, OnInit, ViewEncapsulation } from '@angular/core';
+import { outputToObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { DataService } from '../../services/data.service';
@@ -19,7 +20,7 @@ import { TotalSurplusLineChartComponent } from "../charts/total-surplus-line-cha
 import { forkJoin, Subscription, takeUntil } from 'rxjs';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { MatButtonModule } from '@angular/material/button';
-import { MainPageDialogComponent } from '../dialogs/main-page-dialog/main-page-dialog.component';
+import { MainPageDialogComponent, type MainPageDialogData } from '../dialogs/main-page-dialog/main-page-dialog.component';
 import { EntryType } from '../models';
 import { IncomeExpenseRatioChartComponent } from "../charts/income-expense-ratio-chart/income-expense-ratio-chart.component";
 import { MatCardModule } from '@angular/material/card';
@@ -570,7 +571,10 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       xAxisData: matchingCategory.xAxisData,
       details: matchingCategory.detailedAnalysis,
     }
-    this.dialogService.openPatternAnalysisDialog(chartData)
+    const dialogRef = this.dialogService.openPatternAnalysisDialog(chartData);
+    outputToObservable(dialogRef.componentInstance.monthSelected)
+      .pipe(takeUntil(this.componentDestroyed$))
+      .subscribe(month => this.getMonthsDetails(month, categoryName));
   }
 
   /** Helper function: Calculate and update total net income and expenses */
@@ -908,9 +912,13 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   /** This function is used to get details of the corresponding month. It opens the main page dialog.
    * @param month: string in YYYY-MM format.
    */
-  getMonthsDetails(month: string) {
-    this.dialog.open(MainPageDialogComponent, {
-      data: this.allMonthsData[month],
+  getMonthsDetails(month: string, categoryId?: string) {
+    const monthData = this.allMonthsData[month];
+    if (!monthData) {
+      return;
+    }
+    this.dialog.open<MainPageDialogComponent, MainPageDialogData>(MainPageDialogComponent, {
+      data: {monthData, categoryId},
       width: '100%',
       height: '80vh',
       maxWidth: '100vw',

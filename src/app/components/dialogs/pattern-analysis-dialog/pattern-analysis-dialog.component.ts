@@ -1,5 +1,5 @@
 
-import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Inject, ChangeDetectionStrategy, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { AbnormalityChartData } from '../../models';
@@ -13,6 +13,7 @@ import { CategoryRegressionChartComponent } from "../../charts/category-regressi
     styleUrl: './pattern-analysis-dialog.component.scss'
 })
 export class PatternAnalysisDialogComponent {
+  readonly monthSelected = output<string>();
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: AbnormalityChartData

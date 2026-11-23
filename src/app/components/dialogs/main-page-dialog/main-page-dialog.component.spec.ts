@@ -14,7 +14,7 @@ describe('MainPageDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: emptyMonth }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase()],
+      providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {monthData: emptyMonth} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase()],
       imports: [MainPageDialogComponent]
     })
     .compileComponents();

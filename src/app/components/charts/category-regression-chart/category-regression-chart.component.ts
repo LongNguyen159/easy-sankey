@@ -1,5 +1,5 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption } from 'echarts';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
+import { EChartsOption, EChartsType } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { AbnormalityChartData } from '../../models';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -26,6 +26,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
 })
 export class CategoryRegressionChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: AbnormalityChartData
+  readonly monthSelected = output<string>();
 
   currencyService = inject(CurrencyService)
   currencyPipe = inject(CurrencyPipe)
@@ -50,7 +51,11 @@ export class CategoryRegressionChartComponent extends BaseChartComponent impleme
     })
   }
 
-
+  override onChartInit(chart: EChartsType): void {
+    super.onChartInit(chart);
+    this.bindMonthSelection(chart, index => this.chartData.xAxisData[index],
+      month => this.monthSelected.emit(month));
+  }
 
   getBaseOption(): EChartsOption {
     return {

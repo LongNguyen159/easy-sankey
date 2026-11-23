@@ -23,6 +23,7 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class MainPageSingleMonthComponent implements OnChanges {
   @Input() chartData: SingleMonthData
+  @Input() highlightedCategoryId?: string;
 
   colorService = inject(ColorService)
 

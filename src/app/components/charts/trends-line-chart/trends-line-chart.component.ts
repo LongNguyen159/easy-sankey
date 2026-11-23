@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
 import { BarSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -21,6 +21,7 @@ import { isArray } from 'mathjs';
 })
 export class TrendsLineChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: TrendsLineChartData[] = [];
+  readonly monthSelected = output<string>();
   @Input() showCategories: boolean = false;
 
   @Input() stackCategories: boolean = true;
@@ -39,6 +40,14 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     effect(() => {
       this.updateChart();
     })
+  }
+
+  override onChartInit(chart: EChartsType): void {
+    super.onChartInit(chart);
+    this.bindMonthSelection(chart, index => {
+      const entry = this.chartData[index];
+      return entry && !entry.isPrediction && !entry.isMissing ? entry.month : undefined;
+    }, month => this.monthSelected.emit(month));
   }
 
   getBaseOptions(): EChartsOption {

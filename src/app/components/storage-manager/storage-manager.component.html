@@ -26,7 +26,7 @@
   </div>
 
   <!-- SURPLUS & BALANCE LINE CHART -->
-  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData"></app-total-surplus-line-chart>
+  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
 
   <!-- ALL TIME BALANCE -->
   <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
@@ -77,7 +77,8 @@
               {{ showIncomeGrowth ? 'View Category Trends' : 'View Income Growth' }}
             </button>
           </div>
-          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"></app-trends-line-chart>
+          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"
+            (monthSelected)="getMonthsDetails($event)"></app-trends-line-chart>
 
 
           <!-- ANOMALIES REPORT -->

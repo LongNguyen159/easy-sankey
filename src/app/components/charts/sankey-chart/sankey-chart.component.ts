@@ -45,6 +45,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
   @Input() showTooltip: boolean = true
   @Input() allowInteractiveEdit: boolean = true
   @Input() showInsights: boolean = true
+  @Input() highlightedCategoryId?: string;
 
 
   dataService = inject(DataService)
@@ -55,6 +56,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
   sankeyOption: EChartsOption = this.getBaseChartOptions()
   sankeyMerge: EChartsOption = {}
+  private highlightedOptions?: EChartsOption;
   showEnvelopes = true;
   get displayedData(): SankeyData {
     return (!this.showEnvelopes ? this.sankeyData?.categoryView : undefined) ?? this.sankeyData ?? {nodes: [], links: []};
@@ -86,6 +88,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
   override onChartInit(chart: EChartsType): void {
     super.onChartInit(chart);
+    this.highlightedOptions = undefined;
 
     if (!this.allowInteractiveEdit) {
       return
@@ -186,21 +189,44 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes && changes['sankeyData']) {
-      this.updateSankeyChart()
+    if (changes['highlightedCategoryId'] && this.highlightedCategoryId) {
+      this.showEnvelopes = false;
     }
 
-    if (changes && changes['orientation']) {
-      this.updateSankeyChart()
+    if (changes['sankeyData'] || changes['orientation'] || changes['highlightedCategoryId']) {
+      this.updateSankeyChart();
     }
+  }
+
+  applyCategoryEmphasis(): void {
+    const chart = this._chartInstance;
+    if (!chart || chart.isDisposed() || !this.highlightedCategoryId || this.highlightedOptions === this.sankeyMerge) {
+      return;
+    }
+
+    // Read the rendered series because the base options may finish before the data is merged.
+    const series = chart.getOption()['series'] as {data?: SankeyNode[]}[] | undefined;
+    const dataIndex = series?.[0]?.data?.findIndex(node =>
+      (node.categoryId ?? node.name) === this.highlightedCategoryId) ?? -1;
+    if (dataIndex < 0) {
+      return;
+    }
+
+    this.highlightedOptions = this.sankeyMerge;
+    chart.dispatchAction({type: 'highlight', seriesIndex: 0, dataType: 'node', dataIndex});
   }
 
   updateSankeyChart() {
     const isDarkMode = this.colorService.isDarkMode();
-    const nodes = this.displayedData.nodes.map(node => {
+    const textColor = isDarkMode ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary;
+    const { nodes: displayedNodes, links } = this.displayedData;
+    const nodes = displayedNodes.map(node => {
       const color = this.categoryService.color(node.categoryId ?? node.name, isDarkMode);
       return color ? { ...node, itemStyle: { color } } : node;
     });
+
+    const hasSelectedCategory = nodes.some(node =>
+      (node.categoryId ?? node.name) === this.highlightedCategoryId);
 
     this.sankeyMerge = {
       ...this.getBaseChartOptions(),
@@ -209,13 +235,14 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
           nodeAlign: 'left',
           type: 'sankey',
           data: nodes,
-          links: this.displayedData.links,
+          links,
+          silent: hasSelectedCategory,
           emphasis: { focus: 'adjacency' },
           orient: this.orientation,
           label: {
             position: this.orientation === 'horizontal' ? 'right' : 'top',
             fontSize: 12,
-            color: isDarkMode ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+            color: textColor,
             // Use rich text for formatting
             rich: {
               bold: {

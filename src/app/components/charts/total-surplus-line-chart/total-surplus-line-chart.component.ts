@@ -1,5 +1,5 @@
-import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption } from 'echarts';
+import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetectionStrategy, output } from '@angular/core';
+import { EChartsOption, EChartsType } from 'echarts';
 import { NgxEchartsDirective, provideEcharts } from 'ngx-echarts';
 import { TrendsLineChartData } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -20,6 +20,7 @@ import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 })
 export class TotalSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartData: TrendsLineChartData[] = [];
+  readonly monthSelected = output<string>();
 
   chartOptions: EChartsOption = this.getBaseOption()
   mergeOptions: EChartsOption = {};
@@ -31,6 +32,14 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
     effect(() => {
       this.updateChart();
     })
+  }
+
+  override onChartInit(chart: EChartsType): void {
+    super.onChartInit(chart);
+    this.bindMonthSelection(chart, index => {
+      const entry = this.chartData[index];
+      return entry && !entry.isPrediction && !entry.isMissing ? entry.month : undefined;
+    }, month => this.monthSelected.emit(month));
   }
 
   getBaseOption(): EChartsOption {

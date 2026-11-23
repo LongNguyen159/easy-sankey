@@ -58,7 +58,7 @@ export class DialogsService {
 
   
   openPatternAnalysisDialog(chartData: AbnormalityChartData) {
-    this.dialog.open(PatternAnalysisDialogComponent, {
+    return this.dialog.open(PatternAnalysisDialogComponent, {
       width: '75rem',
       height: '83vh',
       maxHeight: '90vh',
