@@ -1,7 +1,8 @@
 const fs = require("node:fs");
 const { randomUUID } = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
-const { PrismaClient } = require("../generated/prisma");
+const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+const { PrismaClient } = require("../generated/prisma/client");
 const { migrate } = require("./migrations");
 const { canonical, envelopes: validateEnvelopes, entries: validateEntries } = require("./import-export");
 const {
@@ -19,7 +20,7 @@ function openDatabase(filename, { onQuery } = {}) {
     !fs.existsSync(filename) && fs.existsSync(`${filename}.initialized`);
   migrate(filename);
   const prisma = new PrismaClient({
-    datasources: { db: { url: `file:${filename}` } },
+    adapter: new PrismaBetterSqlite3({ url: `file:${filename}`, timeout: 5000 }),
     log: onQuery ? [{ emit: "event", level: "query" }] : [],
   });
   if (onQuery) prisma.$on("query", (event) => onQuery(event.query));

@@ -21,9 +21,9 @@ call. There is no HTTP server or HTTP endpoint in this desktop flow.
 
 ## 1. Prepare the development database
 
-Install dependencies with `npm ci`. Copy `.env.example` to `.env` if you do not
-already have one. Its URL points to `.local/schema-development.sqlite`, a scratch
-database for creating migrations. It is separate from the running app's database,
+Install dependencies with `npm ci`. By default, Prisma CLI commands use
+`.local/schema-development.sqlite` for schema development. You can override
+this with `DATABASE_URL` in `.env`. The running app uses a separate database,
 `.local/finance-relational.sqlite` in development.
 
 Do not point `migrate dev` at an installed user's database.
@@ -126,7 +126,7 @@ raise a Prisma error; `get` returns `null` when absent.
 In `electron/api.ts`, add a type-only import:
 
 ```ts
-import type { Group } from '../generated/prisma';
+import type { Group } from '../generated/prisma/client';
 ```
 
 Add this property to the exported `operations` object, using its existing
@@ -181,7 +181,7 @@ For example, in a component under `src/app/components/group-editor/`:
 ```ts
 import { Component, inject, signal } from '@angular/core';
 import { DATABASE_CLIENT } from '../../data/database';
-import type { Group } from '../../../../generated/prisma';
+import type { Group } from '../../../../generated/prisma/client';
 
 @Component({
   selector: 'app-group-editor',

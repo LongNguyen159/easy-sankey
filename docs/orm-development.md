@@ -15,16 +15,12 @@ npm ci
 npx prisma generate
 ```
 
-For schema development, copy `.env.example` to `.env` if you do not already have
-one. It points Prisma's CLI at `.local/schema-development.sqlite`, a scratch schema
-DB, not the app's runtime data. SQLite URLs in the schema resolve relative to the
-`prisma` folder. Electron 32 contains Node 20.18; Prisma 6.19 is pinned for that
-runtime. Keep `prisma` and `@prisma/client` versions in sync.
-
-The workspace sets `prisma.pinToPrisma6` so the Prisma editor extension validates
-against this version too. If the editor reports that datasource `url` is unsupported,
-run **Prisma: Restart Language Server** (or reload the editor window). That warning
-belongs to Prisma 7; the schema URL and runtime client configuration here use Prisma 6.
+The Prisma CLI reads `prisma.config.ts` and defaults to
+`.local/schema-development.sqlite`. To use another scratch database, copy
+`.env.example` to `.env` and set `DATABASE_URL`. Relative SQLite URLs resolve
+from the directory containing `prisma.config.ts`. The Electron app opens its
+own SQLite database through the Prisma SQLite adapter. Keep the Prisma CLI,
+client, and adapter on the same version.
 
 ## Add a table
 
@@ -106,7 +102,7 @@ groups: {
 },
 ```
 
-Add `import type { Group } from '../generated/prisma'` to `electron/api.ts`, then
+Add `import type { Group } from '../generated/prisma/client'` to `electron/api.ts`, then
 add the API bindings to its `operations` object:
 
 ```ts

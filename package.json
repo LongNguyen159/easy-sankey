@@ -11,8 +11,7 @@
     "test": "node scripts/verify.cjs test",
     "check": "node scripts/verify.cjs check",
     "ng": "ng",
-    "orm:studio": "prisma studio",
-    "postinstall": "electron-builder install-app-deps"
+    "orm:studio": "prisma studio"
   },
   "private": true,
   "dependencies": {
@@ -26,7 +25,8 @@
     "@angular/platform-browser": "^22.2.6",
     "@angular/platform-browser-dynamic": "^22.2.6",
     "@angular/router": "^22.2.6",
-    "@prisma/client": "6.19.0",
+    "@prisma/adapter-better-sqlite3": "7.10.1",
+    "@prisma/client": "7.10.1",
     "arima": "^0.2.5",
     "better-sqlite3": "13.2.0",
     "cors": "^2.8.5",
@@ -63,11 +63,17 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.4.47",
-    "prisma": "6.19.0",
+    "prisma": "7.10.1",
     "tailwindcss": "^3.4.13",
     "typescript": "~6.0.3"
   },
+  "overrides": {
+    "@prisma/adapter-better-sqlite3": {
+      "better-sqlite3": "$better-sqlite3"
+    }
+  },
   "build": {
+    "npmRebuild": false,
     "appId": "com.easy-sankey.app",
     "productName": "Easy Sankey",
     "publish": {
@@ -79,7 +85,6 @@
     "files": [
       "dist/easy-sankey/**/*",
       ".electron-dist/**/*",
-      "generated/prisma/**/*",
       "prisma/migrations/**/*"
     ],
     "directories": {
