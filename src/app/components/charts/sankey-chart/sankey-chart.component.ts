@@ -291,7 +291,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
             hideOverlap: true,
           },
           nodeGap: 28,
-          lineStyle: { color: 'gradient', curveness: 0.5 }
+          lineStyle: { color: 'gradient', curveness: 0.6 }
         }
       ]
     }
