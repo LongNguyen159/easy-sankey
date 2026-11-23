@@ -10,20 +10,95 @@ import { CATEGORY_COLORS, CATEGORY_ICON_GROUPS, CategoryService } from '../../..
 import { ColorService } from '../../../services/color.service';
 import { ExpenseCategoryDetails } from '../../models';
 
+// cspell:words fastfood horiz icecream
+
 const iconLabels: Record<string, string> = {
+  ac_unit: 'Air conditioning',
+  account_balance: 'Bank',
+  attractions: 'Amusement park',
+  beach_access: 'Beach',
+  cast_for_education: 'Online classes',
   checkroom: 'Clothing',
+  confirmation_number: 'Tickets',
+  content_cut: 'Haircut',
+  cruelty_free: 'Rabbit',
+  delivery_dining: 'Food delivery',
+  directions_boat: 'Boat',
   directions_car: 'Car',
+  directions_run: 'Running',
+  downhill_skiing: 'Skiing',
   electrical_services: 'Electricity',
+  fastfood: 'Fast food',
+  featured_seasonal_and_gifts: 'Present box',
+  fitness_center: 'Gym',
+  garage_home: 'Home garage',
+  grocery: 'Groceries',
+  icecream: 'Ice cream',
   local_cafe: 'Coffee',
+  local_car_wash: 'Car wash',
+  local_fire_department: 'Gas heating',
+  local_florist: 'Flowers',
   local_gas_station: 'Fuel',
+  local_laundry_service: 'Laundromat',
+  local_mall: 'Shopping centre',
+  local_parking: 'Parking',
   local_shipping: 'Delivery',
+  local_taxi: 'Taxi',
+  mic_external_on: 'Handheld microphone',
   menu_book: 'Books',
   more_horiz: 'Other',
+  music_note_add: 'Music lessons',
+  outdoor_grill: 'Barbecue',
   phone_iphone: 'Mobile phone',
+  receipt_long: 'Receipt',
   redeem: 'Gift card',
+  precision_manufacturing: 'Robotic arm',
   self_improvement: 'Meditation',
   sports_esports: 'Gaming',
+  styler: 'Shirts',
+  theaters: 'Cinema',
+  flutter_dash: 'Bird',
+  trending_up: 'Investments',
+  volunteer_activism: 'Donations',
   water_drop: 'Water',
+  weekend: 'Sofa',
+};
+
+const iconKeywords: Record<string, string> = {
+  airline_seat_recline_extra: 'seat reservation flight upgrade business class',
+  brush: 'painting art classes crafts',
+  camera_roll: 'film photography',
+  child_care: 'daycare nursery babysitting',
+  directions_boat: 'ferry cruise',
+  diamond: 'wedding engagement ring jewellery',
+  drone: 'drone flying aerial photography',
+  emoji_nature: 'beekeeping insects wildlife',
+  cake: 'birthday cake',
+  celebration: 'party confetti graduation new year',
+  favorite_border: 'anniversary valentine wedding',
+  featured_seasonal_and_gifts: 'gift box wrapped present birthday christmas holiday',
+  flutter_dash: 'birdwatching birding',
+  health_and_safety: 'health insurance',
+  home: 'rent mortgage housing',
+  hotel: 'accommodation hostel lodging',
+  local_cafe: 'café cafe coffee shop',
+  local_gas_station: 'petrol gasoline diesel',
+  mail: 'greeting card invitation',
+  medication: 'pharmacy prescriptions',
+  mic_external_on: 'singing karaoke',
+  music_note: 'music lessons instruments',
+  outdoor_grill: 'bbq grilling cooking',
+  pets: 'vet veterinary animals',
+  planet: 'astronomy stargazing',
+  playing_cards: 'card games poker bridge',
+  potted_plant: 'gardening houseplants',
+  receipt_long: 'bills invoices taxes',
+  school: 'tuition courses',
+  self_improvement: 'yoga mindfulness',
+  subscriptions: 'streaming membership',
+  thermostat: 'heating',
+  visibility: 'optician eye exam',
+  wifi: 'internet broadband',
 };
 
 @Component({
@@ -46,7 +121,9 @@ export class CategoryEditorDialogComponent {
     return CATEGORY_ICON_GROUPS.map(group => ({
       ...group,
       icons: group.name.toLowerCase().includes(query) ? group.icons : group.icons.filter(icon =>
-        this.iconLabel(icon).toLowerCase().includes(query) || icon.replaceAll('_', ' ').includes(query)
+        this.iconLabel(icon).toLowerCase().includes(query) ||
+        icon.replaceAll('_', ' ').includes(query) ||
+        iconKeywords[icon]?.includes(query)
       ),
     })).filter(group => group.icons.length);
   });
@@ -70,6 +147,10 @@ export class CategoryEditorDialogComponent {
   protected swatch(color: typeof CATEGORY_COLORS[number]): string {
     return this.theme.isDarkMode() ? color.colorDark : color.colorLight;
   }
+
+  protected readonly previewBackground = computed(() =>
+    this.theme.isDarkMode() ? this.theme.darkBackgroundPrimary : this.theme.lightBackgroundPrimary
+  );
 
   protected iconLabel(icon: string): string {
     return iconLabels[icon] ?? icon.replaceAll('_', ' ');

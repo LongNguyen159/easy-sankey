@@ -2,7 +2,7 @@
 <form (ngSubmit)="save()">
   <mat-dialog-content class="editor" [style.--category-color]="swatch(color)">
     <div class="preview">
-      <span class="preview-icon">
+      <span class="preview-icon" [style.background-color]="previewBackground()">
         <mat-icon fontSet="material-symbols-outlined">{{ icon }}</mat-icon>
       </span>
       <span class="preview-name">{{ label.trim() || 'Category preview' }}</span>

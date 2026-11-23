@@ -4,6 +4,8 @@ import { v4 as uuid } from 'uuid';
 import { ExpenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
 import { removeSystemPrefix } from '../utils/utils';
 
+// cspell:words audiotrack fastfood giftcard horiz icecream kabaddi motorsports videocam videogame
+
 export const CATEGORY_COLORS = [
   { name: 'Blue', colorLight: '#1976d2', colorDark: '#90caf9' },
   { name: 'Navy', colorLight: '#172554', colorDark: '#2563eb' },
@@ -55,36 +57,160 @@ export const CATEGORY_COLORS = [
 
 export const CATEGORY_ICON_GROUPS = [
   {
-    name: 'General',
-    icons: ['category', 'label', 'star', 'favorite', 'flag', 'bolt', 'more_horiz'],
-  },
-  {
-    name: 'Home & bills',
-    icons: ['home', 'chair', 'bed', 'apartment', 'build', 'electrical_services', 'water_drop', 'wifi', 'phone_iphone', 'cleaning_services', 'yard'],
-  },
-  {
     name: 'Food & drink',
-    icons: ['grocery', 'restaurant', 'local_cafe', 'fastfood', 'local_pizza', 'bakery_dining', 'icecream', 'wine_bar', 'lunch_dining'],
+    icons: [
+      'grocery', 'shopping_basket', 'restaurant', 'restaurant_menu', 'lunch_dining', 'fastfood',
+      'local_pizza', 'ramen_dining', 'dinner_dining', 'takeout_dining', 'bakery_dining',
+      'breakfast_dining', 'egg', 'rice_bowl', 'soup_kitchen', 'set_meal', 'kebab_dining',
+      'local_cafe', 'emoji_food_beverage', 'icecream', 'cookie', 'nutrition',
+      'local_bar', 'wine_bar', 'liquor', 'sports_bar', 'local_drink',
+      'delivery_dining', 'flatware',
+    ],
   },
   {
-    name: 'Transport & travel',
-    icons: ['directions_car', 'train', 'directions_bus', 'directions_bike', 'local_gas_station', 'local_taxi', 'local_parking', 'flight', 'luggage', 'hotel', 'beach_access'],
+    name: 'Home & utilities',
+    icons: [
+      'home', 'apartment', 'real_estate_agent', 'key', 'chair', 'weekend',
+      'bed', 'table_restaurant', 'light', 'electrical_services', 'bolt', 'water_drop',
+      'local_fire_department', 'thermostat', 'ac_unit', 'wifi', 'router', 'cleaning_services',
+      'local_laundry_service', 'vacuum', 'dry_cleaning', 'build', 'handyman', 'plumbing',
+      'format_paint', 'home_repair_service', 'yard', 'grass',
+      'garage_home',
+    ],
   },
   {
-    name: 'Health, family & pets',
-    icons: ['medical_services', 'medication', 'dentistry', 'visibility', 'fitness_center', 'self_improvement', 'spa', 'child_care', 'family_restroom', 'pets'],
+    name: 'Transport',
+    icons: [
+      'directions_car', 'electric_car', 'car_rental', 'car_repair', 'local_car_wash', 'local_gas_station',
+      'ev_station', 'local_parking', 'toll', 'local_taxi', 'directions_bus', 'train',
+      'subway', 'tram', 'directions_railway', 'directions_bike', 'pedal_bike', 'electric_scooter',
+      'two_wheeler', 'commute', 'directions_boat', 'airport_shuttle', 'confirmation_number',
+      'moped', 'tire_repair', 'car_tag',
+    ],
   },
   {
-    name: 'Shopping & occasions',
-    icons: ['shopping_cart', 'shopping_bag', 'checkroom', 'styler', 'redeem', 'cake', 'celebration', 'local_florist', 'local_shipping', 'volunteer_activism'],
+    name: 'Travel & places',
+    icons: [
+      'flight', 'luggage', 'hotel', 'cabin', 'camping',
+      'rv_hookup', 'beach_access', 'pool', 'map', 'public', 'attractions',
+      'museum', 'park', 'castle', 'festival', 'tour',
+      'travel_explore', 'nature_people', 'landscape',
+      'flight_takeoff', 'airline_seat_recline_extra', 'church', 'mosque', 'synagogue', 'temple_buddhist',
+    ],
   },
   {
-    name: 'Hobbies & entertainment',
-    icons: ['palette', 'movie', 'music_note', 'headphones', 'sports_esports', 'sports_soccer', 'menu_book', 'photo_camera', 'forest', 'hiking', 'theater_comedy'],
+    name: 'Shopping',
+    icons: [
+      'shopping_cart', 'shopping_bag', 'storefront', 'store', 'local_mall', 'checkroom',
+      'styler', 'apparel', 'laundry', 'eyeglasses', 'watch',
+      'local_shipping', 'package',
+      'inventory_2', 'construction', 'hardware',
+      'backpack', 'local_convenience_store', 'point_of_sale',
+    ],
   },
   {
-    name: 'Work, school & money',
-    icons: ['work', 'school', 'devices', 'laptop_mac', 'savings', 'account_balance', 'credit_card', 'receipt_long', 'payments', 'trending_up', 'security'],
+    name: 'Gifts & special occasions',
+    icons: [
+      'featured_seasonal_and_gifts', 'redeem', 'cake', 'celebration', 'party_mode', 'local_florist',
+      'diamond', 'favorite_border', 'mail', 'event_available', 'award_star',
+    ],
+  },
+  {
+    name: 'Health & personal care',
+    icons: [
+      'medical_services', 'local_hospital', 'medication', 'medication_liquid', 'dentistry', 'visibility',
+      'hearing', 'stethoscope', 'vaccines', 'psychology', 'emergency', 'health_and_safety',
+      'healing', 'spa', 'self_care', 'content_cut', 'face', 'bathtub',
+      'accessibility_new', 'physical_therapy', 'pill', 'cardiology', 'outpatient', 'sauna',
+    ],
+  },
+  {
+    name: 'Family & pets',
+    icons: [
+      'child_care', 'family_restroom', 'stroller', 'crib', 'toys', 'smart_toy',
+      'baby_changing_station', 'pets', 'pet_supplies', 'food_bank',
+      'cruelty_free', 'groups', 'elderly',
+    ],
+  },
+  {
+    name: 'Sports & outdoors',
+    icons: [
+      'fitness_center', 'exercise', 'self_improvement', 'directions_run', 'hiking', 'forest',
+      'kayaking', 'rowing', 'surfing', 'sailing', 'scuba_diving',
+      'downhill_skiing', 'snowboarding', 'ice_skating', 'skateboarding', 'sports_soccer', 'sports_basketball',
+      'sports_tennis', 'sports_volleyball', 'sports_golf', 'sports_baseball', 'sports_cricket', 'sports_hockey',
+      'sports_martial_arts', 'sports_gymnastics', 'sports_motorsports', 'sports',
+      'sports_handball', 'sports_rugby', 'sports_kabaddi', 'roller_skating', 'golf_course',
+      'sports_football', 'sports_mma', 'nordic_walking', 'directions_walk', 'paragliding',
+      'kitesurfing', 'snowshoeing', 'sledding', 'terrain', 'explore',
+    ],
+  },
+  {
+    name: 'Arts, crafts & photography',
+    icons: [
+      'palette', 'brush', 'draw', 'architecture', 'ink_pen', 'stylus',
+      'format_color_fill', 'gesture', 'draw_abstract', 'colorize', 'texture',
+      'photo_camera', 'camera_alt', 'camera_roll', 'photo_library', 'photo_prints', 'filter_frames',
+      'videocam', 'precision_manufacturing',
+    ],
+  },
+  {
+    name: 'Music & performing arts',
+    icons: [
+      'music_note', 'music_note_add', 'piano', 'mic', 'mic_external_on', 'headphones',
+      'speaker', 'graphic_eq', 'album', 'queue_music', 'library_music', 'music_video',
+      'radio', 'equalizer', 'theater_comedy', 'masks',
+    ],
+  },
+  {
+    name: 'Games, books & entertainment',
+    icons: [
+      'sports_esports', 'videogame_asset', 'casino', 'extension', 'chess', 'chess_pawn',
+      'playing_cards', 'crossword', 'strategy', 'joystick', 'stadia_controller', 'emoji_events',
+      'comic_bubble', 'menu_book', 'book', 'library_books', 'auto_stories', 'book_2',
+      'edit_note', 'collections_bookmark', 'movie', 'theaters', 'live_tv',
+    ],
+  },
+  {
+    name: 'Cooking, gardening & science hobbies',
+    icons: [
+      'skillet', 'kitchen', 'outdoor_grill', 'blender', 'fireplace',
+      'potted_plant', 'compost', 'agriculture', 'emoji_nature', 'flutter_dash',
+      'robot_2', 'drone', 'rocket_launch', 'planet', 'mountain_flag',
+    ],
+  },
+  {
+    name: 'Technology & subscriptions',
+    icons: [
+      'devices', 'laptop_mac', 'computer', 'desktop_windows', 'monitor', 'tablet_mac',
+      'phone_iphone', 'smartphone', 'print', 'keyboard', 'mouse', 'memory',
+      'hard_drive', 'cloud', 'dns', 'terminal', 'code', 'podcasts',
+      'audiotrack', 'newspaper', 'subscriptions',
+    ],
+  },
+  {
+    name: 'Work & education',
+    icons: [
+      'work', 'business_center', 'badge', 'school', 'history_edu', 'science',
+      'calculate', 'edit', 'design_services', 'co_present', 'cast_for_education', 'workspace_premium',
+      'business', 'domain',
+    ],
+  },
+  {
+    name: 'Money & giving',
+    icons: [
+      'savings', 'account_balance', 'account_balance_wallet', 'credit_card', 'receipt_long', 'payments',
+      'euro', 'currency_exchange', 'trending_up', 'monitoring', 'request_quote', 'price_check',
+      'paid', 'percent', 'sell', 'contract', 'security', 'verified_user',
+      'gavel', 'volunteer_activism', 'diversity_1',
+    ],
+  },
+  {
+    name: 'General',
+    icons: [
+      'category', 'label', 'star', 'favorite', 'flag', 'more_horiz',
+      'calendar_month', 'schedule', 'event', 'repeat', 'bookmark', 'check_circle',
+    ],
   },
 ];
 
