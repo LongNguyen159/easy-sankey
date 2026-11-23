@@ -221,8 +221,28 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     const isDarkMode = this.colorService.isDarkMode();
     const textColor = isDarkMode ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary;
     const { nodes: displayedNodes, links } = this.displayedData;
-    const nodes = displayedNodes.map(node => {
+    const targetsBySource = new Map<string, string[]>();
+    for (const { source, target } of links) {
+      const targets = targetsBySource.get(source) ?? [];
+      targets.push(target);
+      targetsBySource.set(source, targets);
+    }
+
+    const colorsByNode = new Map<string, string>();
+    for (const node of displayedNodes) {
       const color = this.categoryService.color(node.categoryId ?? node.name, isDarkMode);
+      if (color) colorsByNode.set(node.name, color);
+    }
+
+    // Follow the displayed flows so nested entries inherit their category in either view.
+    for (const [source, color] of colorsByNode) {
+      for (const target of targetsBySource.get(source) ?? []) {
+        if (!colorsByNode.has(target)) colorsByNode.set(target, color);
+      }
+    }
+
+    const nodes = displayedNodes.map(node => {
+      const color = colorsByNode.get(node.name);
       return color ? { ...node, itemStyle: { color } } : node;
     });
 
