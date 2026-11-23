@@ -66,17 +66,17 @@
                         <small>• This month</small>
                       }
                     </span>
+                  </div>
+                  <div class="budget-progress-detail">
                     <span class="budget-progress-status">
                       @if (remaining < 0) {
-                        - {{ -remaining | currency: currency }}
+                        {{ -remaining | currency: currency }} over
                       } @else if (remaining > 0) {
-                        {{ remaining | currency: currency }}
+                        {{ remaining | currency: currency }} left
                       } @else {
                         On budget
                       }
                     </span>
-                  </div>
-                  <div class="budget-progress-detail">
                     <progress max="1" [value]="remaining <= 0 ? 1 : envelope.spent / envelope.budget"
                       [attr.aria-label]="envelope.name" [attr.aria-valuetext]="spent + ' spent of ' + limit"></progress>
                     <span class="budget-progress-amount text-neutral-400">{{ spent }} / {{ limit }}</span>

@@ -105,6 +105,10 @@
   margin-block-start: 0.25rem;
   font-size: 0.8125rem;
 
+  .budget-progress-status {
+    justify-self: start;
+  }
+
   .budget-progress-amount {
     text-align: end;
   }
