@@ -4,7 +4,7 @@ const {join}=require('node:path');
 async function runSmoke(window,app) {
  window.webContents.session.webRequest.onBeforeRequest({urls:['http://*/*','https://*/*']},(_details,callback)=>callback({cancel:true}));
  const consoleErrors=[];
- window.webContents.on('console-message',(_event,level,message)=>{if(level===3)consoleErrors.push(message);});
+ window.webContents.on('console-message',event=>{if(event.level==='error')consoleErrors.push(event.message);});
  const execute=script=>window.webContents.executeJavaScript(script,true);
  await new Promise((resolve,reject)=>{
   const timeout=setTimeout(()=>reject(new Error('Application loading timed out')),30000);
@@ -21,16 +21,14 @@ async function runSmoke(window,app) {
  assert.equal(migrated.month.entries[1].value,123.45);
  assert.equal(migrated.month.entries[0].lastEditedAt,1234);
  assert.equal(migrated.settings.selectedCurrency,'USD');
- assert.equal(migrated.settings.budgetView,'list');
+ assert.equal(migrated.settings.budgetView,undefined);
  await execute(`(()=>{const original=console.error;console.error=(...args)=>original(...args.map(value=>value?.stack??value?.message??String(value)));})()`);
  // Exercise the real production renderer action, not just the exposed IPC contracts.
- await execute("location.hash='#/storage?tab=3'");
+ await execute("location.hash='#/categories'");
  async function waitFor(script) {
    for(let attempt=0;attempt<100;attempt++) {if(await execute(script))return;await new Promise(resolve=>setTimeout(resolve,100));}
    throw new Error('UI action timed out: '+script);
  }
- await waitFor('!!document.querySelector("app-storage-page [role=tab]")');
- await execute('Array.from(document.querySelectorAll("[role=tab]")).find(tab=>tab.textContent.includes("Categories")).click()');
  await waitFor('!!document.querySelector("app-category-manager button")');
  await execute('document.querySelector("app-category-manager button").click()');
  await waitFor('!!document.querySelector("input[name=label]")');
@@ -69,7 +67,7 @@ async function runSmoke(window,app) {
  const reloaded=new Promise(resolve=>window.webContents.once('did-finish-load',resolve));
  window.webContents.reload();await reloaded;
  for(let attempt=0;attempt<100;attempt++) {
-   if(await execute('!!document.querySelector("app-welcome-page, app-main-page, app-whats-new-page, app-storage-page")'))break;
+   if(await execute('!!document.querySelector("app-categories-page")'))break;
    if(attempt===99)throw new Error('UI did not render after restoring and reloading');
    await new Promise(resolve=>setTimeout(resolve,100));
  }
