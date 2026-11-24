@@ -54,6 +54,20 @@ To include DevTools, use `npm run deploy-mac -- --devtools`.
 GitHub Actions builds and tests Windows x64 and Apple Silicon Mac installers on
 pushes to `main`. You can also run **Build Electron App** from the Actions tab.
 
+
+
+### Opening Easy Sankey on macOS
+macOS may say Easy Sankey can’t be opened because this release isn’t signed with an Apple Developer ID. If you downloaded it from the official GitHub repository, you can move it to Applications, then run this command in Terminal to remove the quarantine flag from Easy Sankey only:
+
+
+```
+xattr -dr com.apple.quarantine "/Applications/Easy Sankey.app"
+```
+
+
+Then open the app as normal
+
+
 ## Code scaffolding
 
 Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
