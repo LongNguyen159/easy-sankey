@@ -1,27 +1,25 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavbarComponent } from '../../components/navbar/navbar.component';
-import { ColorService } from '../../services/color.service';
-import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterModule } from '@angular/router';
 import { UiService } from '../../services/ui.service';
 import { MatCardModule } from '@angular/material/card';
 import { RoutePath } from '../../components/models';
+import { ReleaseFeaturesComponent } from '../../components/release-features/release-features.component';
 
 /**
  * TODO: UPDATE THIS PAGE EVERY TIME A NEW RELEASE IS MADE.
  */
 @Component({
     selector: 'app-whats-new-page',
-    imports: [NavbarComponent, CommonModule, MatButtonModule,
-        RouterModule, MatCardModule
+    imports: [NavbarComponent, MatButtonModule,
+        RouterModule, MatCardModule, ReleaseFeaturesComponent
     ],
     templateUrl: './whats-new-page.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './whats-new-page.component.scss'
 })
 export class WhatsNewPageComponent {
-  colorService = inject(ColorService)
   uiService = inject(UiService)
 
   RoutePath = RoutePath

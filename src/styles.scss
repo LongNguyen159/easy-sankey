@@ -99,6 +99,10 @@ html, body, h1, h2, h3, h4, h5, h6, p, span, button, input, textarea, select, a,
   --app-budget-progress-track: #{mat.get-theme-color($theme, surface-container-highest)};
   --app-budget-progress-muted: #{mat.get-theme-color($theme, on-surface-variant)};
 
+  ngx-mat-select-search {
+    --mat-sys-surface-container: #{mat.get-theme-color($theme, surface-container)};
+  }
+
   @include mat.tooltip-overrides((
     container-color: mat.get-theme-color($theme, surface-container-high),
     supporting-text-color: mat.get-theme-color($theme, on-surface),

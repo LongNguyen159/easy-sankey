@@ -7,11 +7,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { UiService } from '../../services/ui.service';
 import { ColorService } from '../../services/color.service';
 import { RoutePath } from '../../components/models';
+import { ReleaseFeaturesComponent } from '../../components/release-features/release-features.component';
 
 @Component({
     selector: 'app-highlighted-features-page',
     imports: [NavbarComponent, CommonModule, MatButtonModule,
-        RouterModule, MatCardModule
+        RouterModule, MatCardModule, ReleaseFeaturesComponent
     ],
     templateUrl: './highlighted-features-page.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
