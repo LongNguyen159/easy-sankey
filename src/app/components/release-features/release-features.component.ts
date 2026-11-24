@@ -1,11 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { ColorService } from '../../services/color.service';
+
+export interface FeaturePreview {
+  title: string;
+  description: string;
+  image: string;
+  alt: string;
+  withBorder?: boolean;
+}
 
 @Component({
   selector: 'app-release-features',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @for (feature of features; track feature.image) {
+    @for (feature of features(); track feature.image) {
       <section class="feature-card">
         <div class="feature-copy">
           <h2 class="mb-3 text-3xl font-bold">{{ feature.title }}</h2>
@@ -13,9 +21,9 @@ import { ColorService } from '../../services/color.service';
         </div>
         <img
           [class.with-border]="feature.withBorder"
-          [src]="'assets/images/whats-new/' + feature.image + '-' + (colorService.isDarkMode() ? 'dark' : 'light') + '.png'"
+          [src]="'assets/images/' + feature.image + '-' + (colorService.isDarkMode() ? 'dark' : 'light') + '.png'"
           [alt]="feature.alt"
-          loading="lazy"
+          [loading]="$first ? 'eager' : 'lazy'"
         >
       </section>
     }
@@ -71,26 +79,5 @@ import { ColorService } from '../../services/color.service';
 })
 export class ReleaseFeaturesComponent {
   protected readonly colorService = inject(ColorService);
-
-  protected readonly features = [
-    {
-      title: 'Custom Categories',
-      description: 'Open Categories from the menu to create or edit expense categories with your own names, colours and icons.',
-      image: 'categories',
-      alt: 'Edit category dialog with a live preview, colour palette and icon picker',
-    },
-    {
-      title: 'Spending Budgets',
-      description: 'Assign expenses to a budget in Edit input. In the month’s Budgets section, see how much you have left or how far you’re over.',
-      image: 'budgets',
-      withBorder: true,
-      alt: 'Monthly budget radar chart and progress bars comparing spending with three budget limits',
-    },
-    {
-      title: 'Import and Export',
-      description: 'Go to Settings → App data to export a full JSON backup or import one to restore your data.',
-      image: 'backup',
-      alt: 'App data section in Settings with Export full backup and Import full backup buttons',
-    },
-  ];
+  readonly features = input.required<readonly FeaturePreview[]>();
 }
