@@ -21,10 +21,11 @@ describe('monthly envelope editor', () => {
     await TestBed.configureTestingModule({imports:[EnvelopeDialogComponent], providers:[
       provideNoopAnimations(), ...provideTestDatabase(),
       {provide:DataService,useValue:{saveEnvelopes:save}},
-      {provide:MatDialog,useValue:{open}},
       {provide:MAT_DIALOG_DATA,useValue:{...emptyMonth,month:'2026-11',envelopes:[]}},
       {provide:MatDialogRef,useValue:{close,disableClose:false}},
-    ]}).compileComponents();
+    ]})
+      .overrideProvider(MatDialog, {useValue:{open}})
+      .compileComponents();
     const fixture=TestBed.createComponent(EnvelopeDialogComponent);
     const editor=fixture.componentInstance;
     editor.add();
