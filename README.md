@@ -2,11 +2,6 @@
 Manage your finance using Sankey chart. A great way to easily create Sankey, setup budgets, compare income flow/expenses throughout times.
 
 
-
-
-
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.3.
-Packaged with Electron Builder.
 Edit Built App configs (windows size etc.) at `main.js` in root directory
 
 ## Budgets
