@@ -77,26 +77,43 @@ function openDatabase(filename, { onQuery } = {}) {
       { timeout: 30000 },
     );
   }
-  async function getMonth(db, month) {
-    const row = await db.month.findUnique({
-      where: { id: month },
-      include: {
-        envelopes: { orderBy: { position: "asc" } },
-        entries: {
-          orderBy: { position: "asc" },
-          include: { parent: { select: { name: true } } },
-        },
-      },
+  async function readMonths(db, monthIds) {
+    const months = await db.month.findMany({
+      where: { id: monthIds },
+      orderBy: { id: "asc" },
     });
-    return row
-      ? {
-          month: row.id,
-          lastUpdated: row.lastUpdated ?? "-",
-          entries: row.entries.map(entryDto),
-          envelopes: row.envelopes.map(envelopeDto),
-          revision: row.revision,
-        }
-      : null;
+    if (!months.length) return [];
+
+    // Filter each table by month so Prisma never has to bind a list of relation keys.
+    const entries = await db.entry.findMany({
+      where: { monthId: monthIds },
+      orderBy: [{ monthId: "asc" }, { position: "asc" }],
+    });
+    const envelopes = await db.envelope.findMany({
+      where: { monthId: monthIds },
+      orderBy: [{ monthId: "asc" }, { position: "asc" }],
+    });
+    const monthsById = new Map(months.map((row) => [row.id, {
+      month: row.id,
+      lastUpdated: row.lastUpdated ?? "-",
+      entries: [],
+      envelopes: [],
+      revision: row.revision,
+    }]));
+    const entriesByMonth = new Map(months.map((row) => [row.id, new Map()]));
+    for (const row of entries)
+      entriesByMonth.get(row.monthId).set(row.id, row);
+    for (const row of entries) {
+      const parent = entriesByMonth.get(row.monthId).get(row.parentEntryId);
+      monthsById.get(row.monthId).entries.push(entryDto({ ...row, parent }));
+    }
+    for (const row of envelopes)
+      monthsById.get(row.monthId).envelopes.push(envelopeDto(row));
+    return [...monthsById.values()];
+  }
+  async function getMonth(db, month) {
+    const [row] = await readMonths(db, month);
+    return row ?? null;
   }
   async function relation(db, item, month, template = false) {
     if (!item.source)
@@ -991,27 +1008,8 @@ function openDatabase(filename, { onQuery } = {}) {
           from > to
         )
           throw new Error("Invalid range.");
-        const revision = (await state()).revision;
-        const months = await prisma.month.findMany({
-          where: { id: { gte: from, lte: to } },
-          orderBy: { id: "asc" },
-          include: {
-            envelopes: { orderBy: { position: "asc" } },
-            entries: {
-              orderBy: { position: "asc" },
-              include: { parent: { select: { name: true } } },
-            },
-          },
-        });
-        return outcome(
-          prisma,
-          months.map((row) => ({
-            month: row.id,
-            lastUpdated: row.lastUpdated ?? "-",
-            entries: row.entries.map(entryDto),
-            envelopes: row.envelopes.map(envelopeDto),
-            revision: row.revision,
-          })),
+        return prisma.$transaction(async (db) =>
+          outcome(db, await readMonths(db, { gte: from, lte: to })),
         );
       },
       save: (p) =>

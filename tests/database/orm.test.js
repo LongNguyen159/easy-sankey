@@ -62,6 +62,48 @@ test("actual ORM tables have columns and foreign keys, with no JSON persistence 
       db.close();
     }
   }));
+test("month ranges load hundreds of parent relations across months", () =>
+  fixture(async ({ store, file }) => {
+    const db = new Database(file);
+    const months = ["2025-04", "2025-05"];
+    try {
+      const insertMonth = db.prepare("INSERT INTO finance_months (id) VALUES (?)");
+      const insertEntry = db.prepare(`
+        INSERT INTO finance_entries
+          (month_id, id, type, name, normalized_name, amount, position, parent_entry_id)
+        VALUES (?, ?, 'expense', ?, ?, 1, ?, ?)
+      `);
+      db.transaction(() => {
+        for (const month of months) {
+          insertMonth.run(month);
+          for (let i = 0; i < 300; i++) {
+            const parentId = `parent-${i}`;
+            const parentName = `${month} parent ${i}`;
+            const childId = `child-${i}`;
+            insertEntry.run(month, parentId, parentName, parentName, i * 2, null);
+            insertEntry.run(month, childId, childId, childId, i * 2 + 1, parentId);
+          }
+        }
+      })();
+    } finally {
+      db.close();
+    }
+
+    const { value } = await store.crud.months.range();
+    assert.deepEqual(value.map((row) => row.month), months);
+    for (const row of value) {
+      assert.equal(row.entries.length, 600);
+      for (let i = 0; i < 300; i++) {
+        assert.equal(row.entries[i * 2 + 1].id, `child-${i}`);
+        assert.equal(row.entries[i * 2 + 1].source, `${row.month} parent ${i}`);
+      }
+    }
+    assert.deepEqual(
+      (await store.crud.months.range({ from: months[1], to: months[1] })).value,
+      [value[1]],
+    );
+  }));
+
 test("partial financial edits preserve other entries, precision and scoped IDs", () =>
   fixture(async ({ store }) => {
     await save(store, "2025-04", [entry("a", 1.234567), entry("b", 2)]);
