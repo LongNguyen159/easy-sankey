@@ -58,72 +58,74 @@
         <mat-icon fontSet="material-symbols-outlined">{{ editMode() ? 'check' : 'edit' }}</mat-icon>{{ editMode() ? 'Done' : 'Edit' }}
       </button>
       @if (editMode()) {
-        <mat-checkbox aria-label="Select all matching entries" [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
-          (change)="selectAll($event.checked)"></mat-checkbox>
-        <span aria-live="polite" class="bg-gray-200 p-2 px-3 rounded-full">{{ selectedEntryIds.size }} selected</span>
-        <button mat-button type="button" [disabled]="bulkBusy()"
-          [matMenuTriggerFor]="envelopeMenu">Add to budget</button>
-        <mat-menu #envelopeMenu="matMenu">
-          @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
-            <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
-              {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
-            </button>
-          }
-          @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
-          <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
-            <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
+        <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
+          [matTooltip]="selectedEntryIds.size ? (allSelected ? 'Clear selection' : 'Select all') : ''"
+          (change)="selectAll($event.checked)">
+          <span aria-live="polite" class="whitespace-nowrap">{{ selectedEntryIds.size ? selectedEntryIds.size + ' selected' : 'Select all' }}</span>
+        </mat-checkbox>
+        @if (selectedEntryIds.size) {
+          <button mat-button type="button" [disabled]="bulkBusy()" (click)="copyLinks()">
+            <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>Copy
           </button>
-          <!-- <button mat-menu-item type="button" (click)="manageEnvelopes()">
-            <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
-          </button> -->
-          <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
-            <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
+          <button mat-button type="button" [disabled]="bulkBusy() || !selectedExpenseCount" [matMenuTriggerFor]="envelopeMenu">
+            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>Add to budget
           </button>
-        </mat-menu>
-        <button mat-icon-button type="button" aria-label="More selection actions" matTooltip="More actions" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
-          <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>
-        </button>
-        <mat-menu #selectionActions="matMenu">
-          @if (selectedEntryIds.size) {
-            <button mat-menu-item type="button" [disabled]="bulkBusy()" (click)="copyLinks()">
-              <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>Copy selected
+          <mat-menu #envelopeMenu="matMenu">
+            @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
+              <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
+                {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+              </button>
+            }
+            @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
+            <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
             </button>
-          }
-          @if (selectedAssignedExpenseCount) {
-            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
-              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+            <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
+              <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
             </button>
-            <mat-divider></mat-divider>
-          }
-          <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
-            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+          </mat-menu>
+          <button mat-button type="button" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
+            <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>More
           </button>
-        </mat-menu>
+          <mat-menu #selectionActions="matMenu">
+            @if (selectedAssignedExpenseCount) {
+              <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
+                <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+              </button>
+              <mat-divider></mat-divider>
+            }
+            <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
+              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+            </button>
+          </mat-menu>
+        }
       }
     </div>
-    <div class="ml-auto shrink-0">
-      <button mat-button type="button" [matMenuTriggerFor]="entryViewMenu">
-        <mat-icon fontSet="material-symbols-outlined">view_list</mat-icon>
-        View
-      </button>
-      <mat-menu #entryViewMenu="matMenu">
-        <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'costType'"
-          (click)="setEntryView('costType')">
-          <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'costType' ? 'check' : 'view_list' }}</mat-icon>
-          Cost type
+    @if (!editMode()) {
+      <div class="ml-auto shrink-0">
+        <button mat-button type="button" [matMenuTriggerFor]="entryViewMenu">
+          <mat-icon fontSet="material-symbols-outlined">view_list</mat-icon>
+          View
         </button>
-        <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'category'"
-          (click)="setEntryView('category')">
-          <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'check' : 'category' }}</mat-icon>
-          Category
-        </button>
-        <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'budget'"
-          (click)="setEntryView('budget')">
-          <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'budget' ? 'check' : 'account_balance_wallet' }}</mat-icon>
-          Budget
-        </button>
-      </mat-menu>
-    </div>
+        <mat-menu #entryViewMenu="matMenu">
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'costType'"
+            (click)="setEntryView('costType')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'costType' ? 'check' : 'view_list' }}</mat-icon>
+            Cost type
+          </button>
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'category'"
+            (click)="setEntryView('category')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'check' : 'category' }}</mat-icon>
+            Category
+          </button>
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'budget'"
+            (click)="setEntryView('budget')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'budget' ? 'check' : 'account_balance_wallet' }}</mat-icon>
+            Budget
+          </button>
+        </mat-menu>
+      </div>
+    }
   </div>
 
   </div>
