@@ -300,7 +300,9 @@ export class DataService {
         if (changed && !this.isDemo()) {
             if(userDefinedLinks.length || savedSource?.envelopes?.length) {const saved=(await this.database.command(()=>this.database.api.months.save({month,entries:userDefinedLinks,lastUpdated:lastUpdated === '-' ? '-' : new Date(lastUpdated).toISOString(),expectedRevision:savedSource?.revision??null,history:history?Object.fromEntries(Object.entries(history).filter(([id])=>userDefinedLinks.some(entry=>entry.id===id))):undefined}))).value;this.sources.set(month,saved);}
             else if(savedSource) {(await this.database.command(()=>this.database.api.months.remove({month}))).value;this.sources.delete(month);}
-            this.logService.commitPending(month,history);
+            const entryIds = new Set(userDefinedLinks.map(entry => entry.id));
+            const removedIds = savedSource?.entries.filter(entry => !entryIds.has(entry.id)).map(entry => entry.id);
+            this.logService.commitPending(month, history, removedIds);
             this.multiMonthEntries$.next(Object.fromEntries(Object.entries(updatedMonths).filter(([,value])=>value.rawInput.length || value.envelopes?.length)));
             this.dataSaved$.next(true);
         }
@@ -334,7 +336,8 @@ export class DataService {
       const data=this.project(saved);this.monthlyData={...this.monthlyData,[month]:data};
       this.multiMonthEntries$.next(this.monthlyData);
       if(this.processedSingleMonthEntries$.value.month===month)this.processedSingleMonthEntries$.next(data);
-      await this.logService.reload();this.dataSaved$.next(true);
+      this.logService.invalidateEntries(month, [updated.id]);
+      this.dataSaved$.next(true);
     }
 
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,

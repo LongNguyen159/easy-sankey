@@ -28,13 +28,20 @@
             @if (isHistoryVisible) {
               <div class="flex flex-col gap-1 mr-4 break-words">
                 <mat-divider></mat-divider>
-                @if(!logService.getLogs(userSingleMonthEntries.month, entryToUpdate.id) || logService.getLogs(userSingleMonthEntries.month, entryToUpdate.id).length == 0) {
-                  <p class="m-0!">No changes in the past 30 days.</p>
-                }
-                @for (log of logService.getLogs(userSingleMonthEntries.month, entryToUpdate.id); track $index) {
-                  <p class="m-0!">
-                    <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
-                  </p>
+                @let history = logService.getLogs(userSingleMonthEntries.month, entryToUpdate.id) | async;
+                @if (history?.status === 'loading') {
+                  <p class="m-0!" role="status">Loading...</p>
+                } @else if (history?.status === 'error') {
+                  <p class="m-0!" role="status">Could not load recent changes.</p>
+                  <button type="button" mat-button class="self-start" (click)="logService.retryLogs(userSingleMonthEntries.month, entryToUpdate.id)">Retry</button>
+                } @else if (history?.status === 'loaded') {
+                  @for (log of history.items; track $index) {
+                    <p class="m-0!">
+                      <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
+                    </p>
+                  } @empty {
+                    <p class="m-0!">No changes in the past 30 days.</p>
+                  }
                 }
               </div>
             }
