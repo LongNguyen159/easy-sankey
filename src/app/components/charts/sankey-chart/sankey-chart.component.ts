@@ -57,12 +57,42 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
   sankeyOption: EChartsOption = this.getBaseChartOptions()
   sankeyMerge: EChartsOption = {}
+  fitChartHeight = 0;
+  readonly minimumChartHeight = 240;
+  manualChartHeight?: number;
+  private chartResize?: { pointerId: number; startY: number; startHeight: number };
+  private readonly nodeGap = 28;
   private highlightedOptions?: EChartsOption;
   showEnvelopes = true;
   get displayedData(): SankeyData {
     return (!this.showEnvelopes ? this.sankeyData?.categoryView : undefined) ?? this.sankeyData ?? {nodes: [], links: []};
   }
   toggleEnvelopes() { this.showEnvelopes = !this.showEnvelopes; this.updateSankeyChart(); }
+
+  startChartResize(event: PointerEvent, startHeight: number): void {
+    if (event.button !== 0 || this.chartResize) return;
+
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.chartResize = { pointerId: event.pointerId, startY: event.clientY, startHeight };
+  }
+
+  moveChartResize(event: PointerEvent): void {
+    const resize = this.chartResize;
+    if (resize?.pointerId !== event.pointerId) return;
+
+    this.resizeChart(resize.startHeight + event.clientY - resize.startY);
+  }
+
+  endChartResize(event: PointerEvent): void {
+    if (this.chartResize?.pointerId === event.pointerId) {
+      this.chartResize = undefined;
+    }
+  }
+
+  resizeChart(height: number): void {
+    this.manualChartHeight = Math.max(this.minimumChartHeight, height);
+  }
+
   private nodeLabel(node: SankeyNode): string {
     return node.displayName ?? this.categoryService.label(node.categoryId ?? node.name);
   }
@@ -228,6 +258,10 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
       targetsBySource.set(source, targets);
     }
 
+    this.fitChartHeight = this.orientation === 'horizontal'
+      ? this.getFitChartHeight(displayedNodes, links, targetsBySource)
+      : 0;
+
     const colorsByNode = new Map<string, string>();
     for (const node of displayedNodes) {
       const color = this.categoryService.color(node.categoryId ?? node.name, isDarkMode);
@@ -290,14 +324,46 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
           labelLayout: {
             hideOverlap: true,
           },
-          nodeGap: 28,
+          nodeGap: this.nodeGap,
           lineStyle: { color: 'gradient', curveness: 0.6 }
         }
       ]
     }
   }
 
+  private getFitChartHeight(
+    nodes: SankeyNode[],
+    links: SankeyData['links'],
+    targetsBySource: Map<string, string[]>,
+  ): number {
+    const incoming = new Map(nodes.map(node => [node.name, 0]));
+    for (const { target } of links) {
+      incoming.set(target, (incoming.get(target) ?? 0) + 1);
+    }
+
+    // With left alignment, ECharts places a node after all of its sources.
+    let column = nodes.filter(node => incoming.get(node.name) === 0).map(node => node.name);
+    let largestColumn = 0;
+    while (column.length > 0) {
+      largestColumn = Math.max(largestColumn, column.length);
+      const nextColumn: string[] = [];
+      for (const source of column) {
+        for (const target of targetsBySource.get(source) ?? []) {
+          const remaining = incoming.get(target)! - 1;
+          incoming.set(target, remaining);
+          if (remaining === 0) {
+            nextColumn.push(target);
+          }
+        }
+      }
+      column = nextColumn;
+    }
   
+    const nodeSpace = 16;
+    const plotHeight = largestColumn * nodeSpace + Math.max(0, largestColumn - 1) * this.nodeGap;
+    // ECharts reserves 5% at both the top and bottom of the canvas.
+    return Math.ceil(plotHeight / 0.9);
+  }
 
 
   //#region Helper Functions

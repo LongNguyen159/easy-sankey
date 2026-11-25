@@ -1,0 +1,11 @@
+.dialog-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline-end: 16px;
+}
+
+mat-dialog-content {
+  max-height: none;
+}

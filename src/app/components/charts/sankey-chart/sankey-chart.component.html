@@ -67,17 +67,29 @@
     </div>
 }
 
-<div
-    echarts
-    [options]="sankeyOption"
-    [merge]="sankeyMerge"
-    [style]="'height: ' + chartHeight"
-    (chartInit)="onChartInit($event)"
-    (chartFinished)="applyCategoryEmphasis()"
-></div>
 <h3 class="font-bold flex flex-row items-center gap-2">
     <span>Surplus: </span>
     <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-[5px]">
         {{ parseLocaleStringToNumber(remainingBalance) | currency: currencyService.getSelectedCurrency() }}
     </span>
 </h3>
+<div #chartContainer class="sankey-resize"
+    [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
+    [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
+    <div
+        echarts
+        class="sankey-canvas"
+        [options]="sankeyOption"
+        [merge]="sankeyMerge"
+        (chartInit)="onChartInit($event)"
+        (chartFinished)="applyCategoryEmphasis()"
+    ></div>
+</div>
+<button type="button" class="sankey-resize-handle"
+    aria-label="Resize chart height with the Up and Down arrow keys"
+    (pointerdown)="startChartResize($event, chartContainer.offsetHeight)"
+    (pointermove)="moveChartResize($event)"
+    (lostpointercapture)="endChartResize($event)"
+    (keydown.arrowup)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight - 32)"
+    (keydown.arrowdown)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight + 32)">
+</button>

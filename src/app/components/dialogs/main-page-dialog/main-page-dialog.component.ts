@@ -2,6 +2,7 @@ import { Component, Inject, ChangeDetectionStrategy, inject } from '@angular/cor
 import { CurrencyPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { MainPageSingleMonthComponent } from "../../../pages/main-page-single-month/main-page-single-month.component";
 import { SingleMonthData } from '../../models';
 import { CategoryService } from '../../../services/category.service';
@@ -14,7 +15,7 @@ export interface MainPageDialogData {
 
 @Component({
     selector: 'app-main-page-dialog',
-    imports: [MatDialogModule, MatButtonModule, MainPageSingleMonthComponent, CurrencyPipe],
+    imports: [MatDialogModule, MatButtonModule, MatIconModule, MainPageSingleMonthComponent, CurrencyPipe],
     templateUrl: './main-page-dialog.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
     styleUrl: './main-page-dialog.component.scss'

@@ -41,9 +41,6 @@
           ></app-sankey-chart>
         </section>
 
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-
-
         <h2 class="text-2xl font-bold text-center mt-4">Budgets</h2>
         <button mat-button class="self-center" (click)="manageBudgets()">Manage budgets</button>
         @let budgets = envelopeBudgets();

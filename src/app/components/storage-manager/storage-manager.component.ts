@@ -932,10 +932,11 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
     }
     this.dialog.open<MainPageDialogComponent, MainPageDialogData>(MainPageDialogComponent, {
       data: {monthData, categoryId},
-      width: '100%',
-      height: '80vh',
+      width: '95%',
+      minWidth: '1024px',
+      height: '95vh',
       maxWidth: '100vw',
-      maxHeight: '90vh',
+      maxHeight: '95vh',
     })
   }
 
