@@ -56,59 +56,78 @@
 
         <button mat-menu-item type="button" (click)="sortEntriesByRecentlyEdited()" [disabled]="linkArray.length < 2">
           <mat-icon fontSet="material-symbols-outlined">sort</mat-icon>
-          <span>Sort by most recently edited</span>
-        </button>
-
-        <button mat-menu-item (click)="toggleEntryView()">
-          <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
-          <span>{{ groupByCategory ? 'Show by cost type' : 'Group by category' }}</span>
+          <span>Arrange by most recently edited</span>
         </button>
       </mat-menu>
     </div>
   </div>
 
-  <div class="entry-bulk-toolbar" role="group" aria-label="Entry editing actions">
-    <button matButton type="button" [disabled]="bulkBusy()" (click)="toggleEditMode()" [attr.aria-pressed]="editMode()">
-      <mat-icon fontSet="material-symbols-outlined">{{ editMode() ? 'check' : 'edit' }}</mat-icon>{{ editMode() ? 'Done' : 'Edit' }}
+  <div class="flex flex-wrap items-center gap-2">
+    <button mat-button type="button" [matMenuTriggerFor]="entryViewMenu">
+      <mat-icon fontSet="material-symbols-outlined">view_list</mat-icon>
+      View
     </button>
-    @if (editMode()) {
-      <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
-        (change)="selectAll($event.checked)"></mat-checkbox>
-      <span aria-live="polite" class="bg-gray-200 p-2 px-3 rounded-full">{{ selectedEntryIds.size }} selected</span>
-      <button mat-button type="button" [disabled]="bulkBusy()"
-        [matMenuTriggerFor]="envelopeMenu">Add to budget</button>
-      <mat-menu #envelopeMenu="matMenu">
-        @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
-          <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
-            {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
-          </button>
-        }
-        @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
-        <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
-          <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
-        </button>
-        <!-- <button mat-menu-item type="button" (click)="manageEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
-        </button> -->
-        <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
-          <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
-        </button>
-      </mat-menu>
-      <button mat-icon-button type="button" aria-label="More selection actions" matTooltip="More actions" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
-        <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>
+    <mat-menu #entryViewMenu="matMenu">
+      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'costType'"
+        (click)="setEntryView('costType')">
+        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'costType' ? 'check' : 'view_list' }}</mat-icon>
+        Cost type
       </button>
-      <mat-menu #selectionActions="matMenu">
-        @if (selectedAssignedExpenseCount) {
-          <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
-            <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'category'"
+        (click)="setEntryView('category')">
+        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'check' : 'category' }}</mat-icon>
+        Category
+      </button>
+      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'budget'"
+        (click)="setEntryView('budget')">
+        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'budget' ? 'check' : 'account_balance_wallet' }}</mat-icon>
+        Budget
+      </button>
+    </mat-menu>
+
+    <div class="entry-bulk-toolbar" role="group" aria-label="Entry editing actions">
+      <button matButton type="button" [disabled]="bulkBusy()" (click)="toggleEditMode()" [attr.aria-pressed]="editMode()">
+        <mat-icon fontSet="material-symbols-outlined">{{ editMode() ? 'check' : 'edit' }}</mat-icon>{{ editMode() ? 'Done' : 'Edit' }}
+      </button>
+      @if (editMode()) {
+        <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
+          (change)="selectAll($event.checked)"></mat-checkbox>
+        <span aria-live="polite" class="bg-gray-200 p-2 px-3 rounded-full">{{ selectedEntryIds.size }} selected</span>
+        <button mat-button type="button" [disabled]="bulkBusy()"
+          [matMenuTriggerFor]="envelopeMenu">Add to budget</button>
+        <mat-menu #envelopeMenu="matMenu">
+          @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
+            <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
+              {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+            </button>
+          }
+          @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
+          <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
+            <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
           </button>
-          <mat-divider></mat-divider>
-        }
-        <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
-          <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+          <!-- <button mat-menu-item type="button" (click)="manageEnvelopes()">
+            <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
+          </button> -->
+          <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
+            <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
+          </button>
+        </mat-menu>
+        <button mat-icon-button type="button" aria-label="More selection actions" matTooltip="More actions" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
+          <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>
         </button>
-      </mat-menu>
-    }
+        <mat-menu #selectionActions="matMenu">
+          @if (selectedAssignedExpenseCount) {
+            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
+              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+            </button>
+            <mat-divider></mat-divider>
+          }
+          <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
+            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+          </button>
+        </mat-menu>
+      }
+    </div>
   </div>
 
   </div>
@@ -116,8 +135,8 @@
   <!-- LINKS CONTAINER -->
   <div>
     <mat-divider class="mb-4!" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    <div class="entry-cost-header" [class.entry-cost-header-compact]="groupByCategory">
-      @if (!groupByCategory) {
+    <div class="entry-cost-header" [class.entry-cost-header-compact]="groupedEntries">
+      @if (!groupedEntries) {
         <button mat-icon-button type="button" class="mr-2" aria-label="Fix Costs"
           [attr.aria-expanded]="isFixCostsExpanded || isSearching" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isFixCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -132,8 +151,8 @@
           <mat-icon fontSet="material-symbols-outlined">open_in_new</mat-icon>
           Edit Fix Costs
         </button>
-        @if (!groupByCategory || fixedLinks.length > 0) {
-          <button [matButton]="groupByCategory ? 'text' : 'outlined'" type="button"
+        @if (!groupedEntries || fixedLinks.length > 0) {
+          <button [matButton]="groupedEntries ? 'text' : 'outlined'" type="button"
             (click)="pasteFixCosts()" [disabled]="fixedLinks.length === 0">
             <mat-icon fontSet="material-symbols-outlined">{{ fixCosts.length ? 'update' : 'content_paste' }}</mat-icon>
             {{ fixCosts.length ? 'Update Fix Costs' : fixedLinks.length ? 'Paste Fix Costs' : 'No Fix costs defined' }}
@@ -142,38 +161,41 @@
       </div>
     </div>
 
-    @if (filteredLinkIds.length === 0 && isSearching) {
+    @if (filteredLinkIds.size === 0 && isSearching) {
       <div class="flex flex-col items-center justify-center w-full">
         <p class="text-center text-lg">No results found.</p>
         <button mat-stroked-button (click)="filterLinks('')">Clear search</button>
       </div>
     }
 
-    @if (groupByCategory) {
-      @for (group of categoryGroups; track group.id) {
+    @if (groupedEntries) {
+      @for (group of entryGroups; track group.id) {
         <section class="entry-category-section">
           <h3 class="category-section-title">
-            <button type="button" class="category-section-heading" (click)="toggleCategory(group.id)"
-              [attr.aria-expanded]="!collapsedCategories.has(group.id)">
+            <button type="button" class="category-section-heading" (click)="toggleGroup(group.id)"
+              [attr.aria-expanded]="!collapsedGroups.has(group.id)">
               @if (group.category; as category) {
                 <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+              } @else if (entryView === 'budget' && group.id) {
+                <mat-icon fontSet="material-symbols-outlined">account_balance_wallet</mat-icon>
               } @else {
                 <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
               }
               <span class="category-section-label">{{ group.label }}</span>
               <!-- <span class="category-section-count">{{ group.rows.length }} {{ group.rows.length === 1 ? 'entry' : 'entries' }}</span> -->
-              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedCategories.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
             </button>
           </h3>
-          @if (!collapsedCategories.has(group.id)) {
+          @if (!collapsedGroups.has(group.id)) {
             <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
           }
         </section>
         <mat-divider></mat-divider>
       }
-      @if (draftEntries.length) {
+      @let drafts = draftEntries;
+      @if (drafts.length) {
         <div class="entry-category-drafts">
-          <ng-container *ngTemplateOutlet="entryList; context: { $implicit: draftEntries }"></ng-container>
+          <ng-container *ngTemplateOutlet="entryList; context: { $implicit: drafts }"></ng-container>
         </div>
       }
     } @else {
@@ -238,7 +260,7 @@
         <!-- Target -->
         <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
-          @if (groupByCategory && linkGroup.get('isFixCost')?.value) {
+          @if (groupedEntries && linkGroup.get('isFixCost')?.value) {
             <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Fixed cost" aria-label="Fixed cost">event_repeat</mat-icon>
           }
           <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
@@ -290,13 +312,20 @@
           @if (!linkGroup.get('isFixCost')?.value && activeRowId == linkGroup.get('id')?.value && isLogShown) {
             <div class="flex flex-col gap-1 mr-4 break-words">
               <mat-divider></mat-divider>
-              @if(!logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)) || logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)).length == 0) {
-                <p class="m-0!">No changes in the past 30 days.</p>
-              }
-              @for (log of logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)); track $index) {
-                <p class="m-0!">
-                  <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
-                </p>
+              @let history = logService.getLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value)) | async;
+              @if (history?.status === 'loading') {
+                <p class="m-0!" role="status">Loading...</p>
+              } @else if (history?.status === 'error') {
+                <p class="m-0!" role="status">Could not load recent changes.</p>
+                <button type="button" mat-button class="self-start" (click)="logService.retryLogs(dataMonth, $safeNavigationMigration(linkGroup.get('id')?.value))">Retry</button>
+              } @else if (history?.status === 'loaded') {
+                @for (log of history.items; track $index) {
+                  <p class="m-0!">
+                    <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
+                  </p>
+                } @empty {
+                  <p class="m-0!">No changes in the past 30 days.</p>
+                }
               }
             </div>
           }

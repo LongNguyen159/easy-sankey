@@ -20,15 +20,15 @@
       <button mat-icon-button class="flex! flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
         <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
       </button>
-      <span class="text-xs text-[var(--mat-sys-on-surface-variant)] ml-2" role="status">{{ saveStatus() }}</span>
+      <span class="text-xs text-(--mat-sys-on-surface-variant) ml-2" role="status">{{ saveStatus() }}</span>
       <app-amount-sort class="ml-auto" [value]="sortOrder" (valueChange)="setSort($event)"></app-amount-sort>
       <button mat-icon-button type="button" class="shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
         <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
       </button>
       <mat-menu #menu="matMenu" xPosition="before">
-        <button mat-menu-item (click)="toggleEntryView()">
-          <mat-icon fontSet="material-symbols-outlined">{{ groupByCategory ? 'view_list' : 'category' }}</mat-icon>
-          <span>{{ groupByCategory ? 'Show as list' : 'Group by category' }}</span>
+        <button mat-menu-item (click)="setEntryView(entryView === 'category' ? 'costType' : 'category')">
+          <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'view_list' : 'category' }}</mat-icon>
+          <span>{{ entryView === 'category' ? 'Show as list' : 'Group by category' }}</span>
         </button>
       </mat-menu>
     </div>
@@ -48,22 +48,22 @@
         </mat-icon>
       </div>
     }
-    @if (groupByCategory) {
-      @for (group of categoryGroups; track group.id) {
+    @if (entryView === 'category') {
+      @for (group of entryGroups; track group.id) {
         <section class="entry-category-section">
           <h3 class="category-section-title">
-            <button type="button" class="category-section-heading" (click)="toggleCategory(group.id)"
-              [attr.aria-expanded]="!collapsedCategories.has(group.id)">
+            <button type="button" class="category-section-heading" (click)="toggleGroup(group.id)"
+              [attr.aria-expanded]="!collapsedGroups.has(group.id)">
               @if (group.category; as category) {
                 <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
               } @else {
                 <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
               }
               <span class="category-section-label">{{ group.label }}</span>
-              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedCategories.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
             </button>
           </h3>
-          @if (!collapsedCategories.has(group.id)) {
+          @if (!collapsedGroups.has(group.id)) {
             <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
           }
         </section>

@@ -58,6 +58,8 @@ function nonEmptyValidator(): ValidatorFn {
   };
 }
 
+type EntryView = 'costType' | 'category' | 'budget';
+
 interface EntryGroup {
   id: string;
   label: string;
@@ -146,8 +148,17 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   protected readonly editMode = signal(false);
   protected readonly bulkBusy = signal(false);
   protected readonly selectedEntryIds = new Set<string>();
-  protected readonly collapsedCategories = new Set<string>();
-  protected groupByCategory = this.preferences.read('entryView') === 'category';
+  private readonly collapsedCategories = new Set<string>();
+  private readonly collapsedBudgets = new Set<string>();
+  protected entryView = this.preferences.read('entryView') ?? 'costType';
+
+  protected get groupedEntries(): boolean {
+    return this.entryView === 'category' || this.entryView === 'budget';
+  }
+
+  protected get collapsedGroups(): Set<string> {
+    return this.entryView === 'budget' ? this.collapsedBudgets : this.collapsedCategories;
+  }
 
 
   demoLinks: UserDefinedLink[] = this.dataService.demoLinks;
@@ -222,7 +233,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
    * 
    * - When filtering, we will filter this array.
    */
-  filteredLinkIds: string[] = [];
+  protected readonly filteredLinkIds = new Set<string>();
 
 
   constructor(private fb: FormBuilder) {
@@ -308,7 +319,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
 
   protected get selectableRows(): FormGroup[] {
-    return this.linkArray.controls.filter(row => this.filteredLinkIds.includes(row.get('id')?.value));
+    return this.visibleEntries();
   }
   protected get allSelected(): boolean {
     return this.selectableRows.length > 0 && this.selectableRows.every(row => this.selectedEntryIds.has(row.get('id')?.value));
@@ -430,7 +441,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     });
 
     /** Add into IDs array when a new link is created. */
-    this.filteredLinkIds.push(linkGroup.get('id')?.value || '');
+    this.filteredLinkIds.add(linkGroup.get('id')?.value || '');
 
     // Disable the source field if type is 'income'
     if (linkGroup.get('type')?.value == EntryType.Income || linkGroup.get('type')?.value == EntryType.Tax) {
@@ -1029,9 +1040,10 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   /********** Filter/Add/Remove Links **********/
 
-  protected async toggleEntryView(): Promise<void> {
-    this.groupByCategory = !this.groupByCategory;
-    await this.preferences.write('entryView', this.groupByCategory ? 'category' : 'costType');
+  protected async setEntryView(view: EntryView): Promise<void> {
+    if (this.entryView === view) return;
+    this.entryView = view;
+    await this.preferences.write('entryView', view);
   }
 
   protected async sortEntriesByRecentlyEdited(): Promise<void> {
@@ -1045,12 +1057,13 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.linkArray.push(controls, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges();
     await this.saveEntryOrder();
-    this.uiService.showSnackBar('Entries sorted by most recently edited.');
+    this.uiService.showSnackBar('Entries arranged by most recently edited.');
     void this.announcer.announce('Entries sorted by most recently edited. You can continue reordering them.');
   }
 
-  protected toggleCategory(id: string): void {
-    if (!this.collapsedCategories.delete(id)) this.collapsedCategories.add(id);
+  protected toggleGroup(id: string): void {
+    const collapsed = this.collapsedGroups;
+    if (!collapsed.delete(id)) collapsed.add(id);
   }
 
   private async saveEntryOrder(): Promise<void> {
@@ -1061,7 +1074,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   protected visibleEntries(isFixCost?: boolean): FormGroup[] {
     return this.linkArray.controls.filter(row =>
-      this.filteredLinkIds.includes(row.get('id')?.value)
+      this.filteredLinkIds.has(row.get('id')?.value)
       && (isFixCost === undefined || Boolean(row.get('isFixCost')?.value) === isFixCost)
     );
   }
@@ -1070,25 +1083,28 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     return this.visibleEntries().filter(row => this.newEntries.has(row));
   }
 
-  protected get categoryGroups(): EntryGroup[] {
-    const rowsByCategory = new Map<string, FormGroup[]>();
+  protected get entryGroups(): EntryGroup[] {
+    const byBudget = this.entryView === 'budget';
+    const definitions = byBudget
+      ? (this.singleMonthData()?.envelopes ?? []).map(budget => ({ id: budget.id, label: budget.name }))
+      : this.categoryService.categories().map(category => ({ id: category.value, label: category.label, category }));
+    const groups = new Map<string, EntryGroup>(
+      definitions.map(group => [group.id, { ...group, rows: [] }]),
+    );
+    const unassigned: EntryGroup = { id: '', label: byBudget ? 'No budget' : 'Uncategorized', rows: [] };
+
     for (const row of this.visibleEntries()) {
       if (this.newEntries.has(row)) continue;
-      const source = row.get('type')?.value === EntryType.Expense ? row.get('source')?.value : '';
-      const id = this.categoryService.get(source)?.value ?? '';
-      const rows = rowsByCategory.get(id) ?? [];
-      rows.push(row);
-      rowsByCategory.set(id, rows);
+      let id = '';
+      if (row.get('type')?.value === EntryType.Expense) {
+        id = byBudget
+          ? row.get('envelopeId')?.value ?? ''
+          : this.categoryService.get(row.get('source')?.value)?.value ?? '';
+      }
+      (groups.get(id) ?? unassigned).rows.push(row);
     }
 
-    const groups: EntryGroup[] = [];
-    for (const category of this.categoryService.categories()) {
-      const rows = rowsByCategory.get(category.value);
-      if (rows) groups.push({ id: category.value, label: category.label, category, rows });
-    }
-    const uncategorized = rowsByCategory.get('');
-    if (uncategorized) groups.push({ id: '', label: 'Uncategorized', rows: uncategorized });
-    return groups;
+    return [...groups.values(), unassigned].filter(group => group.rows.length > 0);
   }
 
   addLink(): void {
@@ -1097,7 +1113,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.newEntries.add(row);
     this.linkArray.push(row, { emitEvent: false });
     this.filterLinks('');
-    if (this.groupByCategory) this.collapsedCategories.delete('');
+    if (this.groupedEntries) this.collapsedGroups.delete('');
     this.isVariableCostsExpanded = true;
     this.updateSavedFormValuesOnFormChanges();
 
@@ -1158,7 +1174,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     const row = this.linkArray.at(index);
     const link: UserDefinedLink = row.value;
     this.newEntries.delete(row);
-    this.filteredLinkIds = this.filteredLinkIds.filter(id => id !== link.id);
+    this.filteredLinkIds.delete(link.id);
     this.linkArray.removeAt(index, { emitEvent: false });
     this.updateSavedFormValuesOnFormChanges()
     this.hasDuplicates = this._checkDuplicateName();
@@ -1180,22 +1196,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   
   /** For the search function */
   filterLinks(query: string): void {
-    
-    if (!query || query.trim() === '') {
-      this.filterQuery = ''; // Reset filter query.
-      this.isSearching = false;
-      this.filteredLinkIds = this.linkArray.controls.map(item => item.get('id')?.value || ''); // Reset filtered links to be all entries.
-      return
+    this.isSearching = Boolean(query?.trim());
+    this.filterQuery = this.isSearching ? query : '';
+    const searchTerm = this.filterQuery.toLowerCase();
+
+    this.filteredLinkIds.clear();
+    for (const row of this.linkArray.controls) {
+      const target = row.get('target')?.value?.toLowerCase() ?? '';
+      if (target.includes(searchTerm)) this.filteredLinkIds.add(row.get('id')?.value || '');
     }
-    
-    
-    this.isSearching = true;
-    this.filterQuery = query; // Update filter query
-    this.filteredLinkIds = this.linkArray.controls.filter(control => {
-      const target = control.get('target')?.value?.toLowerCase() || '';
-      const searchTerm = query.toLowerCase();
-      return target.includes(searchTerm);
-    }).map(item => item.get('id')?.value || ''); // Update filtered links to be matching entries IDs.
   }
   //#endregion
 
