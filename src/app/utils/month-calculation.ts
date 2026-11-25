@@ -62,23 +62,15 @@ class MonthCalculator {
 
         // Step 3: Handle Usable Income if there's a tax link, otherwise use the full income directly
         const incomeSource = singleIncome ? incomeNodes[0] : 'Total Income';
-        const taxLink = userDefinedLinks.find(link => link.type == EntryType.Tax);
+        if (hasTax) {
+            const usableIncome = totalIncomeValue - totalTaxValue;
+            nodesMap.set('Usable Income', { value: usableIncome, type: EntryType.Income });
 
-
-
-        /** If has tax, create 'Usable Income' node and use it as source for all expenses. */
-        if (hasTax && taxLink) {
-            let usableIncome = totalIncomeValue;
-            const taxValue = nodesMap.get(taxLink.target)?.value || 0;
-            usableIncome -= taxValue; // Subtract taxes
-            nodesMap.set('Usable Income', { value: usableIncome, type: EntryType.Income }); // Set Usable Income node
-
-            // Step 4: Create links from Income to Usable Income and Taxes
-            links.push({
-                source: incomeSource,
-                target: taxLink.target,
-                value: taxLink.value
-            });
+            for (const entry of userDefinedLinks) {
+                if (entry.type === EntryType.Tax) {
+                    links.push({ source: incomeSource, target: entry.target, value: entry.value });
+                }
+            }
 
             links.push({
                 source: incomeSource,

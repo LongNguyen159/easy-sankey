@@ -183,6 +183,18 @@ describe('InputListComponent manual sorting', () => {
     component.edit();expect(component.selectedIds()).toEqual([]);
   });
 
+  it('includes collapsed fixed costs in select-all', () => {
+    component.populateInputFields({rawInput: [
+      {...entry('rent'), isFixCost: true},
+      entry('groceries'),
+    ]} as SingleMonthData);
+
+    component.isFixCostsExpanded = false;
+    component.edit();
+    component.selectFiltered();
+    expect(component.selectedIds()).toEqual(['rent', 'groceries']);
+  });
+
   it('assigns only the menu entry while preserving the bulk selection and excluding income', async () => {
     component.populateInputFields({rawInput:[entry('dinner'), entry('lunch'), {...entry('salary'),type:EntryType.Income}]} as SingleMonthData);
     component.singleMonthData.set({envelopes:[{id:'global',name:'Personal',budget:500,isGlobal:true}]} as SingleMonthData);

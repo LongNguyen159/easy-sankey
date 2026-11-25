@@ -116,3 +116,21 @@ mat-card {
 }
 
 .entry-editor-row { margin-bottom: .5rem; }
+
+.entry-clipboard-menu {
+  min-width: 10rem;
+  padding-block: .5rem;
+  border-radius: var(--mat-sys-corner-extra-small);
+  background-color: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface);
+  box-shadow: var(--mat-sys-level2);
+}
+
+.entry-clipboard-name {
+  display: inline-block;
+  max-width: min(34ch, 55vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
