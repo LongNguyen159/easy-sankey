@@ -120,10 +120,10 @@ mat-card {
 .entry-clipboard-menu {
   min-width: 10rem;
   padding-block: .5rem;
-  border-radius: var(--mat-sys-corner-extra-small);
-  background-color: var(--mat-sys-surface-container);
-  color: var(--mat-sys-on-surface);
-  box-shadow: var(--mat-sys-level2);
+  border-radius: var(--mat-menu-container-shape, 4px);
+  background-color: var(--mat-menu-container-color, var(--mat-sys-surface-container, Canvas));
+  color: var(--mat-menu-item-label-text-color, var(--mat-sys-on-surface, CanvasText));
+  box-shadow: var(--mat-menu-container-elevation-shadow, var(--mat-sys-level2));
 }
 
 .entry-clipboard-name {
