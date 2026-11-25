@@ -1,139 +1,107 @@
-<div class="container mx-auto p-6">
-    <header class="text-center mb-8">
-        <h1 class="text-3xl font-bold">User Manual for Easy Sankey</h1>
-        <p class="mt-2 text-lg">Easily Visualise Your Financial Data</p>
-    </header>
+<article class="manual" [attr.data-theme]="imageTheme()">
+    <h1 class="manual-title">Easy Sankey User Manual</h1>
 
-    <section class="mb-6">
-        <h2 class="text-2xl font-bold">Why Easy Sankey?</h2>
-        <p class="mt-2">Easy Sankey helps you create clear and simple financial visualisations without the need for Excel or technical skills. Just a few easy inputs, and you can see where your money goes!</p>
+    <section class="manual-card shadow-lg">
+        <h2>Enter income and expenses</h2>
+        <div class="manual-split">
+            <ol class="list-decimal space-y-2 pl-6">
+                <li>Open the menu, choose <strong>Main</strong>, and select a month.</li>
+                <li>Click <strong>Edit input</strong>, then <strong>Add Entries</strong>.</li>
+                <li>Choose <strong>Income</strong>, <strong>Expense</strong>, or <strong>Tax</strong>. You can add one tax entry per month.</li>
+                <li>Enter a name and amount. For expenses, you can also choose a category.</li>
+            </ol>
+            <img class="manual-screenshot max-w-64"
+                [src]="'assets/images/edit-input-' + imageTheme() + '.png'"
+                alt="Edit input button beside the app menu">
+        </div>
+        <aside class="calculator manual-split">
+            <div>
+                <h3 class="font-semibold">Inline calculator</h3>
+                <p>Type a calculation directly into <strong>Amount</strong>. Both <code>100 + 50</code> and <code>100 50</code> give <code>150</code>. Supported operators are "+" and "-".</p>
+            </div>
+            <img class="manual-screenshot max-w-64" loading="lazy"
+                [src]="'assets/images/inline-calc-' + imageTheme() + '.png'"
+                alt="Amount field with the calculation 135 plus 20 plus 2.5">
+        </aside>
+        <p>In <strong>Edit input</strong>, use <strong>Search</strong> to find entries or <strong>View</strong> to group them by cost type, category, or budget.</p>
     </section>
 
-    <div class="my-8">
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    </div>
-
-    <!-- SECTION: GETTING STARTED -->
-    <section class="mb-6">
-        <h2 class="text-2xl font-bold">Getting Started</h2>
-        <p class="mt-2">On the main page, click the <span class="text-highlight" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}">Edit Input</span> in the top-right corner. This will open a menu where you can enter your financial information.</p>
-        <div class="flex flex-row w-full justify-center">
-            <img [ngClass]="colorService.isDarkMode() ? 'image-border' : 'image-border-light'" [src]="colorService.isDarkMode() ? 'assets/images/edit-input-dark.png' : 'assets/images/edit-input-light.png'" alt="Edit input button" class="image">
+    <section class="manual-card manual-feature shadow-lg">
+        <div class="manual-copy">
+            <h2>Use the Sankey chart</h2>
+            <p>On <strong>Main</strong>, the chart shows where your money came from and where it went. Drag the handle below the chart up or down to change its height. You can also focus the handle and press the Up or Down arrow key.</p>
+            <p>Use <strong>Vertical View</strong> or <strong>Horizontal View</strong> to change the layout. Select <strong>Show Trends</strong> to compare with the previous month.</p>
         </div>
+        <img class="manual-screenshot" loading="lazy"
+            [src]="'assets/images/whats-new/sankey-resize-' + imageTheme() + '.png'"
+            alt="Resize handle at the centre of the line below the Sankey chart">
     </section>
 
-    <div class="my-8">
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    </div>
-
-    <!-- SECTION: INPUT FIELDS EXPLAINED -->
-    <section class="mb-6">
-        <h2 class="text-2xl font-bold">Input Fields Explained</h2>
-        <p class="mt-2">Here’s a quick overview to help you fill in the input fields:</p>
-        <img [ngClass]="colorService.isDarkMode() ? 'image-border' : 'image-border-light'" [src]="colorService.isDarkMode() ? 'assets/images/inputs-dark.png' : 'assets/images/inputs-light.png'" alt="Input fields button" class="image">
-        <ul class="list-disc list-inside mt-2">
-            <li style="margin-bottom: 0.5rem;">
-                <strong>Type:</strong> Choose the type of entry:
-                <ul class="list-disc list-inside mt-1" style="margin-left: 1.5rem;">
-                    <li><strong>Income:</strong> Your earnings.</li>
-                    <li><strong>Expense:</strong> Your spending.</li>
-                    <li><strong>Tax:</strong> Your tax amount. You can only enter this once.</li>
-                </ul>
-            </li>
-            <li style="margin-bottom: 0.5rem;">
-                <strong>Name:</strong> Give your entry a name (e.g., "Rent" or "Pet food").
-            </li>
-            <li style="margin-bottom: 0.5rem;">
-                <strong>Amount:</strong> Enter the amount of money (e.g., "800" for rent).
-            </li>
-            <li style="margin-bottom: 0.5rem;">
-                <strong>Category (optional):</strong> Assign a category to your entry. This can be useful for reportings and budget setting for each category.
-            </li>
-        </ul>
-
-        <!-- TIPS & DID YOU KNOW SECTION -->
-        <div class="rounded-2xl p-4 mt-4"
-                [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}"
-            >
-                <p class="text-xl font-bold">💡 Did You Know?</p>
-                <img [ngClass]="colorService.isDarkMode() ? 'image-border' : 'image-border-light'" [src]="colorService.isDarkMode() ? 'assets/images/inline-calc-dark.png' : 'assets/images/inline-calc-light.png'" alt="Overview Tabs" class="w-[50%] image">
-                <p class="mt-2">
-                    You can use inline math operators in the <span class="text-highlight" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}">Amount</span> field.
-                </p>
-                <p class="mt-4 font-bold">Better yet? For positive values, you just need to separate the numbers using space. They will be understood as "+".</p>
-                <p class="mt-2">For example, entering "100 50" will be understood as "100 + 50 = 150".</p>
-                <br>
-                <p>Easy Sankey will automatically calculate your input.</p>
-        </div>
+    <section class="manual-card shadow-lg">
+        <h2>Reuse fixed costs</h2>
+        <p>Open the menu and choose <strong>Fix Costs</strong> to set up recurring expenses such as rent or subscriptions.</p>
+        <p>In <strong>Edit input</strong>, select <strong>Paste Fix Costs</strong> to add them to the selected month. If you change your recurring amounts later, use <strong>Update Fix Costs</strong> in each month you want to refresh.</p>
+        <img class="manual-screenshot" loading="lazy"
+            [src]="'assets/images/edit-fix-costs-' + imageTheme() + '.png'"
+            alt="Edit Fix Costs and Paste Fix Costs buttons in the entries dialog">
     </section>
 
-    <div class="my-8">
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    </div>
-
-    <!-- SECTION: FIXED COSTS & BUDGET MANAGEMENT -->
-    <section class="mb-6">
-        <h2 class="text-2xl font-bold">Fix Costs & Budget Management</h2>
-        <p class="mt-2 font-bold">In <span class="text-highlight" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}">Finance Manager</span> you’ll find the following three tabs:</p>
-        <img [src]="colorService.isDarkMode() ? 'assets/images/manager-tabs-dark.png' : 'assets/images/manager-tabs-light.png'" alt="Overview Tabs" class="w-full image">
-        
-        <h3 class="text-xl font-bold mt-6">Adding Fix Costs</h3>
-        <p class="mt-2">In the <span class="text-highlight" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}">Fix Costs</span> tab, you can set your recurring monthly expenses, which are costs that typically remain stable.</p>
-        <br>
-        <p>Once you've defined your fixed costs, open the input dialog where you'll see the "Paste Fix Costs" button. Clicking this will automatically add your defined fixed costs to your entries.</p>
-        <div class="w-full flex flex-row justify-center">
-            <img [src]="colorService.isDarkMode() ? 'assets/images/edit-fix-costs-dark.png' : 'assets/images/edit-fix-costs-light.png'" alt="Edit Fix Costs" class="w-[75%] image">
+    <section class="manual-card manual-feature manual-portrait shadow-lg">
+        <div class="manual-copy">
+            <h2>Set and track budgets</h2>
+            <p>Open the menu and choose <strong>Budgets</strong> to set limits that repeat each month. On <strong>Main</strong>, choose <strong>Manage budgets</strong> to set a limit for the selected month.</p>
+            <p>To assign an expense, open its actions in <strong>Edit input</strong> and choose <strong>Add to budget</strong>. The <strong>Budgets</strong> section on <strong>Main</strong> shows how much you have left or how much you went over.</p>
         </div>
-
-        <div class="rounded-2xl p-4 mt-4"
-            [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}"
-        >
-            <!-- CARD TITLE -->
-            <p class="text-xl font-bold">NOTE</p>
-            <p>
-                Fixed costs defined in Finance Manager are called <span class="font-bold underline">global fixed costs</span> and can be applied to all entries (across all months).
-            </p>
-            <br>
-            <p>
-                If you update your global fixed costs, these changes <span class="font-bold underline">won’t automatically reflect in your existing entries</span>. To apply the updates, <span class="font-bold underline"> click "Update Fix Costs"</span> in the entries section. This ensures you can adjust fixed costs for specific entries without changing your global settings.
-            </p>
-        </div>
-
-        <h3 class="text-xl font-bold mt-6">Budget Management</h3>
-        <p class="mt-2">In the <span class="text-highlight" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}">Budget</span> tab, you can set your monthly budget. This will help you keep track of your spending and see how much you have left to spend.</p>
-        <div class="grid-display">
-            <img [src]="colorService.isDarkMode() ? 'assets/images/budgets-dark.png' : 'assets/images/budgets-light.png'" alt="Budgets" class="w-full image py-6 stretch-height" [ngClass]="colorService.isDarkMode() ? 'image-border' : 'image-border-light'">
-            <img [src]="colorService.isDarkMode() ? 'assets/images/budget-dark.png' : 'assets/images/budget-light.png'" alt="Budgets" class="w-full image stretch-height" [ngClass]="colorService.isDarkMode() ? 'image-border' : 'image-border-light'">
-        </div>
+        <img class="manual-screenshot" loading="lazy"
+            [src]="'assets/images/whats-new/budgets-' + imageTheme() + '.png'"
+            alt="Monthly budget progress with amounts left or over for each budget">
     </section>
 
-    <div class="my-8">
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    </div>
-
-    <!-- SECTION: NOTES FROM ME -->
-    <section class="mb-6">
-        <h2 class="text-2xl font-bold">Notes from Developer</h2>
-        <p class="mt-2">This app runs entirely local on your device, so your data stays safe with you! No need to worry about privacy issues.
-            Don’t believe me? Try turning off your internet connection and see if the app still works!
-        </p>
-        <p>For the technical folks, this app uses LocalStorage to save your data.</p>
-        <br>
+    <section class="manual-card manual-feature manual-portrait shadow-lg">
+        <div class="manual-copy">
+            <h2>Manage categories</h2>
+            <p>Open the menu and choose <strong>Categories</strong>. Use <strong>Add category</strong> or edit an existing category to change its name, icon, and colours.</p>
+        </div>
+        <img class="manual-screenshot" loading="lazy"
+            [src]="'assets/images/whats-new/categories-' + imageTheme() + '.png'"
+            alt="Edit category dialog with its colour palette and icon picker">
     </section>
 
-    <div class="my-8">
-        <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
-    </div>
+    <section class="manual-card manual-feature shadow-lg">
+        <div class="manual-copy">
+            <h2>Review your finances</h2>
+            <p>Open the menu and choose <strong>Finance Manager</strong> to see income, spending, and balance over time. Use <strong>Show predictions</strong> to show or hide future estimates.</p>
+        </div>
+        <img class="manual-screenshot" loading="lazy"
+            [src]="'assets/images/whats-new/prediction-' + imageTheme() + '.png'"
+            alt="Finance Manager Surplus and Balance chart with dashed lines for predicted values">
+    </section>
+
+    <section class="manual-card manual-feature shadow-lg">
+        <div class="manual-copy">
+            <h2>Back up your data</h2>
+            <p>Easy Sankey stores your data on your device. Open the menu and choose <strong>Settings</strong>, then find <strong>App data</strong>.</p>
+            <p>Select <strong>Export full backup</strong> to save a JSON file. Select <strong>Import full backup</strong> to restore one. Restoring replaces your current app data.</p>
+        </div>
+        <img class="manual-screenshot max-w-xl" loading="lazy"
+            [src]="'assets/images/whats-new/backup-' + imageTheme() + '.png'"
+            alt="App data settings with Export full backup and Import full backup buttons">
+    </section>
+
+    <section class="manual-card shadow-lg">
+        <h2>A note from the developer</h2>
+        <p>I built Easy Sankey to keep your financial data on your device. Your entries and budgets are stored in a local SQLite database, and you can use them offline. If you export a backup, you choose where to save it and who to share it with.</p>
+    </section>
 
     <footer class="flex flex-col w-full justify-center items-center text-center gap-2 mt-8">
-        <p>&copy; 2024 Easy Sankey. All rights reserved.</p>
+        <p>&copy; 2026 Easy Sankey. All rights reserved.</p>
         <p class="mt-4">Have a feature request or encountered a bug? I’d love to hear from you!</p>
 
 
         <div class="flex flex-row gap-2 items-center">
             <mat-icon fontSet="material-symbols-outlined">alternate_email</mat-icon>
-            <p><a href="mailto:long.t.nguyen.tech@gmail.com" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}" class="text-highlight underline">long.t.nguyen.tech&#64;gmail.com</a></p>
+            <p><a href="mailto:long.t.nguyen.tech@gmail.com" class="text-highlight underline">long.t.nguyen.tech&#64;gmail.com</a></p>
         </div>
         <p class="mt-4">Thank you for using Easy Sankey!</p>
     </footer>
-</div>
+</article>

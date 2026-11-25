@@ -27,23 +27,11 @@ export class WhatsNewPageComponent {
 
   protected readonly features: readonly FeaturePreview[] = [
     {
-      title: 'Custom Categories',
-      description: 'Open Categories from the menu to create or edit expense categories with your own names, colours and icons.',
-      image: 'whats-new/categories',
-      alt: 'Edit category dialog with a live preview, colour palette and icon picker',
-    },
-    {
-      title: 'Spending Budgets',
-      description: 'Assign expenses to a budget in Edit input. In the month’s Budgets section, see how much you have left or how far you’re over.',
-      image: 'whats-new/budgets',
+      title: 'Resize the Sankey Chart',
+      description: 'Drag the handle below the chart up or down to adjust its height. You can also focus the handle and use the Up and Down arrow keys.',
+      image: 'whats-new/sankey-resize',
       withBorder: true,
-      alt: 'Monthly budget radar chart and progress bars comparing spending with three budget limits',
-    },
-    {
-      title: 'Import and Export',
-      description: 'Go to Settings → App data to export a full JSON backup or import one to restore your data.',
-      image: 'whats-new/backup',
-      alt: 'App data section in Settings with Export full backup and Import full backup buttons',
+      alt: 'Sankey chart with a centred resize handle on the horizontal line below it',
     },
   ];
 }

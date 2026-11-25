@@ -1,31 +1,101 @@
-.image {
-    border-radius: 16px;
-    margin-top: 16px;
-    margin-bottom: 12px;
-}
-.text-highlight {
-    border-radius: 8px;
-    padding: 4px;
-    padding-left: 8px;
-    padding-right: 8px;
-    font-weight: 500;
-}
-.grid-display {
+.manual {
+    --manual-surface: #f8fafc;
+    --manual-border: #dce3ec;
+    --manual-accent: #edf3fc;
+    --manual-text: #233043;
+    --manual-card-gap: clamp(2.75rem, 5vw, 4.5rem);
+
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    align-items: stretch;
+    gap: var(--manual-card-gap);
+    width: calc(100% - 2rem);
+    max-width: 1500px;
+    margin-inline: auto;
+    padding-block: clamp(1.75rem, 5vw, 3.5rem);
+    color: var(--manual-text);
 }
 
-.stretch-height {
-    height: 100%;
-    object-fit: cover; /* Optional: ensures the image covers the entire height without distortion */
+.manual[data-theme='dark'] {
+    --manual-surface: #25282e;
+    --manual-border: #3c414c;
+    --manual-accent: #2d3747;
+    --manual-text: #e0e6ef;
 }
 
-.image-border {
-    border: 1px solid #5c5c5c;
+.manual-title {
+    margin-block: 0 -1rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
 }
 
-.image-border-light {
-    border: 1px solid #d1d1d1;
+.manual p,
+.manual h1,
+.manual h2 {
+    color: inherit;
+}
+
+.manual-card,
+.manual-copy {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 0.875rem;
+}
+
+.manual-card {
+    padding: clamp(1rem, 3vw, 1.75rem);
+    border-radius: 1rem;
+    background: var(--manual-surface);
+}
+
+h2 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.manual-split {
+    display: grid;
+    align-items: center;
+    gap: 1rem;
+}
+
+.calculator {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: var(--manual-accent);
+}
+
+.manual-screenshot {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--manual-border);
+    border-radius: 0.75rem;
+}
+
+@media (min-width: 42rem) {
+    .manual-split {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 16rem);
+    }
+}
+
+.manual-footer {
+    padding-top: 1rem;
+    border-top: 1px solid var(--manual-border);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 52rem) {
+    .manual-feature {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        align-items: center;
+        gap: 1.5rem;
+    }
+}
+
+.manual-portrait .manual-screenshot {
+    max-width: 26rem;
+    justify-self: center;
 }

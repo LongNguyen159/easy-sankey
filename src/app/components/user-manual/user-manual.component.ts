@@ -1,17 +1,15 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ColorService } from '../../services/color.service';
-import { CommonModule } from '@angular/common';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
     selector: 'app-user-manual',
-    imports: [CommonModule, MatDividerModule, MatIconModule],
     templateUrl: './user-manual.component.html',
+    styleUrl: './user-manual.component.scss',
     changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrl: './user-manual.component.scss'
+    imports: [MatIconModule]
 })
 export class UserManualComponent {
-  colorService = inject(ColorService)
-
+    private readonly colorService = inject(ColorService);
+    protected readonly imageTheme = computed(() => this.colorService.isDarkMode() ? 'dark' : 'light');
 }
