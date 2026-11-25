@@ -64,6 +64,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: EasySankey-Build-${{ matrix.target }}
+          retention-days: 7
           path: |
             releases/v${{ steps.package.outputs.version }}/${{ matrix.platform }}/${{ matrix.arch }}/*.${{ matrix.extension }}
             releases/v${{ steps.package.outputs.version }}/${{ matrix.platform }}/${{ matrix.arch }}/*.blockmap
