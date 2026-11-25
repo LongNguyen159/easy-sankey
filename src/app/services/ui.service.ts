@@ -9,8 +9,8 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../components/dialogs
   template: `
     <span matSnackBarLabel>{{ message }}</span>
     <div matSnackBarActions>
-      <button matButton="tonal" matSnackBarAction type="button" (click)="ref.dismissWithAction()">Undo</button>
       <button mat-button matSnackBarAction type="button" (click)="ref.dismiss()">Dismiss</button>
+      <button matButton="filled" matSnackBarAction type="button" (click)="ref.dismissWithAction()">Undo</button>
     </div>
   `,
   styles: `
