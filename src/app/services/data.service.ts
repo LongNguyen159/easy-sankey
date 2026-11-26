@@ -646,14 +646,9 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string, allowSameMonth: boolean) {
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string) {
         this.sessionStore.write('copiedEnvelopes', envelopes);
         this.sessionStore.write('copiedSourceMonth', sourceMonth);
-        this.sessionStore.write('copiedAllowSameMonth', allowSameMonth);
-    }
-
-    copiedEntriesAllowSameMonth(): boolean {
-        return this.sessionStore.read('copiedAllowSameMonth') === true;
     }
 
     retrieveCopiedSourceMonth(): string | undefined {
