@@ -1237,7 +1237,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.filteredLinkIds.clear();
     for (const row of this.linkArray.controls) {
       const target = row.get('target')?.value?.toLowerCase() ?? '';
-      if (target.includes(searchTerm)) this.filteredLinkIds.add(row.get('id')?.value || '');
+      const source = row.get('source')?.value;
+      const category = source ? this.categoryService.get(source)?.label.toLowerCase() : undefined;
+      if (target.includes(searchTerm) || category?.includes(searchTerm)) {
+        this.filteredLinkIds.add(row.get('id')?.value || '');
+      }
     }
   }
   //#endregion

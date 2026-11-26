@@ -66,7 +66,9 @@ describe('InputListComponent manual sorting', () => {
       { provide: ColorService, useValue: {} },
       { provide: LogsService, useValue: {} },
       { provide: Router, useValue: {navigate:jasmine.createSpy('navigate').and.resolveTo(true)} },
-      { provide: CategoryService, useValue: {} },
+      { provide: CategoryService, useValue: {
+        get: (id: string) => id === 'category-id' ? { label: 'Food & Drink' } : undefined,
+      } },
       { provide: MatDialog, useValue: {open: jasmine.createSpy('open'),closeAll:jasmine.createSpy('closeAll')} },
       { provide: Clipboard, useValue: {} },
       { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } }
@@ -154,6 +156,18 @@ describe('InputListComponent manual sorting', () => {
     component.linkArray.at(1).get('value')?.setValue(20);
     expect(component.linkArray.at(1).get('lastEditedAt')?.value).toBe(500);
     expect(ids()).toEqual(['older', 'newest']);
+  });
+
+  it('finds entries by name or category label with a case-insensitive partial match', () => {
+    component.populateInputFields({ rawInput: [
+      { ...entry('coffee'), source: 'category-id' },
+      entry('food delivery'),
+      entry('rent'),
+    ] } as SingleMonthData);
+
+    component.filterLinks('FoOd');
+
+    expect(component.rows().map(row => row.get('id')?.value)).toEqual(['coffee', 'food delivery']);
   });
 
   it('sorts the whole month during search and keeps filtered dragging scoped to visible rows', async () => {
