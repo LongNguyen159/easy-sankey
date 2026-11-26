@@ -405,6 +405,7 @@
         <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>
         Cut "<span class="entry-clipboard-name">{{ entryName }}</span>"
       </button>
+      <mat-divider></mat-divider>
     }
     @if (selectedEntryIds.size) {
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
@@ -418,8 +419,9 @@
     }
     <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy() || !linkArray.length"
       (cdkMenuItemTriggered)="copyLinks(linkArray.controls)">
-      <mat-icon fontSet="material-symbols-outlined">library_books</mat-icon>Copy all
+      <mat-icon fontSet="material-symbols-outlined">library_books</mat-icon>Copy all entries
     </button>
+    <mat-divider></mat-divider>
     <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
       (cdkMenuItemTriggered)="pasteLinks(pasteMonthDialog)">
       <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>Paste
