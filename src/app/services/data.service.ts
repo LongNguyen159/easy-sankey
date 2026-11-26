@@ -544,22 +544,10 @@ export class DataService {
         const pastedNames = new Map(entries.map(({target}) => [normalize(target), uniqueName(target, occupied, originalNames)]));
 
         const sharedIds = new Set(this.globalEnvelopes().map(envelope => envelope.id));
-        const usedEnvelopeIds = new Set(entries.map(entry => entry.envelopeId));
-        const localEnvelopes = [...(destination?.envelopes ?? [])];
-        const localIds = new Set(localEnvelopes.map(envelope => envelope.id));
-        const occupiedEnvelopeNames = new Set(localEnvelopes.map(envelope => normalize(envelope.name)));
-        const originalEnvelopeNames = new Set(envelopes.map(envelope => normalize(envelope.name)));
-        const envelopeIds = new Map<string, string>();
-        for (const {id, name, budget, isGlobal} of envelopes) {
-            if (!usedEnvelopeIds.has(id)) continue;
-            if (isGlobal ? sharedIds.has(id) : localIds.has(id)) {
-                envelopeIds.set(id, id);
-            } else {
-                const newId = uuid();
-                envelopeIds.set(id, newId);
-                localEnvelopes.push({id: newId, name: uniqueName(name, occupiedEnvelopeNames, originalEnvelopeNames), budget});
-            }
-        }
+        const localEnvelopes = destination?.envelopes ?? [];
+        const transferableBudgetIds = new Set(envelopes
+            .filter(envelope => envelope.isGlobal && sharedIds.has(envelope.id))
+            .map(envelope => envelope.id));
         const pasted = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => {
             let parent: string | undefined;
             if (type === EntryType.Expense && source) {
@@ -568,7 +556,7 @@ export class DataService {
             }
             return {
                 id: uuid(), type, target: pastedNames.get(normalize(target))!, value, isFixCost, source: parent,
-                envelopeId: envelopeId ? envelopeIds.get(envelopeId) ?? null : null
+                envelopeId: envelopeId && transferableBudgetIds.has(envelopeId) ? envelopeId : null
             };
         });
         const links = [...remaining, ...pasted];
@@ -630,7 +618,14 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    storeCopiedEnvelopes(envelopes: BudgetEnvelope[]) { this.sessionStore.write('copiedEnvelopes', envelopes); }
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string) {
+        this.sessionStore.write('copiedEnvelopes', envelopes);
+        this.sessionStore.write('copiedSourceMonth', sourceMonth);
+    }
+
+    retrieveCopiedSourceMonth(): string | undefined {
+        return this.sessionStore.read('copiedSourceMonth') ?? undefined;
+    }
     retrieveCopiedEnvelopes(): BudgetEnvelope[] { return this.sessionStore.read('copiedEnvelopes') ?? []; }
 
     storeCopiedLinks(links: UserDefinedLink[]) {

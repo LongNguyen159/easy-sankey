@@ -745,11 +745,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
     const envelopeIds = new Set(entries.map(entry => entry.envelopeId));
     const envelopes = (this.singleMonthData()?.envelopes ?? []).filter(envelope => envelopeIds.has(envelope.id));
-    const text = exportMonth(entries, this.categoryService.categories(), envelopes);
+    const text = exportMonth(entries, this.categoryService.categories(), envelopes, this.dataMonth);
     let savedInTab = false;
     try {
       this.dataService.storeCopiedLinks(entries);
-      this.dataService.storeCopiedEnvelopes(envelopes);
+      this.dataService.storeCopiedEnvelopes(envelopes, this.dataMonth);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
@@ -819,11 +819,18 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   protected async pasteMonthFromTab(month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     const entries = this.lastMonthCopiedInTab;
-    return !!entries?.length && (await this.applyMonthTransfer({ entries, categories: [], envelopes: this.dataService.retrieveCopiedEnvelopes() }, month, replacedIds));
+    if (!entries?.length) return false;
+    return this.applyMonthTransfer({
+      entries,
+      categories: [],
+      envelopes: this.dataService.retrieveCopiedEnvelopes(),
+      sourceMonth: this.dataService.retrieveCopiedSourceMonth(),
+    }, month, replacedIds);
   }
 
   private async applyMonthTransfer(transfer: MonthTransfer, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     if (this.destroyRef.destroyed || month !== this.dataMonth || !month || this.bulkBusy()) return false;
+    if (transfer.sourceMonth === month) return false;
     this.bulkBusy.set(true);
     try {
       await this.monthNavigation;

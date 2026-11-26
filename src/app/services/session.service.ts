@@ -4,6 +4,7 @@ export const SESSION_STORAGE = new InjectionToken<Storage>('Session storage', { 
 interface SessionSchema {
     copiedLinks: UserDefinedLink[];
     copiedEnvelopes: BudgetEnvelope[];
+    copiedSourceMonth: string;
     isFormatBigNumbers: boolean;
 }
 @Injectable({ providedIn: 'root' })

@@ -106,7 +106,7 @@ describe('envelope editing and month copying', () => {
     expect(fake.months.get(month)!.entries.map(entry => entry.id)).toEqual(original.map(entry => entry.id));
   });
 
-  it('preserves envelopes across entry saves and month copies, then clears only membership on deletion', async () => {
+  it('preserves local budgets on save and drops their assignment when copying to another month', async () => {
     const fake = testDatabase();
     TestBed.configureTestingModule({providers: [...fake.providers, DatePipe,
       {provide: UiService, useValue: {showSnackBar: () => {}, openConfirmDialog: () => {}}},
@@ -124,20 +124,14 @@ describe('envelope editing and month copying', () => {
     const original = data.monthlyData['2026-11'];
     await data.importMonth('2026-12', {entries:original.rawInput,categories:[],envelopes:original.envelopes});
     const copy = fake.months.get('2026-12')!;
-    expect(copy.envelopes?.[0].id).not.toBe('personal');
-    expect(copy.entries[1].envelopeId).toBe(copy.envelopes?.[0].id);
+    expect(copy.envelopes).toEqual([]);
+    expect(copy.entries[1].envelopeId).toBeNull();
     expect(copy.entries[1].source).toBe('Restaurants@__system/category__');
-    await data.importMonth('2026-12', {entries:original.rawInput,categories:[],envelopes:original.envelopes});
-    const repeatedCopy = fake.months.get('2026-12')!;
-    expect(repeatedCopy.envelopes?.map(envelope => envelope.name)).toEqual(['Personal', 'Personal(1)']);
-    expect(repeatedCopy.entries[1].envelopeId).toBe(copy.envelopes?.[0].id);
-    expect(repeatedCopy.entries[3].envelopeId).toBe(repeatedCopy.envelopes?.[1].id);
     await data.deleteLocalEnvelope('2026-11', 'personal');
     expect(data.monthlyData['2026-11'].envelopes).toEqual([]);
     expect(fake.months.get('2026-11')?.entries[1].envelopeId).toBeNull();
     expect(fake.months.get('2026-11')?.entries[1].source).toBe('Restaurants@__system/category__');
     expect(data.monthlyData['2026-11'].remainingBalance).toBe('960');
-    expect(copy.envelopes?.[0].budget).toBe(500);
   });
 
   it('keeps an unused envelope when its month has no expense entries', async () => {

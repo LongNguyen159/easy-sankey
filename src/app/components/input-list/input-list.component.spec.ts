@@ -1,3 +1,4 @@
+import { exportMonth } from '../../utils/data-transfer';
 import { calculateMonth } from '../../utils/month-calculation';
 import { NgZone, provideZonelessChangeDetection } from '@angular/core';
 import { defer, of, Subject } from 'rxjs';
@@ -39,6 +40,10 @@ class EntryListHarness extends InputListComponent {
   assignEntry(id: string, index: number) { return this.assignSelectedEnvelope(id, this.linkArray.at(index)); }
   createEntryEnvelope(index: number) { return this.createEnvelopeForSelection(this.linkArray.at(index)); }
   deleteSelected() { return this.deleteSelectedEntries(); }
+  pasteCopiedEntries(text?: string) {
+    const dialog = { close: jasmine.createSpy('close') };
+    return this.pasteAndClose({ month: this.dataMonth, replacedIds: this.selectedEntryIds }, dialog, text);
+  }
   rows(isFixCost?: boolean) { return this.visibleEntries(isFixCost); }
 }
 
@@ -71,6 +76,27 @@ describe('InputListComponent manual sorting', () => {
   });
 
   afterEach(async () => (await component.ngOnDestroy()));
+
+  it('ignores a paste from the displayed month, even when replacing selected entries', async () => {
+    const entries = [entry('dinner')];
+    component.populateInputFields({ rawInput: entries } as SingleMonthData);
+    component.select('dinner');
+    const importMonth = jasmine.createSpy('importMonth');
+    Object.assign(component.dataService, {
+      importMonth,
+      retrieveCopiedLinks: () => entries,
+      retrieveCopiedEnvelopes: () => [],
+      retrieveCopiedSourceMonth: () => '2026-11',
+    });
+
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11'));
+    await component.pasteCopiedEntries();
+
+    expect(importMonth).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(component.selectedIds()).toEqual(['dinner']);
+    expect(ids()).toEqual(['dinner']);
+  });
 
   it('saves edits to the displayed month and lets the latest selection win during a slow save', async () => {
     component.populateInputFields({rawInput: [entry('edited')]} as SingleMonthData);

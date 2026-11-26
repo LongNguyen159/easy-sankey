@@ -6,7 +6,8 @@ describe('envelopes in month clipboard transfers', () => {
     const entries=[{id:'dinner',type:EntryType.Expense,target:'Dinner',value:40,
       source:ExpenseCategory.Restaurants,envelopeId:'personal'}];
     const envelopes=[{id:'personal',name:'Personal',budget:500}];
-    const result=readMonth(exportMonth(entries,Object.values(expenseCategoryDetails),envelopes));
+    const result=readMonth(exportMonth(entries,Object.values(expenseCategoryDetails),envelopes,'2026-11'));
+    expect(result.sourceMonth).toBe('2026-11');
     expect(result.entries).toEqual(entries);
     expect(result.envelopes).toEqual(envelopes);
     expect(result.categories[0].value).toBe(ExpenseCategory.Restaurants);
