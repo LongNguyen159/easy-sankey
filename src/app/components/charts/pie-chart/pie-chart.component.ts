@@ -1,5 +1,5 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { BarSeriesOption, EChartsOption, format } from 'echarts';
+import { BarSeriesOption, EChartsOption, color, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -196,17 +196,25 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   }
 
   private getStackedSeries(bars: typeof this.barLegend): BarSeriesOption[] {
+    const isDarkMode = this.colorService.isDarkMode();
+    const separatorColor = isDarkMode
+      ? this.colorService.darkBackgroundPrimary
+      : this.colorService.lightBackgroundPrimary;
     const categories = new Map(this.treeMapData.map(node => [node.name, node]));
     const rows = bars.map(bar => {
       const category = categories.get(bar.name);
       const segments = category?.children.length ? this.getEntrySegments(category) : [bar];
       segments.sort((a, b) => b.value - a.value);
+      const baseColor = bar.itemStyle.color;
+      const shadeTarget = isDarkMode && color.lum(baseColor, 0) < 0.5 ? '#ffffff' : '#000000';
+      const alternateColor = color.lerp(isDarkMode ? 0.45 : 0.25, [baseColor, shadeTarget]);
       return segments.map((segment, index) => ({
         name: segment.name,
         value: segment.value,
         itemStyle: {
-          color: bar.itemStyle.color,
-          opacity: index % 2 === 0 ? 1 : 0.65
+          color: index % 2 === 0 ? baseColor : alternateColor,
+          borderColor: separatorColor,
+          borderWidth: segments.length > 1 ? 0.5 : 0
         }
       }));
     });
