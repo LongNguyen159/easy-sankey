@@ -79,7 +79,7 @@ describe('InputListComponent manual sorting', () => {
 
   afterEach(async () => (await component.ngOnDestroy()));
 
-  it('ignores a paste from the displayed month, even when replacing selected entries', async () => {
+  it('ignores a full-month paste into its source month, even when replacing selected entries', async () => {
     const entries = [entry('dinner')];
     component.populateInputFields({ rawInput: entries } as SingleMonthData);
     component.select('dinner');
@@ -89,15 +89,35 @@ describe('InputListComponent manual sorting', () => {
       retrieveCopiedLinks: () => entries,
       retrieveCopiedEnvelopes: () => [],
       retrieveCopiedSourceMonth: () => '2026-11',
+      copiedEntriesAllowSameMonth: () => false,
     });
 
-    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11'));
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', false));
     await component.pasteCopiedEntries();
 
     expect(importMonth).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
     expect(component.selectedIds()).toEqual(['dinner']);
     expect(ids()).toEqual(['dinner']);
+  });
+
+  it('allows same-month paste through both clipboard paths for cuts and individual copies', async () => {
+    const entries = [entry('dinner')];
+    component.populateInputFields({ rawInput: entries } as SingleMonthData);
+    const importMonth = jasmine.createSpy('importMonth').and.resolveTo();
+    Object.assign(component.dataService, {
+      importMonth,
+      retrieveCopiedLinks: () => entries,
+      retrieveCopiedEnvelopes: () => [],
+      retrieveCopiedSourceMonth: () => '2026-11',
+      copiedEntriesAllowSameMonth: () => true,
+    });
+    Object.assign(TestBed.inject(UiService), { showUndoSnackBar: jasmine.createSpy('showUndoSnackBar') });
+
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', true));
+    await component.pasteCopiedEntries();
+
+    expect(importMonth).toHaveBeenCalledTimes(2);
   });
 
   it('saves edits to the displayed month and lets the latest selection win during a slow save', async () => {

@@ -734,22 +734,26 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   //#region Copy & Paste Links
   protected async copyLinks(
     rows = this.linkArray.controls.filter(control => this.selectedEntryIds.has(control.get('id')?.value)),
+    allowSameMonth = rows.length !== this.linkArray.length,
   ): Promise<void> {
     if (!rows.length || this.bulkBusy()) return;
+    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy', allowSameMonth);
+  }
 
+  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut', allowSameMonth: boolean): Promise<boolean> {
     const entries = rows.map(control => control.getRawValue() as UserDefinedLink);
     if (rows.some(control => control.invalid) || this.dataService.checkDuplicateNames(entries)) {
-      this.uiService.showSnackBar('Fix invalid entries before copying them.');
-      return;
+      this.uiService.showSnackBar(`Fix invalid entries before you ${action} them.`);
+      return false;
     }
 
     const envelopeIds = new Set(entries.map(entry => entry.envelopeId));
     const envelopes = (this.singleMonthData()?.envelopes ?? []).filter(envelope => envelopeIds.has(envelope.id));
-    const text = exportMonth(entries, this.categoryService.categories(), envelopes, this.dataMonth);
+    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month, allowSameMonth);
     let savedInTab = false;
     try {
       this.dataService.storeCopiedLinks(entries);
-      this.dataService.storeCopiedEnvelopes(envelopes, this.dataMonth);
+      this.dataService.storeCopiedEnvelopes(envelopes, month, allowSameMonth);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
@@ -761,11 +765,63 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       else await navigator.clipboard.writeText(text);
     } catch {
       if (!this.clipboard.copy(text)) {
-        this.uiService.showSnackBar(savedInTab ? 'Entries copied for this tab only.' : 'Could not copy entries.');
-        return;
+        if (action === 'copy') {
+          this.uiService.showSnackBar(savedInTab ? 'Entries copied for this tab only.' : 'Could not copy entries.');
+        }
+        return false;
       }
     }
-    this.uiService.showSnackBar(`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} copied.`);
+    if (action === 'copy') {
+      this.uiService.showSnackBar(`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} copied.`);
+    }
+    return true;
+  }
+
+  protected get cutDisabled(): boolean {
+    return this.bulkBusy() || this.dataService.isDemo();
+  }
+
+  protected async cutLinks(row?: FormGroup): Promise<void> {
+    if (this.cutDisabled) return;
+    const ids = row ? new Set([row.get('id')?.value]) : new Set(this.selectedEntryIds);
+    const month = this.dataMonth;
+    const request = this.monthRequest;
+    if (!ids.size || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return;
+
+    this.bulkBusy.set(true);
+    try {
+      await this.monthNavigation;
+      if (this.destroyRef.destroyed || request !== this.monthRequest || month !== this.dataMonth) return;
+      if (!await this.flushPendingEdits()) return;
+      if (!this.linkForm.valid) {
+        this.uiService.showSnackBar('Fix invalid entries before you cut them.');
+        return;
+      }
+      const rows = this.linkArray.controls.filter(control => ids.has(control.get('id')?.value));
+      if (rows.length !== ids.size) return;
+      if (!await this.writeEntriesToClipboard(rows, month, 'cut', true)) {
+        this.uiService.showSnackBar('Could not cut entries to the clipboard.');
+        return;
+      }
+      if (this.destroyRef.destroyed || request !== this.monthRequest || this.hasChanges || this.linkForm.dirty) {
+        this.uiService.showSnackBar('Cut cancelled because the editor changed. The entries were copied.');
+        return;
+      }
+      const undo = await this.dataService.importMonth(month, { entries: [], categories: [] }, ids);
+      if (month === this.dataMonth) this.finishEditing();
+      this.uiService.showUndoSnackBar(`${ids.size} ${ids.size === 1 ? 'entry' : 'entries'} cut.`, async () => {
+        try {
+          const restored = await undo();
+          this.uiService.showSnackBar(restored ? 'Cut undone.' : 'Could not undo cut because the month changed or an edit could not be saved.');
+        } catch {
+          this.uiService.showSnackBar('Could not undo cut.');
+        }
+      });
+    } catch {
+      this.uiService.showSnackBar('Could not cut the entries. Try again.');
+    } finally {
+      this.bulkBusy.set(false);
+    }
   }
 
   async pasteLinks(dialogTemplate: TemplateRef<unknown>, replaceSelected = false): Promise<void> {
@@ -825,12 +881,13 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       categories: [],
       envelopes: this.dataService.retrieveCopiedEnvelopes(),
       sourceMonth: this.dataService.retrieveCopiedSourceMonth(),
+      allowSameMonth: this.dataService.copiedEntriesAllowSameMonth(),
     }, month, replacedIds);
   }
 
   private async applyMonthTransfer(transfer: MonthTransfer, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     if (this.destroyRef.destroyed || month !== this.dataMonth || !month || this.bulkBusy()) return false;
-    if (transfer.sourceMonth === month) return false;
+    if (transfer.sourceMonth === month && !transfer.allowSameMonth) return false;
     this.bulkBusy.set(true);
     try {
       await this.monthNavigation;

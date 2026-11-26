@@ -88,6 +88,9 @@
             <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>More
           </button>
           <mat-menu #selectionActions="matMenu">
+            <button mat-menu-item type="button" [disabled]="cutDisabled" (click)="cutLinks()">
+              <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>Cut selected
+            </button>
             @if (selectedAssignedExpenseCount) {
               <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
                 <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
@@ -393,15 +396,24 @@
     @if (entry) {
       @let entryName = entry.get('target')?.value?.trim() || 'Unnamed entry';
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
-        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry])">
+        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry], true)">
         <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
         Copy "<span class="entry-clipboard-name">{{ entryName }}</span>"
+      </button>
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="cutDisabled"
+        [title]="'Cut &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="cutLinks(entry)">
+        <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>
+        Cut "<span class="entry-clipboard-name">{{ entryName }}</span>"
       </button>
     }
     @if (selectedEntryIds.size) {
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
         (cdkMenuItemTriggered)="copyLinks()">
         <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>Copy selected
+      </button>
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="cutDisabled"
+        (cdkMenuItemTriggered)="cutLinks()">
+        <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>Cut selected
       </button>
     }
     <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy() || !linkArray.length"

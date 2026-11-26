@@ -492,7 +492,7 @@ export class DataService {
         return operation;
     }
 
-    private async commitMonthTransfer(month: string, { entries, categories, envelopes = [] }: MonthTransfer,
+    private async commitMonthTransfer(month: string, { entries, categories, envelopes = [], sourceMonth }: MonthTransfer,
         replacedIds: ReadonlySet<string>): Promise<() => Promise<boolean>> {
         const destination = this.sources.get(month);
         const normalize = (name: string) => name.trim().toLowerCase();
@@ -546,7 +546,9 @@ export class DataService {
         const sharedIds = new Set(this.globalEnvelopes().map(envelope => envelope.id));
         const localEnvelopes = destination?.envelopes ?? [];
         const transferableBudgetIds = new Set(envelopes
-            .filter(envelope => envelope.isGlobal && sharedIds.has(envelope.id))
+            .filter(envelope => envelope.isGlobal
+                ? sharedIds.has(envelope.id)
+                : sourceMonth === month && localEnvelopes.some(local => local.id === envelope.id))
             .map(envelope => envelope.id));
         const pasted = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => {
             let parent: string | undefined;
@@ -618,9 +620,14 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string) {
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string, allowSameMonth: boolean) {
         this.sessionStore.write('copiedEnvelopes', envelopes);
         this.sessionStore.write('copiedSourceMonth', sourceMonth);
+        this.sessionStore.write('copiedAllowSameMonth', allowSameMonth);
+    }
+
+    copiedEntriesAllowSameMonth(): boolean {
+        return this.sessionStore.read('copiedAllowSameMonth') === true;
     }
 
     retrieveCopiedSourceMonth(): string | undefined {
