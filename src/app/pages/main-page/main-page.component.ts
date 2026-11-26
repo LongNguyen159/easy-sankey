@@ -23,7 +23,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { EnvelopeDialogComponent } from '../../components/dialogs/envelope-dialog/envelope-dialog.component';
-import { TreemapChartComponent } from "../../components/charts/treemap-chart/treemap-chart.component";
 import { calculateDifferences, getLastMonth } from '../../utils/utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 @Component({
@@ -32,7 +31,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
         NavbarComponent, MonthPickerComponent,
         MatChipsModule, BudgetRadarChartComponent,
-        MatSlideToggleModule, FormsModule, TreemapChartComponent,
+        MatSlideToggleModule, FormsModule,
         MatTooltipModule],
     templateUrl: './main-page.component.html',
     styleUrl: './main-page.component.scss',
@@ -83,7 +82,6 @@ export class MainPageComponent extends BasePageComponent implements OnInit, OnCh
   isSankeyVertical: boolean = false
   isShowInsights: boolean = true
 
-  viewTreeMap: boolean = false
 
   constructor() {
     super();

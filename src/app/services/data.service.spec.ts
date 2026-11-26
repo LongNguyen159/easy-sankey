@@ -4,7 +4,7 @@ import {testDatabase} from '../testing/database';
 import {DataService} from './data.service';
 import {SettingsService} from './settings.service';
 import {UiService} from './ui.service';
-import {SingleMonthData} from '../components/models';
+import {EntryType, SingleMonthData} from '../components/models';
 import {formatDateToYYYYMM} from '../utils/utils';
 
 describe('initial demo data', () => {
@@ -56,7 +56,57 @@ describe('initial demo data', () => {
 });
 
 describe('envelope editing and month copying', () => {
-  it('preserves envelopes across entry saves and month copies, then clears only membership on deletion', async () => {
+  it('appends copied entries with unique names and replaces only the selected destination entries', async () => {
+    const fake = testDatabase();
+    TestBed.configureTestingModule({providers: [...fake.providers, DatePipe,
+      {provide: UiService, useValue: {showSnackBar: () => {}, openConfirmDialog: () => {}}},
+    ]});
+    const data = TestBed.inject(DataService);
+    await data.ready;
+    const month = '2026-12';
+    const original = [
+      {id: 'salary', type: EntryType.Income, target: 'Salary', value: 2000},
+      {id: 'food', type: EntryType.Expense, target: 'Food', value: 100},
+      {id: 'child', type: EntryType.Expense, target: 'Groceries', source: 'Food', value: 50},
+      {id: 'suffix', type: EntryType.Expense, target: 'Food(1)', value: 50},
+    ];
+    await data.saveMonthDraft(original, month);
+    const transfer = {categories: [], entries: [
+      {id: 'copied-food', type: EntryType.Expense, target: 'food', value: 150},
+      {id: 'copied-dinner', type: EntryType.Expense, target: 'Dinner', source: 'food', value: 50},
+    ]};
+
+    const undoAppend = await data.importMonth(month, transfer);
+    const afterAppend = fake.months.get(month)!.entries;
+    expect(afterAppend.map(entry => entry.target)).toEqual(['Salary', 'Food', 'Groceries', 'Food(1)', 'food(2)', 'Dinner']);
+    expect(afterAppend.slice(0, 4).map(entry => entry.id)).toEqual(original.map(entry => entry.id));
+    expect(afterAppend[5].source).toBe('food(2)');
+    expect(afterAppend[4].id).not.toBe('copied-food');
+
+    expect(await undoAppend()).toBeTrue();
+    expect(fake.months.get(month)!.entries.map(entry => entry.id)).toEqual(original.map(entry => entry.id));
+
+    await data.importMonth(month, transfer);
+    const undoReplace = await data.importMonth(month, transfer, new Set(['food']));
+    const afterReplace = fake.months.get(month)!.entries;
+    expect(afterReplace.map(entry => entry.target)).toEqual(['Salary', 'Groceries', 'Food(1)', 'food(2)', 'Dinner', 'food', 'Dinner(1)']);
+    expect(afterReplace.some(entry => entry.id === 'food')).toBeFalse();
+    expect(afterReplace.find(entry => entry.id === 'child')?.source).toBeUndefined();
+    expect(afterReplace[6].source).toBe('food');
+
+    await data.selectMonth('2027-01');
+    expect(await undoReplace()).toBeTrue();
+    const restored = fake.months.get(month)!.entries;
+    expect(restored.map(entry => entry.target)).toEqual(afterAppend.map(entry => entry.target));
+    expect(restored.find(entry => entry.id === 'child')?.source).toBe('Food');
+
+    const staleUndo = await data.importMonth(month, transfer);
+    await data.saveMonthDraft(original, month);
+    expect(await staleUndo()).toBeFalse();
+    expect(fake.months.get(month)!.entries.map(entry => entry.id)).toEqual(original.map(entry => entry.id));
+  });
+
+  it('preserves local budgets on save and drops their assignment when copying to another month', async () => {
     const fake = testDatabase();
     TestBed.configureTestingModule({providers: [...fake.providers, DatePipe,
       {provide: UiService, useValue: {showSnackBar: () => {}, openConfirmDialog: () => {}}},
@@ -74,15 +124,14 @@ describe('envelope editing and month copying', () => {
     const original = data.monthlyData['2026-11'];
     await data.importMonth('2026-12', {entries:original.rawInput,categories:[],envelopes:original.envelopes});
     const copy = fake.months.get('2026-12')!;
-    expect(copy.envelopes?.[0].id).not.toBe('personal');
-    expect(copy.entries[1].envelopeId).toBe(copy.envelopes?.[0].id);
+    expect(copy.envelopes).toEqual([]);
+    expect(copy.entries[1].envelopeId).toBeNull();
     expect(copy.entries[1].source).toBe('Restaurants@__system/category__');
     await data.deleteLocalEnvelope('2026-11', 'personal');
     expect(data.monthlyData['2026-11'].envelopes).toEqual([]);
     expect(fake.months.get('2026-11')?.entries[1].envelopeId).toBeNull();
     expect(fake.months.get('2026-11')?.entries[1].source).toBe('Restaurants@__system/category__');
     expect(data.monthlyData['2026-11'].remainingBalance).toBe('960');
-    expect(copy.envelopes?.[0].budget).toBe(500);
   });
 
   it('keeps an unused envelope when its month has no expense entries', async () => {

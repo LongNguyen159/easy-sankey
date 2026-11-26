@@ -59,6 +59,7 @@ export class BudgetRadarChartComponent {
       animation: false,
       legend: {top: 0, textStyle: {color: textColor}},
       tooltip: {
+        borderRadius: 16,
         trigger: 'item',
         backgroundColor: tooltipBackground,
         borderColor: gridColor,

@@ -62,23 +62,15 @@ class MonthCalculator {
 
         // Step 3: Handle Usable Income if there's a tax link, otherwise use the full income directly
         const incomeSource = singleIncome ? incomeNodes[0] : 'Total Income';
-        const taxLink = userDefinedLinks.find(link => link.type == EntryType.Tax);
+        if (hasTax) {
+            const usableIncome = totalIncomeValue - totalTaxValue;
+            nodesMap.set('Usable Income', { value: usableIncome, type: EntryType.Income });
 
-
-
-        /** If has tax, create 'Usable Income' node and use it as source for all expenses. */
-        if (hasTax && taxLink) {
-            let usableIncome = totalIncomeValue;
-            const taxValue = nodesMap.get(taxLink.target)?.value || 0;
-            usableIncome -= taxValue; // Subtract taxes
-            nodesMap.set('Usable Income', { value: usableIncome, type: EntryType.Income }); // Set Usable Income node
-
-            // Step 4: Create links from Income to Usable Income and Taxes
-            links.push({
-                source: incomeSource,
-                target: taxLink.target,
-                value: taxLink.value
-            });
+            for (const entry of userDefinedLinks) {
+                if (entry.type === EntryType.Tax) {
+                    links.push({ source: incomeSource, target: entry.target, value: entry.value });
+                }
+            }
 
             links.push({
                 source: incomeSource,
@@ -385,6 +377,20 @@ class MonthCalculator {
 export function calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
   hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = []): SingleMonthData {
   const result = new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
-  return { ...result, envelopes: structuredClone(envelopes),
-    sankeyData: envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory) };
+  const sankeyData = envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory);
+  const monthData = { ...result, envelopes: structuredClone(envelopes), sankeyData };
+  const budgetsWithSpending = sankeyData.nodes.filter(node => node.envelopeId && (node.spent ?? 0) > 0);
+  if (!budgetsWithSpending.length) return monthData;
+
+  const unspentBudget = budgetsWithSpending.reduce((total, node) =>
+    total + Math.max(0, node.budget! - node.spent!), 0);
+  const overspending = budgetsWithSpending.reduce((total, node) =>
+    total + Math.max(0, node.spent! - node.budget!), 0);
+  const surplusAfterBudgets = result.totalUsableIncome - result.totalExpenses - unspentBudget;
+  return {
+    ...monthData,
+    surplusAfterBudgets: unspentBudget > 0 ? surplusAfterBudgets : undefined,
+    surplusAtBudgetLimits: overspending > 0 ? surplusAfterBudgets + overspending : undefined,
+    totalBudgetOverspending: overspending > 0 ? overspending : undefined,
+  };
 }

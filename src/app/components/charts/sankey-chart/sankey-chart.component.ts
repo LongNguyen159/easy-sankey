@@ -37,6 +37,9 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
   /** Chart data input */
   @Input() sankeyData: SankeyData
   @Input() remainingBalance: string = '-'
+  @Input() surplusAfterBudgets?: number;
+  @Input() surplusAtBudgetLimits?: number;
+  @Input() totalBudgetOverspending?: number;
   @Input() monthInsights: DifferenceItem[] = []
 
 
@@ -179,6 +182,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     return {
       animation: true,
       tooltip: {
+        borderRadius: 16,
         trigger: 'item',
         position: 'top',
         triggerOn: 'mousemove',

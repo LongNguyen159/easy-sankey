@@ -3,6 +3,7 @@ import { EnvelopeDialogComponent } from '../dialogs/envelope-dialog/envelope-dia
 import {SettingsService} from '../../services/settings.service';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Clipboard } from '@angular/cdk/clipboard';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, signal, OnDestroy, OnInit, QueryList, TemplateRef, ViewChild, ViewChildren, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
@@ -38,8 +39,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RoutePath } from '../models';
 import { exportMonth, MonthTransfer, readMonth } from '../../utils/data-transfer';
-
-type MonthClipboardWindow=Window;
 
 /** Prevent user to define a certain node name that coincides with our system generated node name. */
 function restrictedNodeNamesValidator(restrictedNames: string[]): ValidatorFn {
@@ -87,7 +86,7 @@ enum ErrorType {
         CategorySelectComponent,
         MatSlideToggleModule, MonthPickerComponent,
         MatCardModule, ErrorCardComponent, MatDividerModule,
-        MatMenuModule, MatDialogModule,
+        MatMenuModule, CdkMenuModule, MatDialogModule,
         FormsModule,
         MatTooltipModule
     ],
@@ -733,94 +732,186 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
 
   //#region Copy & Paste Links
-  async copyLinks(): Promise<void> {
-    const currentLinks: UserDefinedLink[] = this.linkForm.value.links;
-    if (!currentLinks.length) {
-      this.uiService.showSnackBar('Nothing to copy.');
-      return;
+  protected async copyLinks(
+    rows = this.linkArray.controls.filter(control => this.selectedEntryIds.has(control.get('id')?.value)),
+    allowSameMonth = rows.length !== this.linkArray.length,
+  ): Promise<void> {
+    if (!rows.length || this.bulkBusy()) return;
+    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy', allowSameMonth);
+  }
+
+  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut', allowSameMonth: boolean): Promise<boolean> {
+    const entries = rows.map(control => control.getRawValue() as UserDefinedLink);
+    if (rows.some(control => control.invalid) || this.dataService.checkDuplicateNames(entries)) {
+      this.uiService.showSnackBar(`Fix invalid entries before you ${action} them.`);
+      return false;
     }
-    if (this.linkForm.invalid || this.dataService.checkDuplicateNames(currentLinks)) {
-      this.uiService.showSnackBar('Fix the invalid entries before copying this month.');
-      return;
-    }
-    const month = this.dataMonth;
-    const text = exportMonth(currentLinks, this.categoryService.categories(), this.singleMonthData()?.envelopes ?? []);
+
+    const envelopeIds = new Set(entries.map(entry => entry.envelopeId));
+    const envelopes = (this.singleMonthData()?.envelopes ?? []).filter(envelope => envelopeIds.has(envelope.id));
+    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month, allowSameMonth);
     let savedInTab = false;
     try {
-      this.dataService.storeCopiedLinks(currentLinks);
-      this.dataService.storeCopiedEnvelopes(this.singleMonthData()?.envelopes ?? []);
+      this.dataService.storeCopiedLinks(entries);
+      this.dataService.storeCopiedEnvelopes(envelopes, month, allowSameMonth);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
     }
 
-    const desktop = (window as MonthClipboardWindow).electronAPI;
+    const desktop = window.electronAPI;
     try {
       if (desktop?.writeMonthClipboard) await desktop.writeMonthClipboard(text);
       else await navigator.clipboard.writeText(text);
     } catch {
       if (!this.clipboard.copy(text)) {
-        this.uiService.showSnackBar(savedInTab ? 'Month copied for this tab only.' : 'Could not copy this month.');
-        return;
+        if (action === 'copy') {
+          this.uiService.showSnackBar(savedInTab ? 'Entries copied for this tab only.' : 'Could not copy entries.');
+        }
+        return false;
       }
     }
-    this.uiService.showSnackBar(`${month} copied to the clipboard.`);
+    if (action === 'copy') {
+      this.uiService.showSnackBar(`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} copied.`);
+    }
+    return true;
   }
 
-  async pasteLinks(dialogTemplate: TemplateRef<unknown>): Promise<void> {
+  protected get cutDisabled(): boolean {
+    return this.bulkBusy() || this.dataService.isDemo();
+  }
+
+  protected async cutLinks(row?: FormGroup): Promise<void> {
+    if (this.cutDisabled) return;
+    const ids = row ? new Set([row.get('id')?.value]) : new Set(this.selectedEntryIds);
     const month = this.dataMonth;
-    const desktop = (window as MonthClipboardWindow).electronAPI;
+    const request = this.monthRequest;
+    if (!ids.size || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return;
+
+    this.bulkBusy.set(true);
+    try {
+      await this.monthNavigation;
+      if (this.destroyRef.destroyed || request !== this.monthRequest || month !== this.dataMonth) return;
+      if (!await this.flushPendingEdits()) return;
+      if (!this.linkForm.valid) {
+        this.uiService.showSnackBar('Fix invalid entries before you cut them.');
+        return;
+      }
+      const rows = this.linkArray.controls.filter(control => ids.has(control.get('id')?.value));
+      if (rows.length !== ids.size) return;
+      if (!await this.writeEntriesToClipboard(rows, month, 'cut', true)) {
+        this.uiService.showSnackBar('Could not cut entries to the clipboard.');
+        return;
+      }
+      if (this.destroyRef.destroyed || request !== this.monthRequest || this.hasChanges || this.linkForm.dirty) {
+        this.uiService.showSnackBar('Cut cancelled because the editor changed. The entries were copied.');
+        return;
+      }
+      const undo = await this.dataService.importMonth(month, { entries: [], categories: [] }, ids);
+      if (month === this.dataMonth) this.finishEditing();
+      this.uiService.showUndoSnackBar(`${ids.size} ${ids.size === 1 ? 'entry' : 'entries'} cut.`, async () => {
+        try {
+          const restored = await undo();
+          this.uiService.showSnackBar(restored ? 'Cut undone.' : 'Could not undo cut because the month changed or an edit could not be saved.');
+        } catch {
+          this.uiService.showSnackBar('Could not undo cut.');
+        }
+      });
+    } catch {
+      this.uiService.showSnackBar('Could not cut the entries. Try again.');
+    } finally {
+      this.bulkBusy.set(false);
+    }
+  }
+
+  async pasteLinks(dialogTemplate: TemplateRef<unknown>, replaceSelected = false): Promise<void> {
+    if (this.bulkBusy()) return;
+    const replacedIds = new Set(replaceSelected ? this.selectedEntryIds : []);
+    const month = this.dataMonth;
+    const request = this.monthRequest;
+    const desktop = window.electronAPI;
     let transfer: MonthTransfer;
     try {
       const text = desktop?.readMonthClipboard ? await desktop.readMonthClipboard() : await navigator.clipboard.readText();
       transfer = readMonth(text);
     } catch {
-      if (!this.destroyRef.destroyed && month === this.dataMonth) {
-        this.dialog.open(dialogTemplate, { data: month, autoFocus: 'textarea' });
+      if (!this.destroyRef.destroyed && request === this.monthRequest && month === this.dataMonth) {
+        if (this.lastMonthCopiedInTab?.length) {
+          await this.pasteMonthFromTab(month, replacedIds);
+        } else {
+          this.dialog.open(dialogTemplate, { data: { month, replacedIds }, autoFocus: 'textarea' });
+        }
       }
       return;
     }
-    await this.applyMonthTransfer(transfer, month);
+    if (request === this.monthRequest) await this.applyMonthTransfer(transfer, month, replacedIds);
   }
 
-  protected async pasteAndClose(month:string, dialog:{close():void}, text?:string):Promise<void> {
-    const saved=text===undefined ? await this.pasteMonthFromTab(month) : await this.pasteMonthText(text,month);
-    if(saved) dialog.close();
+  protected async pasteAndClose(
+    { month, replacedIds }: { month: string; replacedIds: ReadonlySet<string> },
+    dialog: { close(): void },
+    text?: string,
+  ): Promise<void> {
+    const saved = text === undefined
+      ? await this.pasteMonthFromTab(month, replacedIds)
+      : await this.pasteMonthText(text, month, replacedIds);
+    if (saved) dialog.close();
   }
 
-  protected async pasteMonthText(text: string, month: string): Promise<boolean> {
+  private async pasteMonthText(text: string, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     let transfer: MonthTransfer;
     try {
       transfer = readMonth(text);
     } catch {
-      this.uiService.showSnackBar('Copy a month from Easy Sankey first.');
+      this.uiService.showSnackBar('Copy entries from Easy Sankey first.');
       return false;
     }
-    return (await this.applyMonthTransfer(transfer, month));
+    return this.applyMonthTransfer(transfer, month, replacedIds);
   }
 
   protected get lastMonthCopiedInTab(): UserDefinedLink[] | null {
     return this.dataService.retrieveCopiedLinks();
   }
 
-  protected async pasteMonthFromTab(month: string): Promise<boolean> {
+  protected async pasteMonthFromTab(month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     const entries = this.lastMonthCopiedInTab;
-    return !!entries?.length && (await this.applyMonthTransfer({ entries, categories: [], envelopes: this.dataService.retrieveCopiedEnvelopes() }, month));
+    if (!entries?.length) return false;
+    return this.applyMonthTransfer({
+      entries,
+      categories: [],
+      envelopes: this.dataService.retrieveCopiedEnvelopes(),
+      sourceMonth: this.dataService.retrieveCopiedSourceMonth(),
+      allowSameMonth: this.dataService.copiedEntriesAllowSameMonth(),
+    }, month, replacedIds);
   }
 
-  private async applyMonthTransfer(transfer: MonthTransfer, month: string): Promise<boolean> {
-    if (this.destroyRef.destroyed || month !== this.dataMonth || !month) return false;
+  private async applyMonthTransfer(transfer: MonthTransfer, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
+    if (this.destroyRef.destroyed || month !== this.dataMonth || !month || this.bulkBusy()) return false;
+    if (transfer.sourceMonth === month && !transfer.allowSameMonth) return false;
+    this.bulkBusy.set(true);
     try {
-      await this.dataService.importMonth(month, transfer);
-      this.savedFormValues = this.linkArray.value.slice();
-      this.hasChanges = false;
-      this.uiService.showSnackBar(`Entries pasted into ${month}.`);
+      await this.monthNavigation;
+      if (this.destroyRef.destroyed || month !== this.dataMonth || !await this.flushPendingEdits()) return false;
+      const undo = await this.dataService.importMonth(month, transfer, replacedIds);
+      if (!this.destroyRef.destroyed && month === this.dataMonth) {
+        this.selectedEntryIds.clear();
+      }
+      this.uiService.showUndoSnackBar(`Entries pasted into ${month}.`, async () => {
+        try {
+          const restored = await undo();
+          this.uiService.showSnackBar(restored ? 'Paste undone.' : 'Could not undo paste because the month changed or an edit could not be saved.');
+        } catch {
+          this.uiService.showSnackBar('Could not undo paste.');
+        }
+      });
       return true;
     } catch (error) {
-      const message = error instanceof Error && error.message.startsWith('The copied month')
-        ? error.message : 'Could not save the copied month.';
+      const message = error instanceof Error && error.message.startsWith('The copied entries')
+        ? error.message : 'Could not paste the copied entries.';
       this.uiService.showSnackBar(message);
       return false;
+    } finally {
+      this.bulkBusy.set(false);
     }
   }
 
@@ -1203,7 +1294,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.filteredLinkIds.clear();
     for (const row of this.linkArray.controls) {
       const target = row.get('target')?.value?.toLowerCase() ?? '';
-      if (target.includes(searchTerm)) this.filteredLinkIds.add(row.get('id')?.value || '');
+      const source = row.get('source')?.value;
+      const category = source ? this.categoryService.get(source)?.label.toLowerCase() : undefined;
+      if (target.includes(searchTerm) || category?.includes(searchTerm)) {
+        this.filteredLinkIds.add(row.get('id')?.value || '');
+      }
     }
   }
   //#endregion

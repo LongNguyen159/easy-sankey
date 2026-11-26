@@ -6,18 +6,16 @@
     </div>
   </div>
 }
-<div [formGroup]="linkForm" class="link-form-container">
+<div [formGroup]="linkForm" class="link-form-container" [cdkContextMenuTriggerFor]="entryClipboardMenu">
 
   <!-- INPUT LIST ACTIONS BAR CONTAINER -->
   <div class="entry-toolbar-container sticky z-50 top-0 material-background-dialog-custom">
   <div class="entry-toolbar w-full py-2">
 
-    <!-- LAST UPDATED DATE -->
-    <div class="flex flex-row items-center justify-start gap-2">
-      @if (monthData && monthData.lastUpdated && monthData.lastUpdated !== '-') {
+    <div class="flex items-center gap-2">
+      @if (monthData?.lastUpdated && monthData.lastUpdated !== '-') {
         <div class="text-sm flex flex-row items-center gap-1" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400' : 'text-neutral-500'">
           <mat-icon fontSet="material-symbols-outlined">history</mat-icon>
-          <!-- <span>Last updated</span> -->
           <span matTooltip="Last edited" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}" class="text-highlight">
             {{ monthData.lastUpdated | date: 'dd. MMM yyyy' }}
           </span>
@@ -43,14 +41,6 @@
           <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>
           <span>Manage budgets</span>
         </button>
-        <button mat-menu-item (click)="copyLinks()" [disabled]="dataService.hasDataCycle()">
-          <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
-          <span>Copy all</span>
-        </button>
-        <button mat-menu-item (click)="pasteLinks(pasteMonthDialog)">
-          <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>
-          <span>Paste</span>
-        </button>
 
         <mat-divider></mat-divider>
 
@@ -62,72 +52,83 @@
     </div>
   </div>
 
-  <div class="flex flex-wrap items-center gap-2">
-    <button mat-button type="button" [matMenuTriggerFor]="entryViewMenu">
-      <mat-icon fontSet="material-symbols-outlined">view_list</mat-icon>
-      View
-    </button>
-    <mat-menu #entryViewMenu="matMenu">
-      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'costType'"
-        (click)="setEntryView('costType')">
-        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'costType' ? 'check' : 'view_list' }}</mat-icon>
-        Cost type
-      </button>
-      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'category'"
-        (click)="setEntryView('category')">
-        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'check' : 'category' }}</mat-icon>
-        Category
-      </button>
-      <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'budget'"
-        (click)="setEntryView('budget')">
-        <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'budget' ? 'check' : 'account_balance_wallet' }}</mat-icon>
-        Budget
-      </button>
-    </mat-menu>
-
-    <div class="entry-bulk-toolbar" role="group" aria-label="Entry editing actions">
+  <div class="flex items-start justify-between gap-2">
+    <div class="entry-bulk-toolbar min-w-0" role="group" aria-label="Entry editing actions">
       <button matButton type="button" [disabled]="bulkBusy()" (click)="toggleEditMode()" [attr.aria-pressed]="editMode()">
         <mat-icon fontSet="material-symbols-outlined">{{ editMode() ? 'check' : 'edit' }}</mat-icon>{{ editMode() ? 'Done' : 'Edit' }}
       </button>
       @if (editMode()) {
         <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
-          (change)="selectAll($event.checked)"></mat-checkbox>
-        <span aria-live="polite" class="bg-gray-200 p-2 px-3 rounded-full">{{ selectedEntryIds.size }} selected</span>
-        <button mat-button type="button" [disabled]="bulkBusy()"
-          [matMenuTriggerFor]="envelopeMenu">Add to budget</button>
-        <mat-menu #envelopeMenu="matMenu">
-          @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
-            <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
-              {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+          [matTooltip]="selectedEntryIds.size ? (allSelected ? 'Clear selection' : 'Select all') : ''"
+          (change)="selectAll($event.checked)">
+          <span aria-live="polite" class="whitespace-nowrap">{{ selectedEntryIds.size ? selectedEntryIds.size + ' selected' : 'Select all' }}</span>
+        </mat-checkbox>
+        @if (selectedEntryIds.size) {
+          <button mat-button type="button" [disabled]="bulkBusy()" (click)="copyLinks()">
+            <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>Copy
+          </button>
+          <button mat-button type="button" [disabled]="bulkBusy() || !selectedExpenseCount" [matMenuTriggerFor]="envelopeMenu">
+            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>Add to budget
+          </button>
+          <mat-menu #envelopeMenu="matMenu">
+            @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
+              <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
+                {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+              </button>
+            }
+            @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
+            <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
             </button>
-          }
-          @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
-          <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="createEnvelopeForSelection()">
-            <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Create budget…
-          </button>
-          <!-- <button mat-menu-item type="button" (click)="manageEnvelopes()">
-            <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>Manage budgets
-          </button> -->
-          <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
-            <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
-          </button>
-        </mat-menu>
-        <button mat-icon-button type="button" aria-label="More selection actions" matTooltip="More actions" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
-          <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>
-        </button>
-        <mat-menu #selectionActions="matMenu">
-          @if (selectedAssignedExpenseCount) {
-            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
-              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+            <button mat-menu-item type="button" (click)="manageMonthlyEnvelopes()">
+              <mat-icon fontSet="material-symbols-outlined">calendar_month</mat-icon>Manage budgets
             </button>
-            <mat-divider></mat-divider>
-          }
-          <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
-            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+          </mat-menu>
+          <button mat-button type="button" [disabled]="bulkBusy()" [matMenuTriggerFor]="selectionActions">
+            <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>More
           </button>
-        </mat-menu>
+          <mat-menu #selectionActions="matMenu">
+            <button mat-menu-item type="button" [disabled]="cutDisabled" (click)="cutLinks()">
+              <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>Cut selected
+            </button>
+            @if (selectedAssignedExpenseCount) {
+              <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null)">
+                <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+              </button>
+              <mat-divider></mat-divider>
+            }
+            <button mat-menu-item type="button" class="app-button-warn" [disabled]="!selectedEntryIds.size" (click)="deleteSelectedEntries()">
+              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete selected
+            </button>
+          </mat-menu>
+        }
       }
     </div>
+    @if (!editMode()) {
+      <div class="ml-auto shrink-0">
+        <button mat-button type="button" [matMenuTriggerFor]="entryViewMenu">
+          <mat-icon fontSet="material-symbols-outlined">view_list</mat-icon>
+          View
+        </button>
+        <mat-menu #entryViewMenu="matMenu">
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'costType'"
+            (click)="setEntryView('costType')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'costType' ? 'check' : 'view_list' }}</mat-icon>
+            Cost type
+          </button>
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'category'"
+            (click)="setEntryView('category')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'category' ? 'check' : 'category' }}</mat-icon>
+            Category
+          </button>
+          <button mat-menu-item type="button" role="menuitemradio" [attr.aria-checked]="entryView === 'budget'"
+            (click)="setEntryView('budget')">
+            <mat-icon fontSet="material-symbols-outlined">{{ entryView === 'budget' ? 'check' : 'account_balance_wallet' }}</mat-icon>
+            Budget
+          </button>
+        </mat-menu>
+      </div>
+    }
   </div>
 
   </div>
@@ -242,7 +243,9 @@
 <ng-template #entryList let-rows>
   <div cdkDropList [cdkDropListData]="rows" (cdkDropListDropped)="dropEntries($event)">
     @for (linkGroup of rows; track linkGroup.get('id').value; let index = $index) {
-      <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="editMode() || bulkBusy() || rows.length < 2">
+      <div [formGroup]="linkGroup" class="link-row entry-editor-row"
+        [cdkContextMenuTriggerFor]="entryClipboardMenu" [cdkContextMenuTriggerData]="{ entry: linkGroup }"
+        cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="editMode() || bulkBusy() || rows.length < 2">
         @if (editMode()) {
           <mat-checkbox class="entry-selection" [checked]="selectedEntryIds.has(linkGroup.get('id')?.value)" [disabled]="bulkBusy()"
             [aria-label]="'Select ' + (linkGroup.get('target')?.value || 'new entry')"
@@ -351,18 +354,20 @@
           <mat-icon fontSet="material-symbols-outlined">{{ envelopeName(linkGroup.get('envelopeId')?.value) ? 'savings' : 'more_vert' }}</mat-icon>
         </button>
         <mat-menu #entryMenu="matMenu">
-          <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
-            [matMenuTriggerFor]="entryEnvelopeMenu">
-            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
-          </button>
-          @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
-            <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
-              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+          <div [cdkContextMenuTriggerFor]="entryClipboardMenu" [cdkContextMenuTriggerData]="{ entry: linkGroup }">
+            <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
+              [matMenuTriggerFor]="entryEnvelopeMenu">
+              <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
             </button>
-          }
-          <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
-            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
-          </button>
+            @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
+              <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
+                <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+              </button>
+            }
+            <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
+              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
+            </button>
+          </div>
         </mat-menu>
         <mat-menu #entryEnvelopeMenu="matMenu">
           @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
@@ -386,20 +391,69 @@
   </div>
 </ng-template>
 
-<ng-template #pasteMonthDialog let-month let-dialogRef="dialogRef">
-  <h2 mat-dialog-title>Paste month</h2>
+<ng-template #entryClipboardMenu let-entry="entry">
+  <div cdkMenu class="entry-clipboard-menu" aria-label="Entry clipboard">
+    @if (entry) {
+      @let entryName = entry.get('target')?.value?.trim() || 'Unnamed entry';
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
+        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry], true)">
+        <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
+        Copy "<span class="entry-clipboard-name">{{ entryName }}</span>"
+      </button>
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="cutDisabled"
+        [title]="'Cut &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="cutLinks(entry)">
+        <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>
+        Cut "<span class="entry-clipboard-name">{{ entryName }}</span>"
+      </button>
+      <mat-divider></mat-divider>
+    }
+    @if (selectedEntryIds.size) {
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
+        (cdkMenuItemTriggered)="copyLinks()">
+        <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>Copy selected
+      </button>
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="cutDisabled"
+        (cdkMenuItemTriggered)="cutLinks()">
+        <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>Cut selected
+      </button>
+    }
+    <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy() || !linkArray.length"
+      (cdkMenuItemTriggered)="copyLinks(linkArray.controls)">
+      <mat-icon fontSet="material-symbols-outlined">library_books</mat-icon>Copy all entries
+    </button>
+    <mat-divider></mat-divider>
+    <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
+      (cdkMenuItemTriggered)="pasteLinks(pasteMonthDialog)">
+      <mat-icon fontSet="material-symbols-outlined">content_paste</mat-icon>Paste
+    </button>
+    @if (selectedEntryIds.size; as count) {
+      <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
+        (cdkMenuItemTriggered)="pasteLinks(pasteMonthDialog, true)">
+        <mat-icon fontSet="material-symbols-outlined">find_replace</mat-icon>
+        Paste and replace {{ count }} selected {{ count === 1 ? 'entry' : 'entries' }}
+      </button>
+    }
+  </div>
+</ng-template>
+
+<ng-template #pasteMonthDialog let-data let-dialogRef="dialogRef">
+  <h2 mat-dialog-title>Paste entries</h2>
   <mat-dialog-content>
-    <p>Paste the copied month below to replace the entries in {{ month }}.</p>
+    @if (data.replacedIds.size) {
+      <p>Pasting replaces {{ data.replacedIds.size }} selected entries in {{ data.month }}.</p>
+    } @else {
+      <p>Pasting appends the copied entries to {{ data.month }}.</p>
+    }
     <mat-form-field appearance="outline" class="w-full">
-      <mat-label>Copied month JSON</mat-label>
+      <mat-label>Copied entries JSON</mat-label>
       <textarea matInput #monthJson rows="4"></textarea>
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
     @if (lastMonthCopiedInTab?.length) {
-      <button mat-button (click)="pasteAndClose(month, dialogRef)">Paste from this tab</button>
+      <button mat-button (click)="pasteAndClose(data, dialogRef)">Paste from this tab</button>
     }
-    <button mat-flat-button (click)="pasteAndClose(month, dialogRef, monthJson.value)">Paste</button>
+    <button mat-flat-button (click)="pasteAndClose(data, dialogRef, monthJson.value)">Paste</button>
   </mat-dialog-actions>
 </ng-template>

@@ -67,12 +67,36 @@
     </div>
 }
 
-<h3 class="font-bold flex flex-row items-center gap-2">
+<h3 class="font-bold flex flex-row items-center gap-2 mb-4">
     <span>Surplus: </span>
     <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-1.25">
         {{ parseLocaleStringToNumber(remainingBalance) | currency: currencyService.getSelectedCurrency() }}
     </span>
 </h3>
+@if (surplusAfterBudgets !== undefined) {
+    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+        <span class="opacity-70">Surplus if you use up your remaining budget</span>
+        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
+            {{ surplusAfterBudgets | currency: currencyService.getSelectedCurrency() }}
+        </span>
+    </div>
+}
+@if (surplusAtBudgetLimits !== undefined) {
+    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+        <span class="opacity-70" matTooltip="A benchmark based on spending exactly the limit in each budget you’ve used.">
+            Theoretical surplus at budget limits
+        </span>
+        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
+            {{ surplusAtBudgetLimits | currency: currencyService.getSelectedCurrency() }}
+        </span>
+    </div>
+}
+@if (totalBudgetOverspending !== undefined) {
+    <p class="mt-1 text-sm">
+        <span class="opacity-70">Total overspent</span>
+        <strong class="ml-2">{{ totalBudgetOverspending | currency: currencyService.getSelectedCurrency() }}</strong>
+    </p>
+}
 <div #chartContainer class="sankey-resize"
     [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
     [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">

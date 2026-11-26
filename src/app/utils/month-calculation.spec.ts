@@ -15,6 +15,7 @@ describe('month source projections', () => {
     expect(first).toEqual(second);
     expect(first.totalExpenses).toBe(200);
     expect(first.remainingBalance).toBe('800');
+    expect(first.surplusAfterBudgets).toBeUndefined();
     expect(first.lastUpdated).toBe('original timestamp');
     expect(entries[1].value).toBe(20);
     expect(entries[1].lastEditedAt).toBe(123);
@@ -43,13 +44,18 @@ describe('monthly spending envelopes', () => {
     {id: 'dinner', type: EntryType.Expense, target: 'Dinner', value: 40, source: category, envelopeId: 'personal'},
     {id: 'lunch', type: EntryType.Expense, target: 'Lunch', value: 60, source: category},
   ];
-  const calculate = (budget = 500) => calculateMonth(entries, '2026-11', '-', id => id === category, [{...envelope, budget}]);
+  const unusedGlobalBudget = { id: 'unused', name: 'Unused global budget', budget: 250, isGlobal: true };
+  const calculate = (budget = 500) => calculateMonth(entries, '2026-11', '-', id => id === category,
+    [{...envelope, budget}, unusedGlobalBudget]);
 
   it('uses only actual spending for surplus and category reports, regardless of the allowance', () => {
     for (const budget of [50, 500, 2000]) {
       const data = calculate(budget);
       expect(data.totalExpenses).toBe(100);
       expect(data.remainingBalance).toBe('900');
+      expect(data.surplusAfterBudgets).toBe(940 - budget);
+      expect(data.surplusAtBudgetLimits).toBeUndefined();
+      expect(data.totalBudgetOverspending).toBeUndefined();
       expect(data.pieData).toContain({name: category, value: 100});
       const node = data.sankeyData.nodes.find(node => node.envelopeId === 'personal')!;
       expect(node.spent).toBe(40);
@@ -76,15 +82,23 @@ describe('monthly spending envelopes', () => {
   it('hides unused envelopes and shows spending above the allowance without adding synthetic expenses', () => {
     const unused = calculateMonth(entries.map(entry => entry.envelopeId === envelope.id
       ? {...entry, value: 0}
-      : entry), '2026-11', '-', id => id === category, [envelope]);
+      : entry), '2026-11', '-', id => id === category, [envelope, unusedGlobalBudget]);
     expect(unused.sankeyData.nodes.find(node => node.envelopeId)).toBeUndefined();
     const nodeNames = new Set(unused.sankeyData.nodes.map(node => node.name));
     expect(unused.sankeyData.links.every(link => nodeNames.has(link.source) && nodeNames.has(link.target))).toBeTrue();
     expect(unused.remainingBalance).toBe('940');
+    expect(unused.surplusAfterBudgets).toBeUndefined();
+    expect(unused.surplusAtBudgetLimits).toBeUndefined();
     const overspent = calculate(20);
     expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.value).toBe(40);
     expect(overspent.sankeyData.nodes.find(node => node.envelopeId)?.budget).toBe(20);
     expect(overspent.remainingBalance).toBe('900');
+    expect(overspent.surplusAfterBudgets).toBeUndefined();
+    expect(overspent.surplusAtBudgetLimits).toBe(920);
+    expect(overspent.totalBudgetOverspending).toBe(20);
+    const exactlySpent = calculate(40);
+    expect(exactlySpent.surplusAfterBudgets).toBeUndefined();
+    expect(exactlySpent.surplusAtBudgetLimits).toBeUndefined();
   });
 
   it('preserves tax calculations and handles independent memberships within expense hierarchies', () => {
@@ -96,6 +110,7 @@ describe('monthly spending envelopes', () => {
     expect(data.totalExpenses).toBe(100);
     expect(data.totalTax).toBe(100);
     expect(data.remainingBalance).toBe('800');
+    expect(data.surplusAfterBudgets).toBe(340);
     expect(data.sankeyData.nodes.find(node => node.envelopeId)?.spent).toBe(40);
     expect(data.sankeyData.nodes.filter(node => node.categoryId === category).reduce((sum,node) => sum+node.value,0)).toBe(100);
     expect(data.sankeyData.links.find(link => link.target === data.sankeyData.nodes.find(node => node.envelopeId)?.name)?.source).toBe('Usable Income');

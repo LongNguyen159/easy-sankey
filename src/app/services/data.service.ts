@@ -6,7 +6,7 @@ import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, SYSTEM_PREFIX, TreeNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -486,7 +486,32 @@ export class DataService {
 
 
     //#region Copy & Paste Links
-    async importMonth(month: string, { entries, categories, envelopes = [] }: MonthTransfer): Promise<void> {
+    importMonth(month: string, transfer: MonthTransfer, replacedIds: ReadonlySet<string> = new Set()): Promise<() => Promise<boolean>> {
+        const operation = this.inputSaveQueue.then(() => this.commitMonthTransfer(month, transfer, replacedIds));
+        this.inputSaveQueue = operation.catch(() => {});
+        return operation;
+    }
+
+    private async commitMonthTransfer(month: string, { entries, categories, envelopes = [], sourceMonth }: MonthTransfer,
+        replacedIds: ReadonlySet<string>): Promise<() => Promise<boolean>> {
+        const destination = this.sources.get(month);
+        const normalize = (name: string) => name.trim().toLowerCase();
+        const existing = new Map((destination?.entries ?? []).map(entry => [normalize(entry.target), entry]));
+        const remaining = (destination?.entries ?? []).filter(entry => !replacedIds.has(entry.id)).map(entry => {
+            let source = entry.source;
+            const visited = new Set<string>();
+            while (source) {
+                const parent = existing.get(normalize(source));
+                if (!parent || !replacedIds.has(parent.id)) break;
+                if (visited.has(parent.id)) {
+                    source = undefined;
+                    break;
+                }
+                visited.add(parent.id);
+                source = parent.source;
+            }
+            return source === entry.source ? entry : { ...entry, source };
+        });
         const currentCategories = this.categories.categories();
         const definitions = new Map(currentCategories.map(category => [category.value, category]));
         const sources = new Set(entries.map(entry => entry.source));
@@ -496,52 +521,118 @@ export class DataService {
             }
         }
 
-        const reservedNames = new Set([...this.nonAllowedNames, ...definitions.keys()]);
-        if (this.checkDuplicateNames(entries) || entries.some(({ target }) => reservedNames.has(target.trim()))) {
-            throw new Error('The copied month has duplicate or reserved entry names.');
+        if (this.checkDuplicateNames(entries)) {
+            throw new Error('The copied entries have duplicate names.');
         }
 
-        // Follow each expense's parent chain once to catch cycles before calculation.
-        const parents = new Map(entries.filter(entry => entry.type === EntryType.Expense)
-            .map(entry => [entry.target, entry.source]));
+        const uniqueName = (target: string, occupied: Set<string>, reserved: ReadonlySet<string>): string => {
+            let name = target;
+            if (occupied.has(normalize(name))) {
+                const base = target.trim();
+                let suffix = 1;
+                do {
+                    name = `${base}(${suffix++})`;
+                } while (occupied.has(normalize(name)) || reserved.has(normalize(name)));
+            }
+            occupied.add(normalize(name));
+            return name;
+        };
+
+        const remainingNames = new Map(remaining.map(entry => [normalize(entry.target), entry.target]));
+        const occupied = new Set([...remainingNames.keys(), ...this.nonAllowedNames.map(normalize), ...[...definitions.keys()].map(normalize)]);
+        const originalNames = new Set(entries.map(entry => normalize(entry.target)));
+        const pastedNames = new Map(entries.map(({target}) => [normalize(target), uniqueName(target, occupied, originalNames)]));
+
+        const sharedIds = new Set(this.globalEnvelopes().map(envelope => envelope.id));
+        const localEnvelopes = destination?.envelopes ?? [];
+        const transferableBudgetIds = new Set(envelopes
+            .filter(envelope => envelope.isGlobal
+                ? sharedIds.has(envelope.id)
+                : sourceMonth === month && localEnvelopes.some(local => local.id === envelope.id))
+            .map(envelope => envelope.id));
+        const pasted = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => {
+            let parent: string | undefined;
+            if (type === EntryType.Expense && source) {
+                parent = definitions.has(source) ? source : pastedNames.get(normalize(source));
+                parent ??= remainingNames.get(normalize(source));
+            }
+            return {
+                id: uuid(), type, target: pastedNames.get(normalize(target))!, value, isFixCost, source: parent,
+                envelopeId: envelopeId && transferableBudgetIds.has(envelopeId) ? envelopeId : null
+            };
+        });
+        const links = [...remaining, ...pasted];
+
+        const parents = new Map(links.filter(entry => entry.type === EntryType.Expense)
+            .map(entry => [normalize(entry.target), entry.source && !definitions.has(entry.source) ? normalize(entry.source) : undefined]));
         const checked = new Set<string>();
         for (const target of parents.keys()) {
             const path = new Set<string>();
             for (let node: string | undefined = target; node && !checked.has(node); node = parents.get(node)) {
-                if (path.has(node)) throw new Error('The copied month has a cycle in its expenses.');
+                if (path.has(node)) throw new Error('The copied entries would create a cycle in expenses.');
                 path.add(node);
             }
             for (const node of path) checked.add(node);
         }
 
-        const sharedIds = new Set(this.globalEnvelopes().map(envelope => envelope.id));
-        const envelopeIds = new Map(envelopes.map(envelope => [envelope.id,
-          envelope.isGlobal && sharedIds.has(envelope.id) ? envelope.id : uuid()]));
-        const copiedEnvelopes = envelopes.filter(envelope => !envelope.isGlobal || !sharedIds.has(envelope.id))
-          .map(({isGlobal, ...envelope}) => ({...envelope, id: envelopeIds.get(envelope.id)!}));
-        const links = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => ({
-            id: uuid(), type, target, value, isFixCost,
-            envelopeId: envelopeId ? envelopeIds.get(envelopeId) ?? null : null,
-            source: type === EntryType.Expense && (!source?.endsWith(`@${SYSTEM_PREFIX}`) || definitions.has(source))
-                ? source ?? undefined : undefined
-        }));
-        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id), copiedEnvelopes);
-        const savedMonths = { ...this.monthlyData, [month]: data };
+        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id), localEnvelopes);
         const addedCategories = definitions.size > currentCategories.length;
-        const saved=(await this.database.command(()=>this.database.api.months.save({month:data.month,entries:links,envelopes:copiedEnvelopes,lastUpdated:new Date(data.lastUpdated).toISOString(),expectedRevision:this.sources.get(month)?.revision??null,categories:addedCategories?[...definitions.values()]:undefined,clearHistory:true}))).value;
-        this.sources.set(month,saved);
+        const saved = (await this.database.command(() => this.database.api.months.save({
+            month, entries: links, envelopes: localEnvelopes, lastUpdated: new Date(data.lastUpdated).toISOString(),
+            expectedRevision: destination?.revision ?? null, categories: addedCategories ? [...definitions.values()] : undefined,
+        }))).value;
+        this.sources.set(month, saved);
 
         if (addedCategories) await this.categories.reload();
         await this.logService.reload();
-        this.monthlyData = { ...this.monthlyData, ...savedMonths };
-        this.isDemo.set(false);
-        this.hasDataCycle.set(false);
-        this.multiMonthEntries$.next(savedMonths);
-        this.processedSingleMonthEntries$.next(data);
+        this.publishMonthTransfer(month, data);
+
+        return async () => {
+            if (!await this.flushEdits()) return false;
+            const undo = this.inputSaveQueue.then(async () => {
+                if (this.sources.get(month)?.revision !== saved.revision) return false;
+                const entries = destination?.entries ?? [];
+                const envelopes = destination?.envelopes ?? [];
+                const lastUpdated = destination?.lastUpdated ?? '-';
+                const restored = (await this.database.command(() => this.database.api.months.save({
+                    month, entries, envelopes, lastUpdated, expectedRevision: saved.revision,
+                }))).value;
+                this.sources.set(month, restored);
+                const data = this.calculateMonth(entries, month, lastUpdated,
+                    id => !!this.categories.get(id), envelopes);
+                await this.logService.reload();
+                this.publishMonthTransfer(month, data);
+                return true;
+            });
+            this.inputSaveQueue = undo.catch(() => {});
+            return undo;
+        };
+    }
+
+    private publishMonthTransfer(month: string, data: SingleMonthData): void {
+        this.monthlyData = { ...this.monthlyData, [month]: data };
+        this.multiMonthEntries$.next(this.monthlyData);
+        if (this.processedSingleMonthEntries$.value.month === month) {
+            this.isDemo.set(false);
+            this.hasDataCycle.set(false);
+            this.processedSingleMonthEntries$.next(data);
+        }
         this.dataSaved$.next(true);
     }
 
-    storeCopiedEnvelopes(envelopes: BudgetEnvelope[]) { this.sessionStore.write('copiedEnvelopes', envelopes); }
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string, allowSameMonth: boolean) {
+        this.sessionStore.write('copiedEnvelopes', envelopes);
+        this.sessionStore.write('copiedSourceMonth', sourceMonth);
+        this.sessionStore.write('copiedAllowSameMonth', allowSameMonth);
+    }
+
+    copiedEntriesAllowSameMonth(): boolean {
+        return this.sessionStore.read('copiedAllowSameMonth') === true;
+    }
+
+    retrieveCopiedSourceMonth(): string | undefined {
+        return this.sessionStore.read('copiedSourceMonth') ?? undefined;
+    }
     retrieveCopiedEnvelopes(): BudgetEnvelope[] { return this.sessionStore.read('copiedEnvelopes') ?? []; }
 
     storeCopiedLinks(links: UserDefinedLink[]) {

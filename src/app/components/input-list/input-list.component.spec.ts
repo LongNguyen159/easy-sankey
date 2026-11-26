@@ -1,3 +1,4 @@
+import { exportMonth } from '../../utils/data-transfer';
 import { calculateMonth } from '../../utils/month-calculation';
 import { NgZone, provideZonelessChangeDetection } from '@angular/core';
 import { defer, of, Subject } from 'rxjs';
@@ -39,6 +40,10 @@ class EntryListHarness extends InputListComponent {
   assignEntry(id: string, index: number) { return this.assignSelectedEnvelope(id, this.linkArray.at(index)); }
   createEntryEnvelope(index: number) { return this.createEnvelopeForSelection(this.linkArray.at(index)); }
   deleteSelected() { return this.deleteSelectedEntries(); }
+  pasteCopiedEntries(text?: string) {
+    const dialog = { close: jasmine.createSpy('close') };
+    return this.pasteAndClose({ month: this.dataMonth, replacedIds: this.selectedEntryIds }, dialog, text);
+  }
   rows(isFixCost?: boolean) { return this.visibleEntries(isFixCost); }
 }
 
@@ -61,7 +66,9 @@ describe('InputListComponent manual sorting', () => {
       { provide: ColorService, useValue: {} },
       { provide: LogsService, useValue: {} },
       { provide: Router, useValue: {navigate:jasmine.createSpy('navigate').and.resolveTo(true)} },
-      { provide: CategoryService, useValue: {} },
+      { provide: CategoryService, useValue: {
+        get: (id: string) => id === 'category-id' ? { label: 'Food & Drink' } : undefined,
+      } },
       { provide: MatDialog, useValue: {open: jasmine.createSpy('open'),closeAll:jasmine.createSpy('closeAll')} },
       { provide: Clipboard, useValue: {} },
       { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } }
@@ -71,6 +78,47 @@ describe('InputListComponent manual sorting', () => {
   });
 
   afterEach(async () => (await component.ngOnDestroy()));
+
+  it('ignores a full-month paste into its source month, even when replacing selected entries', async () => {
+    const entries = [entry('dinner')];
+    component.populateInputFields({ rawInput: entries } as SingleMonthData);
+    component.select('dinner');
+    const importMonth = jasmine.createSpy('importMonth');
+    Object.assign(component.dataService, {
+      importMonth,
+      retrieveCopiedLinks: () => entries,
+      retrieveCopiedEnvelopes: () => [],
+      retrieveCopiedSourceMonth: () => '2026-11',
+      copiedEntriesAllowSameMonth: () => false,
+    });
+
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', false));
+    await component.pasteCopiedEntries();
+
+    expect(importMonth).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(component.selectedIds()).toEqual(['dinner']);
+    expect(ids()).toEqual(['dinner']);
+  });
+
+  it('allows same-month paste through both clipboard paths for cuts and individual copies', async () => {
+    const entries = [entry('dinner')];
+    component.populateInputFields({ rawInput: entries } as SingleMonthData);
+    const importMonth = jasmine.createSpy('importMonth').and.resolveTo();
+    Object.assign(component.dataService, {
+      importMonth,
+      retrieveCopiedLinks: () => entries,
+      retrieveCopiedEnvelopes: () => [],
+      retrieveCopiedSourceMonth: () => '2026-11',
+      copiedEntriesAllowSameMonth: () => true,
+    });
+    Object.assign(TestBed.inject(UiService), { showUndoSnackBar: jasmine.createSpy('showUndoSnackBar') });
+
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', true));
+    await component.pasteCopiedEntries();
+
+    expect(importMonth).toHaveBeenCalledTimes(2);
+  });
 
   it('saves edits to the displayed month and lets the latest selection win during a slow save', async () => {
     component.populateInputFields({rawInput: [entry('edited')]} as SingleMonthData);
@@ -130,6 +178,18 @@ describe('InputListComponent manual sorting', () => {
     expect(ids()).toEqual(['older', 'newest']);
   });
 
+  it('finds entries by name or category label with a case-insensitive partial match', () => {
+    component.populateInputFields({ rawInput: [
+      { ...entry('coffee'), source: 'category-id' },
+      entry('food delivery'),
+      entry('rent'),
+    ] } as SingleMonthData);
+
+    component.filterLinks('FoOd');
+
+    expect(component.rows().map(row => row.get('id')?.value)).toEqual(['coffee', 'food delivery']);
+  });
+
   it('sorts the whole month during search and keeps filtered dragging scoped to visible rows', async () => {
     const fixed = { ...entry('fixed', 250), isFixCost: true };
     component.populateInputFields({ rawInput: [entry('match-old', 100), fixed, entry('hidden', 200), entry('match-new', 300)] } as SingleMonthData);
@@ -181,6 +241,18 @@ describe('InputListComponent manual sorting', () => {
     component.edit();component.filterLinks('match');component.selectFiltered();
     expect(component.selectedIds()).toEqual(['match']);
     component.edit();expect(component.selectedIds()).toEqual([]);
+  });
+
+  it('includes collapsed fixed costs in select-all', () => {
+    component.populateInputFields({rawInput: [
+      {...entry('rent'), isFixCost: true},
+      entry('groceries'),
+    ]} as SingleMonthData);
+
+    component.isFixCostsExpanded = false;
+    component.edit();
+    component.selectFiltered();
+    expect(component.selectedIds()).toEqual(['rent', 'groceries']);
   });
 
   it('assigns only the menu entry while preserving the bulk selection and excluding income', async () => {

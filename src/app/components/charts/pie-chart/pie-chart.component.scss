@@ -1,0 +1,24 @@
+.chart-view-switcher {
+  container-type: inline-size;
+}
+
+.chart-view-controls {
+  display: grid;
+  justify-items: center;
+  align-items: center;
+}
+
+@container (min-width: 34rem) {
+  .chart-view-controls {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  mat-button-toggle-group {
+    grid-column: 2;
+  }
+
+  .chart-view-options {
+    grid-column: 3;
+    justify-self: start;
+  }
+}

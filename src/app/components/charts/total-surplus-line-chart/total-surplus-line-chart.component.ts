@@ -48,7 +48,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
       tooltip: {
         borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
         borderWidth: 2,
-        borderRadius: 12,
+        borderRadius: 16,
         trigger: 'axis',
         backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
         textStyle: {

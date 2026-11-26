@@ -33,5 +33,12 @@ export class WhatsNewPageComponent {
       withBorder: true,
       alt: 'Sankey chart with a centred resize handle on the horizontal line below it',
     },
+    {
+      title: 'Copy & Paste entries',
+      description: 'Copy and Paste your income/expenses through out the app. Just right click on the entry or on the dialog to show the menu.',
+      image: 'whats-new/entry-copy',
+      withBorder: true,
+      alt: 'Copy and Paste menu',
+    },
   ];
 }

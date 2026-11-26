@@ -35,6 +35,9 @@
           <app-sankey-chart
             [sankeyData]="entriesOfOneMonth.sankeyData"
             [remainingBalance]="entriesOfOneMonth.remainingBalance"
+            [surplusAfterBudgets]="entriesOfOneMonth.surplusAfterBudgets"
+            [surplusAtBudgetLimits]="entriesOfOneMonth.surplusAtBudgetLimits"
+            [totalBudgetOverspending]="entriesOfOneMonth.totalBudgetOverspending"
             [orientation]="isSankeyVertical ? 'vertical' : 'horizontal'"
             [showInsights]="isShowInsights"
             [monthInsights]="monthInsights"
@@ -47,6 +50,12 @@
         @if (budgets.length) {
           @let currency = currencyService.getSelectedCurrency();
           <section aria-label="Budgets" class="monthly-budgets">
+            @if (entriesOfOneMonth.totalBudgetOverspending !== undefined) {
+              <p class="text-center text-sm">
+                <span class="opacity-70">Total overspent</span>
+                <strong class="ml-2">{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
+              </p>
+            }
             @if (budgets.length >= 3) {
               <app-budget-radar-chart [budgets]="budgets"></app-budget-radar-chart>
             }
@@ -92,10 +101,6 @@
         <!-- NETTO CHART -->
         <section>
           <div class="flex flex-row w-full items-center justify-end gap-2">
-            <button mat-button class="flex flex-row items-center" (click)="viewTreeMap = !viewTreeMap">
-              <mat-icon fontSet="material-symbols-outlined">{{ viewTreeMap ? 'pie_chart' : 'map' }}</mat-icon>
-              <span>{{ viewTreeMap ? 'View Pie Chart' : 'View Tree Map' }}</span>
-            </button>
 
             <button mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
               <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>
@@ -105,16 +110,9 @@
           </div>
 
 
-          <app-pie-chart [showPieChart]="!viewTreeMap" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
           ></app-pie-chart>
-          @if (viewTreeMap) {
-            <section>
-              <div class="flex flex-row w-full justify-center">
-                <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [totalExpenses]="totalExpenses" [totalNetIncome]="totalNetIncome"></app-treemap-chart>
-              </div>
-            </section>
-          }
         </section>
 
 
@@ -124,7 +122,7 @@
         @if (showGrossIncomePieChart) {
           <section>
             <!-- BRUTTO CHART -->
-            <app-pie-chart [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
+            <app-pie-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
               [totalIncome]="totalGrossIncome"
             ></app-pie-chart>
           </section>
