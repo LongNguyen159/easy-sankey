@@ -373,17 +373,8 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
 
   //#region Helper Functions
-  isPositiveBalance(): boolean {
-    const balanceNumber = parseLocaleStringToNumber(this.remainingBalance);
-    return balanceNumber >= 0;
-  }
-
   parseLocaleStringToNumber(value: string): number {
     return parseLocaleStringToNumber(value);
-  }
-
-  getBalanceClass(): string {
-    return this.isPositiveBalance() ? 'positive-balance' : 'negative-balance';
   }
 
   categoryLabel(name: string): string {

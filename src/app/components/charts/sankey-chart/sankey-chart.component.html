@@ -67,54 +67,84 @@
     </div>
 }
 
-<div class="mb-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
-<h3 class="font-bold flex flex-row items-center gap-2">
-    <span matTooltip="Money left after expenses and investment contributions, including money in your bank account.">Cash surplus</span>
-    <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-1.25">
-        {{ parseLocaleStringToNumber(remainingBalance) | currency: currencyService.getSelectedCurrency() }}
+@let currency = currencyService.getSelectedCurrency();
+@let darkMode = colorService.isDarkMode();
+@let cashSurplus = parseLocaleStringToNumber(remainingBalance);
+@let hasInvestments = savings && savings.investments !== 0;
+@let rate = savings?.savingsRate;
+<ng-template #savingsRate>
+    <span matTooltip="Share of net income retained as cash surplus or investments.">
+        {{ rate == null ? '—' : (rate / 100 | percent: '1.0-1') }} savings rate
     </span>
-</h3>
-@if (savings; as metrics) {
-    @if (metrics.investments !== 0) {
-        <h3 class="flex flex-wrap items-baseline gap-2 font-bold">
-            <span matTooltip="Cash surplus and investment contributions combined.">Total savings</span>
-            <span class="text-base" [ngClass]="metrics.totalSavings < 0 ? 'text-red-700 dark:text-red-400' : ''">
-                {{ metrics.totalSavings | currency: currencyService.getSelectedCurrency() }}
-            </span>
-        </h3>
-        <p class="text-sm opacity-75" matTooltip="Money allocated to investments this month.">
-            Investments <strong>{{ metrics.investments | currency: currencyService.getSelectedCurrency() }}</strong>
+</ng-template>
+
+<div class="mb-3 flex flex-wrap gap-x-10 gap-y-3">
+    <div>
+        <h3 class="text-sm font-medium">Cash surplus</h3>
+        <span class="block text-2xl leading-8 font-bold tabular-nums"
+            [ngClass]="cashSurplus < 0
+                ? (darkMode ? 'text-red-400' : 'text-red-700')
+                : cashSurplus > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
+            {{ cashSurplus | currency: currency }}
+        </span>
+        <p class="text-sm opacity-75">
+            After expenses{{ hasInvestments ? ' and investments' : '' }}
+            @if (savings && !hasInvestments) {
+                <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+            }
         </p>
+    </div>
+    @if (savings && hasInvestments) {
+        <div>
+            <h3 class="text-sm font-medium">Total savings</h3>
+            <span class="block text-base leading-8 font-medium tabular-nums"
+            [ngClass]="savings.totalSavings < 0
+                ? (darkMode ? 'text-red-400' : 'text-red-700')
+                : savings.totalSavings > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
+                {{ savings.totalSavings | currency: currency }}
+            </span>
+            <p class="text-sm opacity-75">
+                Includes {{ savings.investments | currency: currency }} invested
+                <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+            </p>
+        </div>
     }
-    <p class="text-sm opacity-75" matTooltip="The share of net income retained as cash surplus or investments.">
-        Savings rate <strong>{{ metrics.savingsRate === null ? '—' : (metrics.savingsRate / 100 | percent: '1.0-1') }}</strong>
-    </p>
-}
 </div>
-@if (surplusAfterBudgets !== undefined) {
-    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        <span class="opacity-70">Cash surplus if you use up your remaining budget</span>
-        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
-            {{ surplusAfterBudgets | currency: currencyService.getSelectedCurrency() }}
-        </span>
-    </div>
-}
-@if (surplusAtBudgetLimits !== undefined) {
-    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        <span class="opacity-70" matTooltip="A benchmark based on spending exactly the limit in each budget you’ve used.">
-            Theoretical cash surplus at budget limits
-        </span>
-        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
-            {{ surplusAtBudgetLimits | currency: currencyService.getSelectedCurrency() }}
-        </span>
-    </div>
-}
-@if (totalBudgetOverspending !== undefined) {
-    <p class="mt-1 text-sm">
-        <span class="opacity-70">Total overspent</span>
-        <strong class="ml-2">{{ totalBudgetOverspending | currency: currencyService.getSelectedCurrency() }}</strong>
+
+<ng-template #budgetSummary>
+    @if (surplusAfterBudgets !== undefined) {
+        <span matTooltip="Current cash surplus minus the amount left in your budgets.">Cash surplus after using your remaining budgets</span>
+        <strong class="tabular-nums">{{ surplusAfterBudgets | currency: currency }}</strong>
+    } @else if (totalBudgetOverspending !== undefined) {
+        <span>Over budget by</span>
+        <strong class="tabular-nums">{{ totalBudgetOverspending | currency: currency }}</strong>
+    }
+</ng-template>
+
+@if (surplusAtBudgetLimits !== undefined || (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined)) {
+    <details class="group mb-2 border-t border-current/15 pt-2 text-sm">
+        <summary class="flex w-fit cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded">
+            <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
+            <mat-icon aria-hidden="true" class="group-open:rotate-180">expand_more</mat-icon>
+        </summary>
+        <div class="mt-1 space-y-1 opacity-75">
+            @if (surplusAtBudgetLimits !== undefined) {
+                <p matTooltip="Cash surplus if you had spent exactly the limit in each budget you’ve used.">
+                    Theoretical cash surplus at budget limits
+                    <strong class="ml-1 tabular-nums">{{ surplusAtBudgetLimits | currency: currency }}</strong>
+                </p>
+            }
+            @if (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined) {
+                <p>Total overspent <strong class="ml-1 tabular-nums">{{ totalBudgetOverspending | currency: currency }}</strong></p>
+            }
+        </div>
+    </details>
+} @else if (surplusAfterBudgets !== undefined || totalBudgetOverspending !== undefined) {
+    <p class="mb-2 flex flex-wrap items-baseline gap-x-2 border-t border-current/15 pt-2 text-sm">
+        <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
     </p>
 }
+
 <div #chartContainer class="sankey-resize"
     [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
     [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
