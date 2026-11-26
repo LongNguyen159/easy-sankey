@@ -1,19 +1,19 @@
-<div class="flex flex-col w-full justify-center items-center gap-2">
+<div class="flex flex-wrap items-center justify-end gap-2">
     @if (regularExpenseTree) {
-        <mat-button-toggle-group hideSingleSelectionIndicator aria-label="Distribution"
-            [value]="expenseDistribution ? 'expenses' : 'income'"
-            (change)="setExpenseDistribution($event.value === 'expenses')">
-            <mat-button-toggle value="income">Net income</mat-button-toggle>
-            <mat-button-toggle value="expenses">Regular expenses</mat-button-toggle>
-        </mat-button-toggle-group>
+        <mat-slide-toggle [checked]="expenseDistribution" (change)="setExpenseDistribution($event.checked)">
+            Show expenses only
+        </mat-slide-toggle>
     }
+    <ng-content select="[distribution-action]"></ng-content>
+</div>
+<div class="flex flex-col w-full justify-center items-center gap-2">
     <h2 class="text-2xl font-bold">
          {{ expenseDistribution ? 'Expense Distribution' : chartTitle }}
     </h2>
     @if (expenseDistribution) {
         @if (distributionTree.length) {
             <p class="text-base font-medium">
-                Regular expenses {{ regularExpenses | currency: currencyService.getSelectedCurrency() }}
+                Total spending {{ regularExpenses | currency: currencyService.getSelectedCurrency() }}
             </p>
         }
     } @else if (totalExpenses !== -1) {
@@ -66,7 +66,7 @@
 </div>
 <div #chartContent>
     @if (expenseDistribution && !distributionTree.length) {
-        <p class="py-8 text-center opacity-75">No regular expenses this month.</p>
+        <p class="py-8 text-center opacity-75">No spending this month.</p>
     } @else if (chartView === 'totals' || chartView === 'stacked') {
         <div class="flex flex-wrap justify-center gap-x-3 gap-y-1" role="group" aria-label="Bar chart categories">
             @for (item of barLegend; track $index) {

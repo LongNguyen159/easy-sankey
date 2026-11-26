@@ -734,13 +734,12 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   //#region Copy & Paste Links
   protected async copyLinks(
     rows = this.linkArray.controls.filter(control => this.selectedEntryIds.has(control.get('id')?.value)),
-    allowSameMonth = rows.length !== this.linkArray.length,
   ): Promise<void> {
     if (!rows.length || this.bulkBusy()) return;
-    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy', allowSameMonth);
+    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy');
   }
 
-  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut', allowSameMonth: boolean): Promise<boolean> {
+  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut'): Promise<boolean> {
     const entries = rows.map(control => control.getRawValue() as UserDefinedLink);
     if (rows.some(control => control.invalid) || this.dataService.checkDuplicateNames(entries)) {
       this.uiService.showSnackBar(`Fix invalid entries before you ${action} them.`);
@@ -749,11 +748,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
     const envelopeIds = new Set(entries.map(entry => entry.envelopeId));
     const envelopes = (this.singleMonthData()?.envelopes ?? []).filter(envelope => envelopeIds.has(envelope.id));
-    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month, allowSameMonth);
+    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month);
     let savedInTab = false;
     try {
       this.dataService.storeCopiedLinks(entries);
-      this.dataService.storeCopiedEnvelopes(envelopes, month, allowSameMonth);
+      this.dataService.storeCopiedEnvelopes(envelopes, month);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
@@ -799,7 +798,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       }
       const rows = this.linkArray.controls.filter(control => ids.has(control.get('id')?.value));
       if (rows.length !== ids.size) return;
-      if (!await this.writeEntriesToClipboard(rows, month, 'cut', true)) {
+      if (!await this.writeEntriesToClipboard(rows, month, 'cut')) {
         this.uiService.showSnackBar('Could not cut entries to the clipboard.');
         return;
       }
@@ -881,17 +880,33 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       categories: [],
       envelopes: this.dataService.retrieveCopiedEnvelopes(),
       sourceMonth: this.dataService.retrieveCopiedSourceMonth(),
-      allowSameMonth: this.dataService.copiedEntriesAllowSameMonth(),
     }, month, replacedIds);
   }
 
   private async applyMonthTransfer(transfer: MonthTransfer, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     if (this.destroyRef.destroyed || month !== this.dataMonth || !month || this.bulkBusy()) return false;
-    if (transfer.sourceMonth === month && !transfer.allowSameMonth) return false;
     this.bulkBusy.set(true);
     try {
       await this.monthNavigation;
       if (this.destroyRef.destroyed || month !== this.dataMonth || !await this.flushPendingEdits()) return false;
+      const destinationEntries = (this.linkArray.getRawValue() as UserDefinedLink[])
+        .filter(entry => !replacedIds.size || replacedIds.has(entry.id));
+      const destinationByName = new Map(destinationEntries.map(entry => [entry.target, entry]));
+      const identical = transfer.entries.length === destinationEntries.length
+        && new Set(transfer.entries.map(entry => entry.target)).size === transfer.entries.length
+        && transfer.entries.every(entry => {
+          const current = destinationByName.get(entry.target);
+          return current && current.type === entry.type && current.value === entry.value
+            && (current.source || '') === (entry.source || '')
+            && !!current.isFixCost === !!entry.isFixCost
+            && (current.envelopeId || null) === (entry.envelopeId || null);
+        });
+
+      if (identical) {
+        this.uiService.showSnackBar('These entries are already identical.');
+        return false;
+      }
+
       const undo = await this.dataService.importMonth(month, transfer, replacedIds);
       if (!this.destroyRef.destroyed && month === this.dataMonth) {
         this.selectedEntryIds.clear();

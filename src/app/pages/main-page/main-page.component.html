@@ -101,19 +101,15 @@
 
         <!-- NETTO CHART -->
         <section>
-          <div class="flex flex-row w-full items-center justify-end gap-2">
-
-            <button mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
+          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
+          >
+            <button distribution-action mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
               <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>
               <span>Did You Know?</span>
             </button>
 
-          </div>
-
-
-          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
-            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
-          ></app-pie-chart>
+          </app-pie-chart>
         </section>
 
 

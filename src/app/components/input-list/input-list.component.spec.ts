@@ -79,20 +79,19 @@ describe('InputListComponent manual sorting', () => {
 
   afterEach(async () => (await component.ngOnDestroy()));
 
-  it('ignores a full-month paste into its source month, even when replacing selected entries', async () => {
-    const entries = [entry('dinner')];
-    component.populateInputFields({ rawInput: entries } as SingleMonthData);
-    component.select('dinner');
+  it('ignores an identical paste even when replacing selected entries', async () => {
+    const entries = [{ ...entry('dinner', 100), id: 'copied-dinner' }];
+    component.populateInputFields({ rawInput: [entry('dinner', 200)] } as SingleMonthData);
     const importMonth = jasmine.createSpy('importMonth');
     Object.assign(component.dataService, {
       importMonth,
       retrieveCopiedLinks: () => entries,
       retrieveCopiedEnvelopes: () => [],
       retrieveCopiedSourceMonth: () => '2026-11',
-      copiedEntriesAllowSameMonth: () => false,
     });
 
-    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', false));
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-10'));
+    component.select('dinner');
     await component.pasteCopiedEntries();
 
     expect(importMonth).not.toHaveBeenCalled();
@@ -101,20 +100,19 @@ describe('InputListComponent manual sorting', () => {
     expect(ids()).toEqual(['dinner']);
   });
 
-  it('allows same-month paste through both clipboard paths for cuts and individual copies', async () => {
+  it('allows a changed same-month paste through both clipboard paths', async () => {
     const entries = [entry('dinner')];
-    component.populateInputFields({ rawInput: entries } as SingleMonthData);
+    component.populateInputFields({ rawInput: [{ ...entry('dinner'), value: 20 }] } as SingleMonthData);
     const importMonth = jasmine.createSpy('importMonth').and.resolveTo();
     Object.assign(component.dataService, {
       importMonth,
       retrieveCopiedLinks: () => entries,
       retrieveCopiedEnvelopes: () => [],
       retrieveCopiedSourceMonth: () => '2026-11',
-      copiedEntriesAllowSameMonth: () => true,
     });
     Object.assign(TestBed.inject(UiService), { showUndoSnackBar: jasmine.createSpy('showUndoSnackBar') });
 
-    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11', true));
+    await component.pasteCopiedEntries(exportMonth(entries, [], [], '2026-11'));
     await component.pasteCopiedEntries();
 
     expect(importMonth).toHaveBeenCalledTimes(2);

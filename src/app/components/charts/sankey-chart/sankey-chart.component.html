@@ -78,38 +78,41 @@
     </span>
 </ng-template>
 
-<div class="mb-3 flex flex-wrap gap-x-10 gap-y-3">
-    <div>
-        <h3 class="text-sm font-medium">Cash surplus</h3>
-        <span class="block text-2xl leading-8 font-bold tabular-nums"
-            [ngClass]="cashSurplus < 0
-                ? (darkMode ? 'text-red-400' : 'text-red-700')
-                : cashSurplus > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
-            {{ cashSurplus | currency: currency }}
-        </span>
-        <p class="text-sm opacity-75">
-            After expenses{{ hasInvestments ? ' and investments' : '' }}
-            @if (savings && !hasInvestments) {
-                <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
-            }
-        </p>
-    </div>
-    @if (savings && hasInvestments) {
-        <div>
-            <h3 class="text-sm font-medium">Total savings</h3>
-            <span class="block text-base leading-8 font-medium tabular-nums"
-            [ngClass]="savings.totalSavings < 0
-                ? (darkMode ? 'text-red-400' : 'text-red-700')
-                : savings.totalSavings > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
-                {{ savings.totalSavings | currency: currency }}
+<ng-template #financialSummary>
+    <div class="mb-3 flex flex-wrap justify-start gap-x-10 gap-y-3 text-start">
+        <div class="rounded-2xl bg-(--app-summary-card-background) p-4">
+            <h3 class="text-sm font-medium">Cash surplus</h3>
+            <span class="block text-2xl leading-8 font-bold tabular-nums"
+                [ngClass]="cashSurplus < 0
+                    ? (darkMode ? 'text-red-400' : 'text-red-700')
+                    : cashSurplus > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : ''">
+                {{ cashSurplus | currency: currency }}
             </span>
             <p class="text-sm opacity-75">
-                Includes {{ savings.investments | currency: currency }} invested
-                <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+                After expenses{{ hasInvestments ? ' and investments' : '' }}
+                @if (savings && !hasInvestments) {
+                    <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+                }
             </p>
         </div>
-    }
-</div>
+
+        @if (savings && hasInvestments) {
+            <div class="py-4">
+                <h3 class="text-sm">Total savings</h3>
+                <span class="block text-base leading-8 font-medium tabular-nums"
+                [ngClass]="savings.totalSavings < 0
+                    ? (darkMode ? 'text-red-400' : 'text-red-700')
+                    : savings.totalSavings > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
+                    {{ savings.totalSavings | currency: currency }}
+                </span>
+                <p class="text-sm opacity-75">
+                    Includes {{ savings.investments | currency: currency }} invested
+                    <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+                </p>
+            </div>
+        }
+    </div>
+</ng-template>
 
 <ng-template #budgetSummary>
     @if (surplusAfterBudgets !== undefined) {
@@ -121,8 +124,36 @@
     }
 </ng-template>
 
+<div>
+    <div #chartContainer class="sankey-resize"
+        [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
+        [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
+        <div
+            echarts
+            class="sankey-canvas"
+            [options]="sankeyOption"
+            [merge]="sankeyMerge"
+            (chartInit)="onChartInit($event)"
+            (chartFinished)="applyCategoryEmphasis()"
+        ></div>
+    </div>
+    <button type="button" class="sankey-resize-handle"
+        aria-label="Resize chart height with the Up and Down arrow keys"
+        (pointerdown)="startChartResize($event, chartContainer.offsetHeight)"
+        (pointermove)="moveChartResize($event)"
+        (lostpointercapture)="endChartResize($event)"
+        (keydown.arrowup)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight - 32)"
+        (keydown.arrowdown)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight + 32)">
+    </button>
+    @if (sankeyData?.nodes?.length) {
+        <div class="sticky bottom-4 z-1 w-fit max-w-full">
+            <ng-container [ngTemplateOutlet]="financialSummary"></ng-container>
+        </div>
+    }
+</div>
+
 @if (surplusAtBudgetLimits !== undefined || (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined)) {
-    <details class="group mb-2 border-t border-current/15 pt-2 text-sm">
+    <details class="group mb-2 pt-2 text-sm">
         <summary class="flex w-fit cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded">
             <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
             <mat-icon aria-hidden="true" class="group-open:rotate-180">expand_more</mat-icon>
@@ -140,28 +171,7 @@
         </div>
     </details>
 } @else if (surplusAfterBudgets !== undefined || totalBudgetOverspending !== undefined) {
-    <p class="mb-2 flex flex-wrap items-baseline gap-x-2 border-t border-current/15 pt-2 text-sm">
+    <p class="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-2 text-sm">
         <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
     </p>
 }
-
-<div #chartContainer class="sankey-resize"
-    [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
-    [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
-    <div
-        echarts
-        class="sankey-canvas"
-        [options]="sankeyOption"
-        [merge]="sankeyMerge"
-        (chartInit)="onChartInit($event)"
-        (chartFinished)="applyCategoryEmphasis()"
-    ></div>
-</div>
-<button type="button" class="sankey-resize-handle"
-    aria-label="Resize chart height with the Up and Down arrow keys"
-    (pointerdown)="startChartResize($event, chartContainer.offsetHeight)"
-    (pointermove)="moveChartResize($event)"
-    (lostpointercapture)="endChartResize($event)"
-    (keydown.arrowup)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight - 32)"
-    (keydown.arrowdown)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight + 32)">
-</button>

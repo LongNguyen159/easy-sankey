@@ -396,7 +396,7 @@
     @if (entry) {
       @let entryName = entry.get('target')?.value?.trim() || 'Unnamed entry';
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
-        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry], true)">
+        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry])">
         <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
         Copy "<span class="entry-clipboard-name">{{ entryName }}</span>"
       </button>

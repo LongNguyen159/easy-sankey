@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CurrencyService } from '../../../services/currency.service';
 import { PieData, TreeNode } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -17,7 +18,7 @@ type DistributionView = 'pie' | 'totals' | 'stacked' | 'treemap' | 'sunburst';
 
 @Component({
     selector: 'app-pie-chart',
-    imports: [NgxEchartsDirective, CommonModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, TreemapChartComponent],
+    imports: [NgxEchartsDirective, CommonModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, MatSlideToggleModule, TreemapChartComponent],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
