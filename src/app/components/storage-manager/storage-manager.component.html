@@ -67,7 +67,10 @@
 
         <!-- INCOME/EXPENSE RATIO CHART -->
         <div class="flex flex-col w-full justify-center items-center mb-14">
-          <h2 class="text-2xl font-bold text-center mt-4">Net Income and Regular Expenses</h2>
+          <h2 class="text-2xl font-bold text-center mt-4">Net Income and Expenses</h2>
+          <p class="text-sm" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-neutral-500!'">
+            Investments do not count as expenses
+          </p>
           <app-income-expense-ratio-chart class="w-full" [totalExpense]="totalExpenses" [totalIncome]="totalNetIncome"></app-income-expense-ratio-chart>
         </div>
 
