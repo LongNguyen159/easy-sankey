@@ -377,6 +377,20 @@ class MonthCalculator {
 export function calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
   hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = []): SingleMonthData {
   const result = new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
-  return { ...result, envelopes: structuredClone(envelopes),
-    sankeyData: envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory) };
+  const sankeyData = envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory);
+  const monthData = { ...result, envelopes: structuredClone(envelopes), sankeyData };
+  const budgetsWithSpending = sankeyData.nodes.filter(node => node.envelopeId && (node.spent ?? 0) > 0);
+  if (!budgetsWithSpending.length) return monthData;
+
+  const unspentBudget = budgetsWithSpending.reduce((total, node) =>
+    total + Math.max(0, node.budget! - node.spent!), 0);
+  const overspending = budgetsWithSpending.reduce((total, node) =>
+    total + Math.max(0, node.spent! - node.budget!), 0);
+  const surplusAfterBudgets = result.totalUsableIncome - result.totalExpenses - unspentBudget;
+  return {
+    ...monthData,
+    surplusAfterBudgets: unspentBudget > 0 ? surplusAfterBudgets : undefined,
+    surplusAtBudgetLimits: overspending > 0 ? surplusAfterBudgets + overspending : undefined,
+    totalBudgetOverspending: overspending > 0 ? overspending : undefined,
+  };
 }

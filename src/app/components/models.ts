@@ -36,6 +36,9 @@ export interface SingleMonthData {
   totalTax: number;
   totalExpenses: number;
   remainingBalance: string;
+  surplusAfterBudgets?: number;
+  surplusAtBudgetLimits?: number;
+  totalBudgetOverspending?: number;
   pieData: PieData[];
   rawInput: UserDefinedLink[];
   month: string

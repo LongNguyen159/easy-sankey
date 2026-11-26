@@ -9,6 +9,9 @@
         <app-sankey-chart
             [sankeyData]="chartData.sankeyData"
             [remainingBalance]="chartData.remainingBalance"
+            [surplusAfterBudgets]="chartData.surplusAfterBudgets"
+            [surplusAtBudgetLimits]="chartData.surplusAtBudgetLimits"
+            [totalBudgetOverspending]="chartData.totalBudgetOverspending"
             [orientation]="isSankeyVertical() ? 'vertical' : 'horizontal'"
             [highlightedCategoryId]="highlightedCategoryId"
             [showTooltip]="false"

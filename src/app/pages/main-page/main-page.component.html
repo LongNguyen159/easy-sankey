@@ -35,6 +35,9 @@
           <app-sankey-chart
             [sankeyData]="entriesOfOneMonth.sankeyData"
             [remainingBalance]="entriesOfOneMonth.remainingBalance"
+            [surplusAfterBudgets]="entriesOfOneMonth.surplusAfterBudgets"
+            [surplusAtBudgetLimits]="entriesOfOneMonth.surplusAtBudgetLimits"
+            [totalBudgetOverspending]="entriesOfOneMonth.totalBudgetOverspending"
             [orientation]="isSankeyVertical ? 'vertical' : 'horizontal'"
             [showInsights]="isShowInsights"
             [monthInsights]="monthInsights"
@@ -47,6 +50,12 @@
         @if (budgets.length) {
           @let currency = currencyService.getSelectedCurrency();
           <section aria-label="Budgets" class="monthly-budgets">
+            @if (entriesOfOneMonth.totalBudgetOverspending !== undefined) {
+              <p class="text-center text-sm">
+                <span class="opacity-70">Total overspent</span>
+                <strong class="ml-2">{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
+              </p>
+            }
             @if (budgets.length >= 3) {
               <app-budget-radar-chart [budgets]="budgets"></app-budget-radar-chart>
             }
