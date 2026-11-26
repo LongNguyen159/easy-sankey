@@ -99,7 +99,8 @@ export class SettingsDialogComponent implements OnInit{
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'easy-sankey-backup.json';
+    const timestamp = new Date().toISOString().slice(0, 19).replace('T', '-at-').replace(/:/g, '-');
+    link.download = `easy-sankey-backup-${timestamp}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

@@ -23,9 +23,10 @@ function registerDatabaseApi({ app, ipcMain, getWindow, developmentURL }) {
       return state;
     },
     async exportFile() {
+      const timestamp = new Date().toISOString().slice(0, 19).replace("T", "-at-").replace(/:/g, "-");
       const { canceled, filePath } =
         await require("electron").dialog.showSaveDialog(getWindow(), {
-          defaultPath: "easy-sankey-backup.json",
+          defaultPath: `easy-sankey-backup-${timestamp}.json`,
           filters: [{ name: "JSON backup", extensions: ["json"] }],
         });
       if (canceled || !filePath) return false;
