@@ -1,4 +1,4 @@
-import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { Component, effect, ElementRef, inject, Input, OnChanges, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { BarSeriesOption, EChartsOption, color, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
@@ -38,6 +38,9 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   @Input() totalIncome: number = -1
 
   @Input() chartHeight: string = '70vh'
+
+  @ViewChild('chartContent') private chartContent?: ElementRef<HTMLElement>;
+  private chartFade?: Animation;
 
 
   dataService = inject(DataService)
@@ -134,16 +137,30 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
 
   setChartGroup(group: 'pie' | 'bars' | 'breakdown'): void {
     const views = { pie: 'pie', bars: this.lastBarView, breakdown: this.lastBreakdownView } as const;
-    this.setChartView(views[group]);
+    this.setChartView(views[group], group === 'breakdown' && views[group] === 'treemap');
   }
 
-  setChartView(view: DistributionView): void {
+  setChartView(view: DistributionView, fadeIn = false): void {
+    if (view === this.chartView) {
+      return;
+    }
+
     this.chartView = view;
     if (view === 'totals' || view === 'stacked') {
       this.lastBarView = view;
       this.updateBarChart();
     } else if (view === 'treemap' || view === 'sunburst') {
       this.lastBreakdownView = view;
+    }
+
+    const content = this.chartContent?.nativeElement;
+    this.chartFade?.cancel();
+    if (fadeIn && content
+      && !content.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.chartFade = content.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: 300,
+        easing: 'ease-in-out'
+      });
     }
   }
 
