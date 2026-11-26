@@ -6,7 +6,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { PieData, SingleMonthData, TreeNode } from '../../components/models';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { TreemapChartComponent } from '../../components/charts/treemap-chart/treemap-chart.component';
 import { MatButtonModule } from '@angular/material/button';
 
 @Component({
@@ -14,7 +13,6 @@ import { MatButtonModule } from '@angular/material/button';
     imports: [SankeyChartComponent, PieChartComponent,
         MatDividerModule, CommonModule,
         MatIconModule,
-        TreemapChartComponent,
         MatButtonModule
     ],
     templateUrl: './main-page-single-month.component.html',
@@ -37,7 +35,6 @@ export class MainPageSingleMonthComponent implements OnChanges {
 
   pieChartDataBrutto: PieData[] = []
   pieChartDataNetto: PieData[] = []
-  viewTreeMap: boolean = false
 
   treeMapData: TreeNode[] = []
 

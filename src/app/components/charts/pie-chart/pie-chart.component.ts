@@ -8,9 +8,11 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { CurrencyService } from '../../../services/currency.service';
 import { PieData, TreeNode } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
+import { TreemapChartComponent } from '../treemap-chart/treemap-chart.component';
+
 @Component({
     selector: 'app-pie-chart',
-    imports: [NgxEchartsDirective, CommonModule, MatButtonToggleModule],
+    imports: [NgxEchartsDirective, CommonModule, MatButtonToggleModule, TreemapChartComponent],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
@@ -25,7 +27,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   @Input() chartTitle: string = ''
   @Input() chartDescription: string = ''
 
-  @Input() showPieChart: boolean = true
+  @Input() showBreakdown = false
 
   @Input() totalExpenses: number = -1
   @Input() totalIncome: number = -1
@@ -37,7 +39,8 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   currencyPipe = inject(CurrencyPipe)
   currencyService = inject(CurrencyService)
 
-  chartType: 'pie' | 'bar' | 'stacked' = 'pie'
+  chartGroup: 'pie' | 'bars' | 'breakdown' = 'pie'
+  barType: 'totals' | 'stacked' = 'totals'
   readonly hiddenBars = new Set<string>()
   barLegend: (PieData & { itemStyle: { color: string } })[] = []
   visibleBarCount = 0
@@ -106,11 +109,9 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     }
   }
 
-  setChartType(type: typeof this.chartType): void {
-    this.chartType = type;
-    if (type !== 'pie') {
-      this.updateBarChart();
-    }
+  setBarType(type: typeof this.barType): void {
+    this.barType = type;
+    this.updateBarChart();
   }
 
   toggleBar(name: string): void {
@@ -199,7 +200,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
           formatter: name => this.categoryService.label(name)
         }
       },
-      series: this.chartType === 'stacked' ? this.getStackedSeries(visibleBars) : [{
+      series: this.barType === 'stacked' ? this.getStackedSeries(visibleBars) : [{
         type: 'bar',
         data: visibleBars,
         barMaxWidth: 32,
