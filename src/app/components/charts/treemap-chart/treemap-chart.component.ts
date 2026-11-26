@@ -29,6 +29,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
     styleUrl: './treemap-chart.component.scss'
 })
 export class TreemapChartComponent extends BaseChartComponent implements OnInit, OnChanges {
+  @Input() chartType?: 'treemap' | 'sunburst';
   @Input() treeData: TreeNode[] = []
   @Input() totalExpenses: number = -1
   @Input() totalNetIncome: number = -1
@@ -104,7 +105,10 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes && changes['treeData']) {
+    if (changes['chartType'] && this.chartType) {
+      this.currentChartType = this.chartType;
+    }
+    if (changes['treeData'] || changes['chartType']) {
       this.updateChart(this.currentChartType === 'treemap' ? this.getTreemapSeries() : this.getSunburstSeries())
     }
   }
@@ -115,6 +119,10 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
       type: 'treemap',
       id: 'treemap-sunburst-transition',
       animationDurationUpdate: 600,
+      left: 12,
+      right: 12,
+      top: 12,
+      bottom: 12,
       width: '95%',
       height: '95%',
       universalTransition: true,

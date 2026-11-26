@@ -4,15 +4,20 @@ import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { DataService } from '../../../services/data.service';
+import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { CurrencyService } from '../../../services/currency.service';
 import { PieData, TreeNode } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { TreemapChartComponent } from '../treemap-chart/treemap-chart.component';
 
+type DistributionView = 'pie' | 'totals' | 'stacked' | 'treemap' | 'sunburst';
+
 @Component({
     selector: 'app-pie-chart',
-    imports: [NgxEchartsDirective, CommonModule, MatButtonToggleModule, TreemapChartComponent],
+    imports: [NgxEchartsDirective, CommonModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, TreemapChartComponent],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
@@ -39,8 +44,17 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   currencyPipe = inject(CurrencyPipe)
   currencyService = inject(CurrencyService)
 
-  chartGroup: 'pie' | 'bars' | 'breakdown' = 'pie'
-  barType: 'totals' | 'stacked' = 'totals'
+  readonly barViews = [
+    { id: 'totals', label: 'Total bars' },
+    { id: 'stacked', label: 'Stacked bars' }
+  ] as const;
+  readonly breakdownViews = [
+    { id: 'treemap', label: 'Tree Map' },
+    { id: 'sunburst', label: 'Sunburst' }
+  ] as const;
+  chartView: DistributionView = 'pie';
+  private lastBarView: 'totals' | 'stacked' = 'totals';
+  private lastBreakdownView: 'treemap' | 'sunburst' = 'treemap';
   readonly hiddenBars = new Set<string>()
   barLegend: (PieData & { itemStyle: { color: string } })[] = []
   visibleBarCount = 0
@@ -109,9 +123,28 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     }
   }
 
-  setBarType(type: typeof this.barType): void {
-    this.barType = type;
-    this.updateBarChart();
+  get chartGroup(): 'pie' | 'bars' | 'breakdown' {
+    switch (this.chartView) {
+      case 'pie': return 'pie';
+      case 'totals':
+      case 'stacked': return 'bars';
+      default: return 'breakdown';
+    }
+  }
+
+  setChartGroup(group: 'pie' | 'bars' | 'breakdown'): void {
+    const views = { pie: 'pie', bars: this.lastBarView, breakdown: this.lastBreakdownView } as const;
+    this.setChartView(views[group]);
+  }
+
+  setChartView(view: DistributionView): void {
+    this.chartView = view;
+    if (view === 'totals' || view === 'stacked') {
+      this.lastBarView = view;
+      this.updateBarChart();
+    } else if (view === 'treemap' || view === 'sunburst') {
+      this.lastBreakdownView = view;
+    }
   }
 
   toggleBar(name: string): void {
@@ -200,7 +233,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
           formatter: name => this.categoryService.label(name)
         }
       },
-      series: this.barType === 'stacked' ? this.getStackedSeries(visibleBars) : [{
+      series: this.chartView === 'stacked' ? this.getStackedSeries(visibleBars) : [{
         type: 'bar',
         data: visibleBars,
         barMaxWidth: 32,

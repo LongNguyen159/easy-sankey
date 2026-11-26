@@ -19,32 +19,38 @@
          {{ chartDescription }}
     </p>
 </div>
-<div class="flex justify-center py-2">
-    <mat-button-toggle-group
-        hideSingleSelectionIndicator
-        [attr.aria-label]="chartTitle + ' chart type'"
-        [value]="chartGroup"
-        (change)="chartGroup = $event.value"
-    >
-        <mat-button-toggle value="pie">Pie</mat-button-toggle>
-        <mat-button-toggle value="bars">Bars</mat-button-toggle>
-        @if (showBreakdown) {
-            <mat-button-toggle value="breakdown">Breakdown</mat-button-toggle>
-        }
-    </mat-button-toggle-group>
-</div>
-@if (chartGroup === 'bars') {
-    <div class="flex justify-center pb-2">
-        <mat-button-toggle-group
-            hideSingleSelectionIndicator
-            [attr.aria-label]="chartTitle + ' bar type'"
-            [value]="barType"
-            (change)="setBarType($event.value)"
-        >
-            <mat-button-toggle value="totals">Totals</mat-button-toggle>
-            <mat-button-toggle value="stacked">Stacked</mat-button-toggle>
+<div class="chart-view-switcher">
+    <div class="chart-view-controls gap-2 pt-2 pb-8">
+        <mat-button-toggle-group hideSingleSelectionIndicator
+            [attr.aria-label]="chartTitle + ' chart group'"
+            [value]="chartGroup" (change)="setChartGroup($event.value)">
+            <mat-button-toggle value="pie">Pie</mat-button-toggle>
+            <mat-button-toggle value="bars">Bars</mat-button-toggle>
+            @if (showBreakdown) {
+                <mat-button-toggle value="breakdown">Breakdown</mat-button-toggle>
+            }
         </mat-button-toggle-group>
+        <div class="chart-view-options flex h-10 items-center justify-center">
+            @if (chartGroup !== 'pie') {
+                @let views = chartGroup === 'bars' ? barViews : breakdownViews;
+                <button matButton type="button" [matMenuTriggerFor]="chartViewMenu">
+                    {{ chartView === views[0].id ? views[0].label : views[1].label }}
+                    <mat-icon iconPositionEnd fontSet="material-symbols-outlined">expand_more</mat-icon>
+                </button>
+                <mat-menu #chartViewMenu="matMenu" class="app-menu">
+                    @for (view of views; track view.id) {
+                        <button mat-menu-item type="button" role="menuitemradio"
+                            [attr.aria-checked]="chartView === view.id"
+                            (click)="setChartView(view.id)">
+                            {{ view.label }}
+                        </button>
+                    }
+                </mat-menu>
+            }
+        </div>
     </div>
+</div>
+@if (chartView === 'totals' || chartView === 'stacked') {
     <div class="flex flex-wrap justify-center gap-x-3 gap-y-1" role="group" aria-label="Bar chart categories">
         @for (item of barLegend; track $index) {
             <button
@@ -65,9 +71,9 @@
         [style.height]="chartHeight"
         [style.min-height.px]="visibleBarCount * 28 + 80"
     ></div>
-} @else if (chartGroup === 'breakdown' && showBreakdown) {
+} @else if ((chartView === 'treemap' || chartView === 'sunburst') && showBreakdown) {
     <div class="flex justify-center">
-        <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [totalNetIncome]="totalIncome"></app-treemap-chart>
+        <app-treemap-chart class="w-[80%]" [treeData]="treeMapData" [chartType]="chartView" [totalNetIncome]="totalIncome"></app-treemap-chart>
     </div>
 } @else {
     <div echarts [options]="pieOption" [merge]="pieMergeOption" [style.height]="chartHeight"></div>
