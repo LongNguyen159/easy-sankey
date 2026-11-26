@@ -23,6 +23,7 @@ model Category {
   icon           String?
   colorLight     String? @map("color_light")
   colorDark      String? @map("color_dark")
+  classification String @default("EXPENSE")
   position       Int
   isEssential    Boolean @default(false) @map("is_essential")
   entries        Entry[]

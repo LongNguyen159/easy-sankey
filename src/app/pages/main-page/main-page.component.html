@@ -35,6 +35,7 @@
           <app-sankey-chart
             [sankeyData]="entriesOfOneMonth.sankeyData"
             [remainingBalance]="entriesOfOneMonth.remainingBalance"
+            [savings]="entriesOfOneMonth.savings"
             [surplusAfterBudgets]="entriesOfOneMonth.surplusAfterBudgets"
             [surplusAtBudgetLimits]="entriesOfOneMonth.surplusAtBudgetLimits"
             [totalBudgetOverspending]="entriesOfOneMonth.totalBudgetOverspending"
@@ -110,7 +111,7 @@
           </div>
 
 
-          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
           ></app-pie-chart>
         </section>

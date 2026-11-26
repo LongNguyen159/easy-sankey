@@ -2,7 +2,7 @@
     <div class="sankey-title">
         <h2 class="font-bold">Income Flow and Expense Allocation</h2>
         @if (showTooltip) {
-            <button mat-icon-button aria-label="Chart information" matTooltip="Click an entry to edit its amount. Budget labels show spent / allowance; Surplus uses actual spending.">
+            <button mat-icon-button aria-label="Chart information" matTooltip="Click an entry to edit its amount. Budget labels show spent / allowance; Cash surplus uses actual spending.">
                 <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             </button>
         }
@@ -67,15 +67,33 @@
     </div>
 }
 
-<h3 class="font-bold flex flex-row items-center gap-2 mb-4">
-    <span>Surplus: </span>
+<div class="mb-4 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+<h3 class="font-bold flex flex-row items-center gap-2">
+    <span matTooltip="Money left after expenses and investment contributions, including money in your bank account.">Cash surplus</span>
     <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-1.25">
         {{ parseLocaleStringToNumber(remainingBalance) | currency: currencyService.getSelectedCurrency() }}
     </span>
 </h3>
+@if (savings; as metrics) {
+    @if (metrics.investments !== 0) {
+        <h3 class="flex flex-wrap items-baseline gap-2 font-bold">
+            <span matTooltip="Cash surplus and investment contributions combined.">Total savings</span>
+            <span class="text-base" [ngClass]="metrics.totalSavings < 0 ? 'text-red-700 dark:text-red-400' : ''">
+                {{ metrics.totalSavings | currency: currencyService.getSelectedCurrency() }}
+            </span>
+        </h3>
+        <p class="text-sm opacity-75" matTooltip="Money allocated to investments this month.">
+            Investments <strong>{{ metrics.investments | currency: currencyService.getSelectedCurrency() }}</strong>
+        </p>
+    }
+    <p class="text-sm opacity-75" matTooltip="The share of net income retained as cash surplus or investments.">
+        Savings rate <strong>{{ metrics.savingsRate === null ? '—' : (metrics.savingsRate / 100 | percent: '1.0-1') }}</strong>
+    </p>
+}
+</div>
 @if (surplusAfterBudgets !== undefined) {
     <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        <span class="opacity-70">Surplus if you use up your remaining budget</span>
+        <span class="opacity-70">Cash surplus if you use up your remaining budget</span>
         <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
             {{ surplusAfterBudgets | currency: currencyService.getSelectedCurrency() }}
         </span>
@@ -84,7 +102,7 @@
 @if (surplusAtBudgetLimits !== undefined) {
     <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
         <span class="opacity-70" matTooltip="A benchmark based on spending exactly the limit in each budget you’ve used.">
-            Theoretical surplus at budget limits
+            Theoretical cash surplus at budget limits
         </span>
         <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
             {{ surplusAtBudgetLimits | currency: currencyService.getSelectedCurrency() }}

@@ -27,6 +27,10 @@ export class WhatsNewPageComponent {
 
   protected readonly features: readonly FeaturePreview[] = [
     {
+      title: 'Track Investments and Savings',
+      description: 'Mark a category as an investment contribution to see how much you invested, how much cash is left, and how much you saved overall. Open Finance Manager to see how your savings and savings rate change over time.',
+    },
+    {
       title: 'Resize the Sankey Chart',
       description: 'Drag the handle below the chart up or down to adjust its height. You can also focus the handle and use the Up and Down arrow keys.',
       image: 'whats-new/sankey-resize',

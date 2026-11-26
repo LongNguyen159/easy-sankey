@@ -3,7 +3,7 @@ import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetec
 import { EChartsOption, EChartsType, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { DifferenceItem, SankeyData, SankeyNode } from '../../models';
+import { DifferenceItem, SankeyData, SankeyNode, SavingsMetrics } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -37,6 +37,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
   /** Chart data input */
   @Input() sankeyData: SankeyData
   @Input() remainingBalance: string = '-'
+  @Input() savings?: SavingsMetrics;
   @Input() surplusAfterBudgets?: number;
   @Input() surplusAtBudgetLimits?: number;
   @Input() totalBudgetOverspending?: number;
@@ -194,9 +195,10 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
           if (params.dataType === 'node') {
             const nodeName = format.encodeHTML(this.nodeLabel(params.data));
             if (params.data.envelopeId) {
-              return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.spent, this.currencyService.getSelectedCurrency())} / ${this.currencyPipe.transform(params.data.budget, this.currencyService.getSelectedCurrency())}</strong><br>Allowance shown for planning; Surplus uses actual spending.`;
+              return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.spent, this.currencyService.getSelectedCurrency())} / ${this.currencyPipe.transform(params.data.budget, this.currencyService.getSelectedCurrency())}</strong><br>Allowance shown for planning; Cash surplus uses actual spending.`;
             }
-            return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>`;
+            const investment = this.categoryService.get(params.data.categoryId ?? params.data.name)?.classification === 'INVESTMENT';
+            return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>${investment ? '<br>Investment contribution' : ''}`;
           } else {
             const label = (name: string) => {
               const node = this.displayedData.nodes.find(item => item.name === name);

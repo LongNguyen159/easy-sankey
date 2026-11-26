@@ -26,6 +26,18 @@
         <p>In <strong>Edit input</strong>, use <strong>Search</strong> to find entries or <strong>View</strong> to group them by cost type, category, or budget.</p>
     </section>
 
+    <section class="manual-card shadow-lg">
+        <h2>Track investments and savings</h2>
+        <p>Open the menu, choose <strong>Categories</strong>, and add or edit a category.
+            Set <strong>Classification</strong> to <strong>Investment contribution</strong>, then use that category for outgoing entries such as ETF purchases. Changing the classification also updates past months.</p>
+        <ul class="list-disc space-y-2 pl-6">
+            <li><strong>Cash surplus</strong> is the money left after regular expenses and investment contributions. It includes money in your bank account.</li>
+            <li><strong>Total savings</strong> adds investment contributions back to cash surplus. It appears in the monthly overview when you have investment contributions and uses the amount you contributed, excluding changes in market value.</li>
+            <li><strong>Savings rate</strong> divides total savings by net income. It shows a dash when net income is zero or negative. Finance Manager uses the totals for the selected period.</li>
+        </ul>
+        <p>The Sankey chart includes investments because they use available cash. Choose <strong>Regular expenses</strong> in the distribution chart to see spending by category, with percentages based on regular expenses alone.</p>
+    </section>
+
     <section class="manual-card manual-feature shadow-lg">
         <div class="manual-copy">
             <h2>Use the Sankey chart</h2>
@@ -70,11 +82,11 @@
     <section class="manual-card manual-feature shadow-lg">
         <div class="manual-copy">
             <h2>Review your finances</h2>
-            <p>Open the menu and choose <strong>Finance Manager</strong> to see income, spending, and balance over time. Use <strong>Show predictions</strong> to show or hide future estimates.</p>
+            <p>Open the menu and choose <strong>Finance Manager</strong> to see income, regular expenses, savings, and cumulative cash surplus over time. Cumulative cash surplus adds up the monthly cash left after expenses and investments in the selected period. Use <strong>Show predictions</strong> to show or hide future estimates.</p>
         </div>
         <img class="manual-screenshot" loading="lazy"
             [src]="'assets/images/whats-new/prediction-' + imageTheme() + '.png'"
-            alt="Finance Manager Surplus and Balance chart with dashed lines for predicted values">
+            alt="Finance Manager cash surplus chart with dashed lines for predicted values">
     </section>
 
     <section class="manual-card manual-feature shadow-lg">

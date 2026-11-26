@@ -18,6 +18,27 @@ describe('database-backed expense categories',()=>{
   expect((await data.loadSingleMonth('2025-04'))?.rawInput[1].source).toBe(ExpenseCategory.Groceries);
   expect(categories.get(ExpenseCategory.Groceries)?.label).toBe('Supplies');
  });
+ it('recalculates active and historical months when a category is reclassified', async () => {
+  await data.saveMonthDraft(entries(), '2025-04');
+  await data.saveMonthDraft(entries(), '2025-05');
+  await data.selectMonth('2025-05');
+  let activeSavings = 0;
+  const subscription = data.getSingleMonthData().subscribe(month => activeSavings = month.savings?.investments ?? 0);
+
+  await categories.save('Investments', 'trending_up', CATEGORY_COLORS[0], ExpenseCategory.Groceries, 'INVESTMENT');
+  TestBed.tick();
+  expect(activeSavings).toBe(80);
+  expect(data.monthlyData['2025-04'].savings?.totalSavings).toBe(1000);
+  expect(data.monthlyData['2025-04'].remainingBalance).toBe('920');
+
+  await data.importMonth('2025-06', { entries: entries(), categories: [categories.get(ExpenseCategory.Groceries)!] });
+  expect(data.monthlyData['2025-06'].savings?.investments).toBe(80);
+  await categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries, 'EXPENSE');
+  TestBed.tick();
+  expect(activeSavings).toBe(0);
+  expect(data.monthlyData['2025-06'].savings?.totalSavings).toBe(920);
+  subscription.unsubscribe();
+ });
  it('removes category references without deleting entries or changing totals',async()=>{
   await data.saveMonthDraft(entries(),'2025-04');await data.saveMonthDraft(entries(),'2025-05');data.storeCopiedLinks(entries());
   await data.removeCategory(ExpenseCategory.Groceries);

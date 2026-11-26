@@ -26,4 +26,24 @@ describe('PieChartComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('uses regular expenses as the denominator in pie and stacked bar views', () => {
+    component.pieChartData = [
+      { name: 'Rent', value: 600 }, { name: 'Groceries', value: 400 },
+      { name: 'ETF', value: 300 }, { name: 'Surplus', value: 700 },
+    ];
+    component.regularExpenseTree = [
+      { name: 'Groceries', value: 400, children: [{ name: 'Food shop', value: 400, children: [] }] },
+      { name: 'Rent', value: 600, children: [] },
+    ];
+
+    component.setExpenseDistribution(true);
+    expect(component.regularExpenses).toBe(1000);
+    expect(component.barLegend.map(item => item.name)).toEqual(['Rent', 'Groceries']);
+    component.setChartView('stacked');
+    component.toggleBar('Rent');
+    expect(component.visibleBarCount).toBe(1);
+    component.setExpenseDistribution(false);
+    expect(component.barLegend.map(item => item.name)).toContain('ETF');
+  });
 });

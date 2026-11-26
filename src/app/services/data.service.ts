@@ -1,11 +1,11 @@
-import { calculateMonth } from '../utils/month-calculation';
+import { calculateMonth, projectSavings } from '../utils/month-calculation';
 import {CONFIGURATION, DATABASE_CLIENT} from '../data/database';
 import {SettingsService} from './settings.service';
 import {FixedCostService} from './fixed-cost.service';
 import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
-import { inject, Injectable, signal, EventEmitter } from '@angular/core';
+import { effect, inject, Injectable, signal, EventEmitter, untracked } from '@angular/core';
 import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
@@ -128,6 +128,19 @@ export class DataService {
 
 
     constructor() {
+        const investmentIds = () => new Set(this.categories.categories()
+            .filter(category => category.classification === 'INVESTMENT')
+            .map(category => category.value));
+        let previousInvestments = investmentIds();
+        effect(() => {
+            const investments = investmentIds();
+            const changedIds = new Set([
+                ...[...previousInvestments].filter(id => !investments.has(id)),
+                ...[...investments].filter(id => !previousInvestments.has(id)),
+            ]);
+            previousInvestments = investments;
+            if (changedIds.size) untracked(() => this.refreshSavingsProjections(changedIds, investments));
+        });
         this.ready=this.initializeData().catch(error => {this.loadError.set(error.message);this.UiService.showSnackBar(`Could not load data: ${error.message}`);}).finally(()=>this.loading.set(false));
     }
 
@@ -340,10 +353,23 @@ export class DataService {
       this.dataSaved$.next(true);
     }
 
+    private refreshSavingsProjections(changedIds: ReadonlySet<string>, investments: ReadonlySet<string>): void {
+        const refresh = (month: SingleMonthData): SingleMonthData => month.treeMapData.some(node => changedIds.has(node.name))
+            ? { ...month, ...projectSavings(month, id => investments.has(id)) }
+            : month;
+        this.monthlyData = Object.fromEntries(Object.entries(this.monthlyData).map(([month, data]) => [month, refresh(data)]));
+        this.multiMonthEntries$.next(this.monthlyData);
+
+        const active = this.processedSingleMonthEntries$.value;
+        const updated = refresh(active);
+        if (updated !== active) this.processedSingleMonthEntries$.next(updated);
+    }
+
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
         hasCategory = (id: string) => !!this.categories.get(id), envelopes: BudgetEnvelope[] = []): SingleMonthData {
         const locals = envelopes.filter(envelope => !envelope.isGlobal);
-        return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals]);
+        return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals],
+            id => this.categories.get(id)?.classification === 'INVESTMENT');
     }
 
     async saveEnvelopes(month: string, envelopes: BudgetEnvelope[], globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
@@ -575,17 +601,17 @@ export class DataService {
             for (const node of path) checked.add(node);
         }
 
-        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id), localEnvelopes);
+        const lastUpdated = new Date().toISOString();
         const addedCategories = definitions.size > currentCategories.length;
         const saved = (await this.database.command(() => this.database.api.months.save({
-            month, entries: links, envelopes: localEnvelopes, lastUpdated: new Date(data.lastUpdated).toISOString(),
+            month, entries: links, envelopes: localEnvelopes, lastUpdated,
             expectedRevision: destination?.revision ?? null, categories: addedCategories ? [...definitions.values()] : undefined,
         }))).value;
         this.sources.set(month, saved);
 
         if (addedCategories) await this.categories.reload();
         await this.logService.reload();
-        this.publishMonthTransfer(month, data);
+        this.publishMonthTransfer(month, this.project(saved));
 
         return async () => {
             if (!await this.flushEdits()) return false;

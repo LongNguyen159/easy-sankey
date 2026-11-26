@@ -9,6 +9,7 @@
         <app-sankey-chart
             [sankeyData]="chartData.sankeyData"
             [remainingBalance]="chartData.remainingBalance"
+            [savings]="chartData.savings"
             [surplusAfterBudgets]="chartData.surplusAfterBudgets"
             [surplusAtBudgetLimits]="chartData.surplusAtBudgetLimits"
             [totalBudgetOverspending]="chartData.totalBudgetOverspending"
@@ -21,7 +22,7 @@
     </section>
     <!-- NETTO CHART -->
     <section>
-        <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+        <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="chartData.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
         ></app-pie-chart>
     </section>

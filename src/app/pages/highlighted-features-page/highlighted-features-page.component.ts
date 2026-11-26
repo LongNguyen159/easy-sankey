@@ -27,7 +27,7 @@ export class HighlightedFeaturesPageComponent {
       title: 'Easy Sankey - Creating Sankey Should Be Simple',
       description: 'Add your income and expenses to see where your money goes. Click an entry in the Sankey chart to edit it directly.',
       image: 'sankey',
-      alt: 'Sankey chart showing how income flows into expenses and surplus',
+      alt: 'Sankey chart showing how income flows into expenses and cash surplus',
       withBorder: true,
     },
     {
@@ -45,9 +45,9 @@ export class HighlightedFeaturesPageComponent {
     },
     {
       title: 'See How Your Finances Change Over Time',
-      description: 'Open Finance Manager to compare income, spending and surplus across months. Click a chart point to open that month’s details.',
+      description: 'Open Finance Manager to compare income, spending and cash surplus across months. Click a chart point to open that month’s details.',
       image: 'manager',
-      alt: 'Finance Manager with a surplus and balance chart and a monthly breakdown',
+      alt: 'Finance Manager with a cash surplus and savings chart and a monthly breakdown',
       withBorder: true,
     },
     {

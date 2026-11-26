@@ -15,6 +15,8 @@ const {
   preferenceColumns,
 } = require("./import-export");
 const defaults = require("./default-categories.json");
+const defaultInvestmentIds = new Set(defaults.filter(item => item.classification === "INVESTMENT").map(item => item.value));
+const categoryClassification = item => item.classification ?? (defaultInvestmentIds.has(item.value) ? "INVESTMENT" : "EXPENSE");
 function openDatabase(filename, { onQuery } = {}) {
   const missing =
     !fs.existsSync(filename) && fs.existsSync(`${filename}.initialized`);
@@ -243,6 +245,7 @@ function openDatabase(filename, { onQuery } = {}) {
           icon: item.icon,
           colorLight: item.colorLight,
           colorDark: item.colorDark,
+          classification: categoryClassification(item),
           position:
             ((await db.category.aggregate({ _max: { position: true } }))._max
               .position ?? -1) + 1,
@@ -478,6 +481,7 @@ function openDatabase(filename, { onQuery } = {}) {
           icon: item.icon,
           colorLight: item.colorLight,
           colorDark: item.colorDark,
+          classification: categoryClassification(item),
           position,
         },
       });
@@ -571,6 +575,7 @@ function openDatabase(filename, { onQuery } = {}) {
             icon: item.icon,
             colorLight: item.colorLight,
             colorDark: item.colorDark,
+            classification: categoryClassification(item),
             position:
               ((await db.category.aggregate({ _max: { position: true } }))._max
                 .position ?? -1) + 1,
@@ -594,6 +599,7 @@ function openDatabase(filename, { onQuery } = {}) {
             icon: item.icon ?? null,
             colorLight: item.colorLight ?? null,
             colorDark: item.colorDark ?? null,
+            classification: categoryClassification(item),
           },
         });
         return { value: categoryDto(row) };
@@ -627,6 +633,7 @@ function openDatabase(filename, { onQuery } = {}) {
               icon: item.icon,
               colorLight: item.colorLight,
               colorDark: item.colorDark,
+              classification: categoryClassification(item),
               position,
             },
             update: {
@@ -634,6 +641,7 @@ function openDatabase(filename, { onQuery } = {}) {
               icon: item.icon ?? null,
               colorLight: item.colorLight ?? null,
               colorDark: item.colorDark ?? null,
+              classification: categoryClassification(item),
               position,
             },
           });

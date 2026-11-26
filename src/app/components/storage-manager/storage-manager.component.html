@@ -31,9 +31,18 @@
   <!-- SURPLUS & BALANCE LINE CHART -->
   <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData()" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
 
+  @let savings = periodSavings();
+  <div class="mt-5 mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+    <span>Investments <strong>{{ savings.investments | currency: currencyService.getSelectedCurrency() }}</strong></span>
+    <span>Total savings <strong>{{ savings.totalSavings | currency: currencyService.getSelectedCurrency() }}</strong></span>
+    <span matTooltip="Total savings divided by total net income in the selected period.">
+      Savings rate <strong>{{ savings.savingsRate === null ? '—' : (savings.savingsRate / 100 | percent: '1.0-1') }}</strong>
+    </span>
+  </div>
+
   <!-- ALL TIME BALANCE -->
   <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
-    <span>Balance: </span>
+    <span matTooltip="The sum of recorded monthly cash surplus in the selected period.">Cumulative cash surplus</span>
     <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-[5px]">
       {{ calculateTotalSurplusAllTimeFiltered() }}
     </span>
@@ -58,7 +67,7 @@
 
         <!-- INCOME/EXPENSE RATIO CHART -->
         <div class="flex flex-col w-full justify-center items-center mb-14">
-          <h2 class="text-2xl font-bold text-center mt-4">Total Income - Total Expense</h2>
+          <h2 class="text-2xl font-bold text-center mt-4">Net Income and Regular Expenses</h2>
           <app-income-expense-ratio-chart class="w-full" [totalExpense]="totalExpenses" [totalIncome]="totalNetIncome"></app-income-expense-ratio-chart>
         </div>
 
@@ -302,9 +311,9 @@
           <div class="flex flex-row gap-2 justify-between items-center" (click)="$event.stopPropagation()">
             <div class="flex flex-row items-center">
               <mat-slide-toggle color="primary" (toggleChange)="isHighlightSurplus = !isHighlightSurplus" [(ngModel)]="isHighlightSurplus"></mat-slide-toggle>
-              <span class="ml-2">Highlight Surplus</span>
+              <span class="ml-2">Highlight cash surplus</span>
             </div>
-            <button mat-icon-button matTooltip="Highlight surplus values with colours.">
+            <button mat-icon-button matTooltip="Highlight cash surplus values with colours.">
               <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             </button>
           </div>
@@ -331,7 +340,7 @@
               {{ year }}
             </mat-panel-title>
             <mat-panel-description>
-              <strong>Total Surplus: </strong>&nbsp;{{ calculateTotalSurplusOfYear(year) }}
+              <strong>Total cash surplus </strong>&nbsp;{{ calculateTotalSurplusOfYear(year) }}
             </mat-panel-description>
           </mat-expansion-panel-header>
           <!-- Child panel logic continues here -->
@@ -352,9 +361,9 @@
                     {{ month }}
                   </mat-panel-title>
                   <mat-panel-description class="flex flex-row gap-6">
-                    <!-- <p><strong>Surplus:</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
+                    <!-- <p><strong>Cash surplus</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
                     <p class="font-bold flex flex-row items-center gap-2">
-                      <span>Surplus: </span>
+                      <span>Cash surplus </span>
                       <span [ngClass]="getSurplusClass(month)" class="flex flex-row items-center rounded-full text-base px-5 py-[5px]">
                         {{ getFormattedRemainingBalance(month) }}
                       </span>
@@ -373,7 +382,7 @@
                 @if (panel.expanded) {
                   <!-- TOTAL INCOME/TOTAL EXPENSE CHART -->
                   <div class="w-[60%] self-center">
-                    <app-income-expense-ratio-chart [gridLeft]="'2%'" [gridRight]="'5%'" [totalIncome]="allMonthsData[month].totalUsableIncome" [totalExpense]="allMonthsData[month].totalExpenses"
+                    <app-income-expense-ratio-chart [gridLeft]="'2%'" [gridRight]="'5%'" [totalIncome]="allMonthsData[month].totalUsableIncome" [totalExpense]="regularExpenses(allMonthsData[month])"
                     ></app-income-expense-ratio-chart>
                   </div>
                   <!-- MONTHLY DETAILS -->

@@ -36,6 +36,8 @@ export interface SingleMonthData {
   totalTax: number;
   totalExpenses: number;
   remainingBalance: string;
+  savings?: SavingsMetrics;
+  regularExpenseTree?: TreeNode[];
   surplusAfterBudgets?: number;
   surplusAtBudgetLimits?: number;
   totalBudgetOverspending?: number;
@@ -87,7 +89,10 @@ export enum ExpenseCategory {
   Occasions = `Special Occasions@${SYSTEM_PREFIX}`,
 }
 
+export type CategoryClassification = 'EXPENSE' | 'INVESTMENT';
+
 export interface ExpenseCategoryDetails {
+  classification?: CategoryClassification;
   label: string;
   value: string;
   icon?: string;
@@ -168,7 +173,14 @@ export interface SurplusBalanceLineChartData {
   balance: number
 }
 
+export interface SavingsMetrics {
+  investments: number;
+  totalSavings: number;
+  savingsRate: number | null;
+}
+
 export interface TrendsLineChartData {
+  savings?: SavingsMetrics;
   month: string
   isMissing: boolean // Flag to indicate missing data
   surplus: number

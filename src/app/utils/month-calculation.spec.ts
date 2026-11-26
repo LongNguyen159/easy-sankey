@@ -116,3 +116,50 @@ describe('monthly spending envelopes', () => {
     expect(data.sankeyData.links.find(link => link.target === data.sankeyData.nodes.find(node => node.envelopeId)?.name)?.source).toBe('Usable Income');
   });
 });
+
+describe('investment and savings projections', () => {
+  const investment = 'investments';
+  const secondInvestment = 'stocks';
+  const regular = 'regular';
+  const budget = { id: 'invest', name: 'Investment target', budget: 200 };
+  const isInvestment = (id: string) => [investment, secondInvestment].includes(id);
+  const project = (income: number | null, expenses: number, invested: number) => {
+    const entries: UserDefinedLink[] = [
+      { id: 'salary', type: EntryType.Income, target: 'Salary', value: income ?? 0, source: investment },
+      { id: 'rent', type: EntryType.Expense, target: 'Rent', value: expenses, source: regular },
+      { id: 'etf', type: EntryType.Expense, target: 'ETF', value: invested / 2, source: investment, envelopeId: budget.id },
+      { id: 'stock', type: EntryType.Expense, target: 'Stock', value: invested / 2, source: secondInvestment },
+    ];
+    return calculateMonth(entries.filter(entry => entry.value !== 0), '2026-11', '-',
+      id => [investment, secondInvestment, regular].includes(id), [budget], isInvestment);
+  };
+
+  it('preserves cash flows and budget usage while excluding investment categories from consumption', () => {
+    const month = project(2500, 1800, 300);
+    expect(month.remainingBalance).toBe('400');
+    expect(month.totalExpenses).toBe(2100);
+    expect(month.savings).toEqual({ investments: 300, totalSavings: 700, savingsRate: 28 });
+    expect(month.regularExpenseTree?.map(node => node.name)).toEqual([regular]);
+    expect(month.pieData.map(node => node.name)).toContain(investment);
+    expect(month.sankeyData.nodes.find(node => node.envelopeId === budget.id)?.spent).toBe(150);
+    expect(month.surplusAfterBudgets).toBe(350);
+  });
+
+  const scenarios = [
+    { income: 2500, expenses: 1800, invested: 0, surplus: '700', savings: 700, rate: 28 },
+    { income: 2500, expenses: 1800, invested: 700, surplus: '0', savings: 700, rate: 28 },
+    { income: 2500, expenses: 1800, invested: 900, surplus: '-200', savings: 700, rate: 28 },
+    { income: 2500, expenses: 2800, invested: 200, surplus: '-500', savings: -300, rate: -12 },
+    { income: null, expenses: 0, invested: 200, surplus: '-200', savings: 0, rate: null },
+    { income: null, expenses: 0, invested: 0, surplus: '0', savings: 0, rate: null },
+    { income: -100, expenses: 50, invested: 50, surplus: '-200', savings: -150, rate: null },
+  ];
+
+  for (const { income, expenses, invested, surplus, savings, rate } of scenarios) {
+    it(`calculates savings for income ${income}, expenses ${expenses} and investments ${invested}`, () => {
+      const month = project(income, expenses, invested);
+      expect(month.remainingBalance).toBe(surplus);
+      expect(month.savings).toEqual({ investments: invested, totalSavings: savings, savingsRate: rate });
+    });
+  }
+});

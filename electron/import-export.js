@@ -70,6 +70,7 @@ function validate(key, value) {
     for (const category of value) {
       if (!object(category) || typeof category.value !== 'string' || !category.value.endsWith('@__system/category__')
         || ids.has(category.value) || typeof category.label !== 'string' || !category.label.trim()
+        || (category.classification !== undefined && !['EXPENSE', 'INVESTMENT'].includes(category.classification))
         || ['icon','colorLight','colorDark'].some(k => category[k] != null && typeof category[k] !== 'string')) fail('Invalid category.');
       ids.add(category.value);
     }
@@ -185,6 +186,7 @@ function categoryDto(row) {
   return {
     value: row.id,
     label: row.label,
+    classification: row.classification,
     ...Object.fromEntries(
       [
         ["icon", row.icon],

@@ -29,6 +29,22 @@ type DistributionView = 'pie' | 'totals' | 'stacked' | 'treemap' | 'sunburst';
 export class PieChartComponent extends BaseChartComponent implements OnChanges {
   @Input() pieChartData: PieData[] = []
   @Input() treeMapData: TreeNode[] = []
+  @Input() regularExpenseTree?: TreeNode[];
+  expenseDistribution = false;
+
+  get regularExpenses(): number {
+    return this.regularExpenseTree?.reduce((total, node) => total + node.value, 0) ?? 0;
+  }
+
+  get distributionTree(): TreeNode[] {
+    return this.expenseDistribution ? this.regularExpenseTree ?? [] : this.treeMapData;
+  }
+
+  setExpenseDistribution(expensesOnly: boolean): void {
+    this.expenseDistribution = expensesOnly;
+    this.hiddenBars.clear();
+    this.updateChart();
+  }
   @Input() chartTitle: string = ''
   @Input() chartDescription: string = ''
 
@@ -121,7 +137,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
 
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['pieChartData'] || changes['treeMapData'] || changes['chartTitle']) {
+    if (changes['pieChartData'] || changes['treeMapData'] || changes['regularExpenseTree'] || changes['chartTitle']) {
       this.updateChart()
     }
   }
@@ -179,7 +195,8 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
       : this.colorService.chartColorPaletteLight;
 
     // Create a staggered color assignment for slices
-    const colorAssignedData = this.pieChartData.map((data, index) => {
+    const data = this.expenseDistribution ? this.distributionTree : this.pieChartData;
+    const colorAssignedData = data.map((data, index) => {
       // Shift the color start after each full cycle to avoid adjacent slices having the same color
       const colorIndex = (index + Math.floor(index / colorPalette.length)) % colorPalette.length;
       return {
@@ -264,7 +281,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     const separatorColor = isDarkMode
       ? this.colorService.darkBackgroundPrimary
       : this.colorService.lightBackgroundPrimary;
-    const categories = new Map(this.treeMapData.map(node => [node.name, node]));
+    const categories = new Map(this.distributionTree.map(node => [node.name, node]));
     const rows = bars.map(bar => {
       const category = categories.get(bar.name);
       const segments = category?.children.length ? this.getEntrySegments(category) : [bar];

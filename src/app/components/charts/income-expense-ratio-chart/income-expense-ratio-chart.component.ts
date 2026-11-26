@@ -135,7 +135,7 @@ export class IncomeExpenseRatioChartComponent extends BaseChartComponent impleme
         },
       },
       {
-        name: 'Total Expense',
+        name: 'Regular Expenses',
         type: 'bar',
         data: [this.totalExpense],
         barWidth: this.barWidth,
