@@ -58,7 +58,7 @@ export class IncomeExpenseRatioChartComponent extends BaseChartComponent impleme
         trigger: 'axis',
         borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
         borderWidth: 2,
-        borderRadius: 12,
+        borderRadius: 16,
         padding: [10, 16],
         position: function (pos, params, dom, rect, size) {
           // tooltip will be fixed on the right if mouse hovering on the left,

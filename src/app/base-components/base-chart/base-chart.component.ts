@@ -1,7 +1,7 @@
 import { CategoryService } from '../../services/category.service';
 
 import { Component, inject, NgZone, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsType } from 'echarts';
+import { EChartsType, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from './echarts.provider';
 import { ColorService } from '../../services/color.service';
@@ -25,6 +25,28 @@ export class BaseChartComponent implements OnDestroy {
   /** On chart init, assign chart instance. */
   onChartInit(chart: EChartsType) {
     this._chartInstance = chart;
+  }
+
+  protected formatDistributionTooltip(
+    name: string,
+    formattedValue: string | null,
+    value: number,
+    total: number,
+    parent?: { name: string; value: number }
+  ): string {
+    const share = (denominator: number) =>
+      denominator ? `${(value / denominator * 100).toFixed(2)}%` : '—';
+    const row = (label: string, content: string) =>
+      `<div style="display: flex; justify-content: space-between; gap: 8px;">
+        <span>${label}</span><strong>${content}</strong>
+      </div>`;
+
+    return `<div style="text-align: left; font-size: 14px; line-height: 1.5;">
+      <strong>${format.encodeHTML(this.categoryService.label(name) || 'Total')}</strong>
+      ${row('Value:', format.encodeHTML(formattedValue ?? ''))}
+      ${row('Share of Total:', share(total))}
+      ${parent ? row(`Share of ${format.encodeHTML(this.categoryService.label(parent.name))}:`, share(parent.value)) : ''}
+    </div>`;
   }
 
   protected bindMonthSelection(

@@ -182,6 +182,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     return {
       animation: true,
       tooltip: {
+        borderRadius: 16,
         trigger: 'item',
         position: 'top',
         triggerOn: 'mousemove',

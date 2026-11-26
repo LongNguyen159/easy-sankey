@@ -56,6 +56,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     return {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
+        borderRadius: 16,
         trigger: 'item',
         backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
         textStyle: {
@@ -63,8 +64,16 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
         },
         formatter: (params: any) => {
           const value = this.currencyPipe.transform(params.value, this.currencyService.getSelectedCurrency());
+          const name = params.data.name ?? params.name;
+          const { categoryName, categoryTotal } = params.data;
+          if (categoryTotal !== undefined) {
+            return this.formatDistributionTooltip(name, value, params.value, total, {
+              name: categoryName,
+              value: categoryTotal
+            });
+          }
           const percent = params.percent ?? (total ? (params.value / total * 100).toFixed(2) : '0');
-          return `${format.encodeHTML(this.categoryService.label(params.data.name ?? params.name))}: <b>${value} (${percent}%)</b>`;
+          return `${format.encodeHTML(this.categoryService.label(name))}: <b>${value} (${percent}%)</b>`;
         }
       },
       legend: {
@@ -170,9 +179,13 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     this.barOption = {
       ...this.getBaseChartOptions(total),
       legend: { show: false },
-      grid: { top: 40, right: 35, bottom: 35, left: 16, containLabel: true },
+      grid: { top: 40, right: 35, bottom: 55, left: 16, containLabel: true },
       xAxis: {
         type: 'value',
+        name: `Amount (${this.currencyService.getSelectedCurrency()})`,
+        nameLocation: 'middle',
+        nameGap: 45,
+        nameTextStyle: { color: textColor },
         axisLabel: { color: textColor }
       },
       yAxis: {
@@ -211,6 +224,8 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
       return segments.map((segment, index) => ({
         name: segment.name,
         value: segment.value,
+        categoryName: bar.name,
+        categoryTotal: bar.value,
         itemStyle: {
           color: index % 2 === 0 ? baseColor : alternateColor,
           borderColor: separatorColor,

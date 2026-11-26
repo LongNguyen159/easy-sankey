@@ -104,6 +104,7 @@ html, body, h1, h2, h3, h4, h5, h6, p, span, button, input, textarea, select, a,
   }
 
   @include mat.tooltip-overrides((
+    container-shape: 16px,
     container-color: mat.get-theme-color($theme, surface-container-high),
     supporting-text-color: mat.get-theme-color($theme, on-surface),
   ));

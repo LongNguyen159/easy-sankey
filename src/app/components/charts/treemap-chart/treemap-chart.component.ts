@@ -1,5 +1,5 @@
 import { Component, effect, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption, format } from 'echarts';
+import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { TreeNode } from '../../models';
@@ -63,48 +63,15 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
         : this.colorService.chartColorPaletteLight,
       tooltip: {
         borderWidth: 2,
-        borderRadius: 12,
+        borderRadius: 16,
         backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
         textStyle: {
           color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (info: any) => {
           const value = this.currencyPipe.transform(info.value, this.currencyService.getSelectedCurrency());
-          const shareOfTotal = ((info.value / this.totalNetIncome) * 100).toFixed(2);
-  
-          // Get parent node details
-          const parentNode = info?.treePathInfo?.[info.treePathInfo.length - 2];
-          const parentName = parentNode ? format.encodeHTML(this.categoryService.label(parentNode.name)) : '';
-          const parentValue = parentNode?.value || null;
-          const shareOfParent = parentValue 
-            ? ((info.value / parentValue) * 100).toFixed(2) 
-            : 'N/A';
-  
-          return `
-            <div style="text-align: left; font-size: 14px; line-height: 1.5;">
-              <div style="display: flex; justify-content: space-between;">
-                <span><strong>${format.encodeHTML(this.categoryService.label(info.name) || 'Total')}</strong></span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span>Value:</span>
-                &nbsp;
-                <span><strong>${value}</strong></span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                  <span>Share of Total:</span>
-                  &nbsp;
-                  <span><strong>${shareOfTotal}%</strong></span>
-                </div>
-              ${
-                parentName
-                  ? `<div style="display: flex; justify-content: space-between;">
-                       <span>Share of ${parentName}:</span>
-                       &nbsp;
-                       <span><strong>${shareOfParent}%</strong></span>
-                     </div>`
-                  : ''
-              }
-            </div>`;
+          const parent = info.treePathInfo?.at(-2);
+          return this.formatDistributionTooltip(info.name, value, info.value, this.totalNetIncome, parent);
         },
       },
       series: [],
