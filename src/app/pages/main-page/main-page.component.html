@@ -114,7 +114,7 @@
           </div>
 
 
-          <app-pie-chart [showPieChart]="!viewTreeMap" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+          <app-pie-chart [treeMapData]="treeMapData" [showPieChart]="!viewTreeMap" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
           ></app-pie-chart>
           @if (viewTreeMap) {
@@ -133,7 +133,7 @@
         @if (showGrossIncomePieChart) {
           <section>
             <!-- BRUTTO CHART -->
-            <app-pie-chart [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
+            <app-pie-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
               [totalIncome]="totalGrossIncome"
             ></app-pie-chart>
           </section>

@@ -1,16 +1,16 @@
-import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsOption, format } from 'echarts';
+import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+import { BarSeriesOption, EChartsOption, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { DataService } from '../../../services/data.service';
-import { ColorService } from '../../../services/color.service';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { CurrencyService } from '../../../services/currency.service';
-import { PieData } from '../../models';
+import { PieData, TreeNode } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 @Component({
     selector: 'app-pie-chart',
-    imports: [NgxEchartsDirective, CommonModule],
+    imports: [NgxEchartsDirective, CommonModule, MatButtonToggleModule],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
@@ -21,6 +21,7 @@ import { BaseChartComponent } from '../../../base-components/base-chart/base-cha
 })
 export class PieChartComponent extends BaseChartComponent implements OnChanges {
   @Input() pieChartData: PieData[] = []
+  @Input() treeMapData: TreeNode[] = []
   @Input() chartTitle: string = ''
   @Input() chartDescription: string = ''
 
@@ -36,6 +37,11 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   currencyPipe = inject(CurrencyPipe)
   currencyService = inject(CurrencyService)
 
+  chartType: 'pie' | 'bar' | 'stacked' = 'pie'
+  readonly hiddenBars = new Set<string>()
+  barLegend: (PieData & { itemStyle: { color: string } })[] = []
+  visibleBarCount = 0
+  barOption: EChartsOption = {}
   pieOption: EChartsOption = this.getBaseChartOptions()
   pieMergeOption: EChartsOption = {}
 
@@ -46,7 +52,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     });
   }
 
-  getBaseChartOptions(): EChartsOption {
+  getBaseChartOptions(total = 0): EChartsOption {
     return {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
@@ -56,9 +62,9 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
           color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (params: any) => {
-          // Use toLocaleString to format the value
-          const value = this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency()); // Format the value
-          return `${format.encodeHTML(this.categoryService.label(params.name))}: <b>${value} (${params.percent}%)</b>`; // Bold the params.name
+          const value = this.currencyPipe.transform(params.value, this.currencyService.getSelectedCurrency());
+          const percent = params.percent ?? (total ? (params.value / total * 100).toFixed(2) : '0');
+          return `${format.encodeHTML(this.categoryService.label(params.data.name ?? params.name))}: <b>${value} (${percent}%)</b>`;
         }
       },
       legend: {
@@ -86,9 +92,23 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
 
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes && changes['pieChartData']) {
+    if (changes['pieChartData'] || changes['treeMapData'] || changes['chartTitle']) {
       this.updateChart()
     }
+  }
+
+  setChartType(type: typeof this.chartType): void {
+    this.chartType = type;
+    if (type !== 'pie') {
+      this.updateBarChart();
+    }
+  }
+
+  toggleBar(name: string): void {
+    if (!this.hiddenBars.delete(name)) {
+      this.hiddenBars.add(name);
+    }
+    this.updateBarChart();
   }
 
   updateChart() {
@@ -111,6 +131,9 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
       };
     });
     
+    this.barLegend = [...colorAssignedData].sort((a, b) => b.value - a.value);
+    this.updateBarChart();
+
     this.pieMergeOption = {
       ...this.getBaseChartOptions(),
       series: [
@@ -137,5 +160,78 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
         }
       ]
     }
+  }
+
+  private updateBarChart(): void {
+    const visibleBars = this.barLegend.filter(item => !this.hiddenBars.has(item.name));
+    this.visibleBarCount = visibleBars.length;
+    const total = this.barLegend.reduce((sum, item) => sum + item.value, 0);
+    const textColor = this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary;
+    this.barOption = {
+      ...this.getBaseChartOptions(total),
+      legend: { show: false },
+      grid: { top: 40, right: 35, bottom: 35, left: 16, containLabel: true },
+      xAxis: {
+        type: 'value',
+        axisLabel: { color: textColor }
+      },
+      yAxis: {
+        type: 'category',
+        inverse: true,
+        data: visibleBars.map(item => item.name),
+        axisLabel: {
+          color: textColor,
+          width: 160,
+          overflow: 'truncate',
+          formatter: name => this.categoryService.label(name)
+        }
+      },
+      series: this.chartType === 'stacked' ? this.getStackedSeries(visibleBars) : [{
+        type: 'bar',
+        data: visibleBars,
+        barMaxWidth: 32,
+        itemStyle: { borderRadius: 6 }
+      }]
+    };
+  }
+
+  private getStackedSeries(bars: typeof this.barLegend): BarSeriesOption[] {
+    const categories = new Map(this.treeMapData.map(node => [node.name, node]));
+    const rows = bars.map(bar => {
+      const category = categories.get(bar.name);
+      const segments = category?.children.length ? this.getEntrySegments(category) : [bar];
+      segments.sort((a, b) => b.value - a.value);
+      return segments.map((segment, index) => ({
+        name: segment.name,
+        value: segment.value,
+        itemStyle: {
+          color: bar.itemStyle.color,
+          opacity: index % 2 === 0 ? 1 : 0.65
+        }
+      }));
+    });
+
+    const segmentCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
+    return Array.from({ length: segmentCount }, (_, index) => ({
+      type: 'bar',
+      stack: 'entries',
+      stackStrategy: 'all',
+      barMaxWidth: 32,
+      data: rows.map(row => row[index] ?? '-')
+    }));
+  }
+
+  private getEntrySegments(node: TreeNode): PieData[] {
+    if (node.children.length === 0) {
+      return [{ name: node.name, value: node.value }];
+    }
+
+    const segments = node.children.flatMap(child => this.getEntrySegments(child));
+    // A parent can have its own amount in addition to the amounts of its children.
+    const remainder = node.value - node.children.reduce((sum, child) => sum + child.value, 0);
+    if (remainder > 0) {
+      segments.push({ name: node.name, value: remainder });
+    }
+    return segments;
   }
 }

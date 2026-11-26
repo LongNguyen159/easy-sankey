@@ -20,11 +20,40 @@
     </p>
 </div>
 @if (showPieChart) {
-    <div
-        echarts
-        [options]="pieOption"
-        [merge]="pieMergeOption"
-        [style]="'height: ' + chartHeight"
-    >
+    <div class="flex justify-center py-2">
+        <mat-button-toggle-group
+            hideSingleSelectionIndicator
+            [attr.aria-label]="chartTitle + ' chart type'"
+            [value]="chartType"
+            (change)="setChartType($event.value)"
+        >
+            <mat-button-toggle value="pie">Pie</mat-button-toggle>
+            <mat-button-toggle value="bar">Bar</mat-button-toggle>
+            <mat-button-toggle value="stacked">Stacked</mat-button-toggle>
+        </mat-button-toggle-group>
     </div>
+    @if (chartType !== 'pie') {
+        <div class="flex flex-wrap justify-center gap-x-3 gap-y-1" role="group" aria-label="Bar chart categories">
+            @for (item of barLegend; track $index) {
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    [attr.aria-pressed]="!hiddenBars.has(item.name)"
+                    (click)="toggleBar(item.name)"
+                >
+                    <span class="h-3 w-3 rounded-sm" [style.background-color]="item.itemStyle.color"
+                        [class.opacity-50]="hiddenBars.has(item.name)" aria-hidden="true"></span>
+                    <span [class.line-through]="hiddenBars.has(item.name)">{{ categoryService.label(item.name) }}</span>
+                </button>
+            }
+        </div>
+        <div
+            echarts
+            [options]="barOption"
+            [style.height]="chartHeight"
+            [style.min-height.px]="visibleBarCount * 28 + 80"
+        ></div>
+    } @else {
+        <div echarts [options]="pieOption" [merge]="pieMergeOption" [style.height]="chartHeight"></div>
+    }
 }
