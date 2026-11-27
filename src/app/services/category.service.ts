@@ -1,7 +1,7 @@
 import { DATABASE_CLIENT, CONFIGURATION } from '../data/database';
 import { computed, Injectable, signal, inject } from '@angular/core';
 import { v4 as uuid } from 'uuid';
-import { CategoryClassification, ExpenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
+import { ExpenseCategoryDetails, SYSTEM_PREFIX, UserDefinedLink } from '../components/models';
 import { removeSystemPrefix } from '../utils/utils';
 
 // cspell:words audiotrack fastfood giftcard horiz icecream kabaddi motorsports videocam videogame
@@ -239,12 +239,11 @@ export class CategoryService {
     return darkMode ? category?.colorDark : category?.colorLight;
   }
 
-  async save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string, classification: CategoryClassification = this.get(id ?? '')?.classification ?? CategoryClassification.Expense): Promise<ExpenseCategoryDetails> {
+  async save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string): Promise<ExpenseCategoryDetails> {
     const category = {
       label: label.trim(),
       value: id ?? `${uuid()}@${SYSTEM_PREFIX}`,
       icon,
-      classification,
       colorLight: color.colorLight,
       colorDark: color.colorDark,
     };

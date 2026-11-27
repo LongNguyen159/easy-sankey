@@ -5,11 +5,10 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CATEGORY_COLORS, CATEGORY_ICON_GROUPS, CategoryService } from '../../../services/category.service';
 import { ColorService } from '../../../services/color.service';
-import { CategoryClassification, ExpenseCategoryDetails } from '../../models';
+import { ExpenseCategoryDetails } from '../../models';
 
 // cspell:words fastfood horiz icecream
 
@@ -104,12 +103,11 @@ const iconKeywords: Record<string, string> = {
 
 @Component({
   selector: 'app-category-editor-dialog',
-  imports: [FormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule, MatTooltipModule],
+  imports: [FormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTooltipModule],
   templateUrl: './category-editor-dialog.component.html',
   styleUrl: './category-editor-dialog.component.scss',
 })
 export class CategoryEditorDialogComponent {
-  protected readonly CategoryClassification = CategoryClassification;
   protected readonly category = inject<ExpenseCategoryDetails | null>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject<MatDialogRef<CategoryEditorDialogComponent, ExpenseCategoryDetails>>(MatDialogRef);
   private readonly categories = inject(CategoryService);
@@ -130,7 +128,6 @@ export class CategoryEditorDialogComponent {
     })).filter(group => group.icons.length);
   });
   protected label = this.category?.label ?? '';
-  protected classification: CategoryClassification = this.category?.classification ?? CategoryClassification.Expense;
   protected icon = this.category?.icon ?? 'category';
   protected color = this.initialColor();
   protected readonly colors = CATEGORY_COLORS.includes(this.color)
@@ -170,6 +167,6 @@ export class CategoryEditorDialogComponent {
       return;
     }
 
-    this.dialogRef.close((await this.categories.save(label, this.icon, this.color, this.category?.value, this.classification)));
+    this.dialogRef.close((await this.categories.save(label, this.icon, this.color, this.category?.value)));
   }
 }

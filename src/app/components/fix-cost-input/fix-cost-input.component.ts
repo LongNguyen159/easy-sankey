@@ -1,8 +1,8 @@
 import {FixedCostService} from '../../services/fixed-cost.service';
-import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,8 +13,7 @@ import { CategorySelectComponent } from '../category-select/category-select.comp
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTabsModule } from '@angular/material/tabs';
-import { RouterLink } from '@angular/router';
-import { CategoryClassification, EntryType, RoutePath, UserDefinedLink } from '../models';
+import { EntryType, UserDefinedLink } from '../models';
 import { debounceTime, takeUntil, tap } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -37,7 +36,6 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
         MatDividerModule,
         MatMenuModule,
         MatTabsModule,
-        RouterLink,
         CdkDrag,
         CdkDragHandle,
         CdkDropList,
@@ -48,16 +46,11 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
-  protected readonly CategoryClassification = CategoryClassification;
+  protected readonly recurringTypes = this.linkTypes.filter(type => type !== EntryType.Investment);
   private fixedCosts=inject(FixedCostService);
   protected readonly globalBudgets = this.dataService.globalEnvelopes;
   protected readonly saveStatus = signal<'Saving…' | 'Saved' | ''>('');
   protected readonly section = signal<'fixed' | 'investments'>('fixed');
-  protected readonly investmentCategories = computed(() =>
-    this.categoryService.categories().filter(category => category.classification === CategoryClassification.Investment)
-  );
-  protected readonly categoriesPage = RoutePath.CategoriesPage;
-  private readonly investmentDrafts = new WeakSet<FormGroup>();
   private saveVersion = 0;
   protected sortOrder = resolveAmountSort(this.preferences.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
@@ -96,21 +89,8 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   override addLink(): void {
-    const investment = this.section() === 'investments';
-    const categories = this.investmentCategories();
-    if (investment && !categories.length) return;
-
-    super.addLink();
-    const row = this.linkArray.at(-1);
-    this.newEntries.delete(row);
-    if (investment) {
-      const source = categories.length === 1 ? categories[0].value : '';
-      const category = this.categoryControl(row);
-      this.investmentDrafts.add(row);
-      category.addValidators(Validators.required);
-      row.patchValue({ type: EntryType.Expense, source });
-      this.collapsedGroups.delete(source);
-    }
+    super.addLink(this.section() === 'investments' ? EntryType.Investment : undefined);
+    this.newEntries.delete(this.linkArray.at(-1));
   }
 
   protected override async saveEntryOrder(): Promise<void> {
@@ -136,18 +116,10 @@ export class FixCostInputComponent extends InputListComponent {
 
   protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
     const investment = this.section() === 'investments';
-    const rows = super.visibleEntries(isFixCost).filter(row => this.isInvestment(row) === investment);
+    const rows = super.visibleEntries(isFixCost).filter(row => (row.get('type')?.value === EntryType.Investment) === investment);
     return sortByAmount(rows, this.sortOrder, row =>
       row === this.editingAmount?.row ? this.editingAmount.value : Number(row.get('value')?.value) || 0
     );
-  }
-
-  private isInvestment(row: FormGroup): boolean {
-    const source = row.get('source')?.value;
-    return row.get('type')?.value === EntryType.Expense
-      && (source
-        ? this.categoryService.get(source)?.classification === CategoryClassification.Investment
-        : this.investmentDrafts.has(row));
   }
 
   protected investmentTotal(rows: FormGroup[]): number {

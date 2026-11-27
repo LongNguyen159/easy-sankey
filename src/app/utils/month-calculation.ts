@@ -1,5 +1,5 @@
 import { envelopeSankey } from './envelope-sankey';
-import { BudgetEnvelope, EntryType, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, isCashOutflow, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
 
 interface ExpenseData {
  totalExpenses: number;
@@ -34,7 +34,7 @@ class MonthCalculator {
             } else if (link.type === EntryType.Tax) {
                 nodesMap.get(link.target)!.value += link.value;
                 totalTaxValue += link.value;
-            } else if (link.type === EntryType.Expense) {
+            } else if (isCashOutflow(link.type)) {
                 if (!link.source) {
                     // Top-level expenses (those without a source)
                     nodesMap.get(link.target)!.value += link.value;
@@ -100,7 +100,7 @@ class MonthCalculator {
                         value: link.value
                     });
                 }
-            } else if (link.type === EntryType.Expense) {
+            } else if (isCashOutflow(link.type)) {
                 let sourceNode = link.source || sourceForExpenses;
 
                 // Check if the source node exists in nodesMap or is an allowed category
@@ -110,7 +110,7 @@ class MonthCalculator {
 
                     // Calculate its total value by summing all links that use it as a source
                     const sourceValue = userDefinedLinks
-                        .filter(childLink => childLink.type === EntryType.Expense && childLink.source === sourceNode)
+                        .filter(childLink => isCashOutflow(childLink.type) && childLink.source === sourceNode)
                         .reduce((sum, childLink) => sum + childLink.value, 0);
                     
                     // Set the source node's accumulated value
@@ -192,7 +192,7 @@ class MonthCalculator {
         // Update Sankey nodes and links based on updatedRawInput
         const updatedNodes = nodes.map(node => {
             const updatedNode = updatedRawInput.find(link => link.target === node.name);
-            return updatedNode ? { ...node, value: updatedNode.value } : node; // Update value or leave as is
+            return updatedNode ? { ...node, value: updatedNode.value, entryType: updatedNode.type } : node; // Update value or leave as is
         });
 
         const updatedLinks = links.map(link => {
@@ -349,31 +349,38 @@ export function savingsRate(totalSavings: number, income: number): number | null
   return income > 0 ? totalSavings * 100 / income : null;
 }
 
-export function projectSavings(month: SingleMonthData, isInvestment: (id: string) => boolean) {
-  // The last item is the cash surplus, which belongs only in income allocation.
-  const regularExpenseTree: TreeNode[] = [];
+function projectSavings(month: SingleMonthData) {
+  const investmentNames = new Set(month.rawInput
+    .filter(entry => entry.type === EntryType.Investment)
+    .map(entry => entry.target));
   let investments = 0;
-  for (const node of month.treeMapData.slice(0, -1)) {
-    if (isInvestment(node.name)) {
-      investments += node.value;
-    } else {
-      regularExpenseTree.push(node);
-    }
+
+  function regularExpense(node: TreeNode): TreeNode | undefined {
+    const children = node.children.map(regularExpense).filter(child => child !== undefined);
+    // Parent amounts include their children. Only the remainder belongs to the parent entry.
+    const ownAmount = node.value - node.children.reduce((sum, child) => sum + child.value, 0);
+    const investment = investmentNames.has(node.name);
+    if (investment) investments += ownAmount;
+    if (!children.length && (investment || (node.children.length && ownAmount === 0))) return undefined;
+    const value = (investment ? 0 : ownAmount) + children.reduce((sum, child) => sum + child.value, 0);
+    return { ...node, value, children };
   }
 
+  // The final node is cash surplus.
+  const regularExpenseTree = month.treeMapData.slice(0, -1)
+    .map(regularExpense).filter(node => node !== undefined);
   const totalSavings = month.totalUsableIncome - month.totalExpenses + investments;
   const savings = { investments, totalSavings, savingsRate: savingsRate(totalSavings, month.totalUsableIncome) };
   return { regularExpenseTree, savings };
 }
 
 export function calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
-  hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = [],
-  isInvestment: (id: string) => boolean = () => false): SingleMonthData {
+  hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = []): SingleMonthData {
   const result = new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
   const sankeyData = envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory);
   const monthData = {
     ...result,
-    ...projectSavings(result, isInvestment),
+    ...projectSavings(result),
     envelopes: structuredClone(envelopes),
     sankeyData,
   };

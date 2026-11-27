@@ -33,8 +33,8 @@ describe('StorageManagerComponent', () => {
     const project = (month: string, income: number, expense: number, investment = 0) => calculateMonth([
       { id: 'salary', target: 'Salary', type: EntryType.Income, value: income },
       { id: 'rent', target: 'Rent', type: EntryType.Expense, value: expense },
-      { id: 'etf', target: 'ETF purchase', type: EntryType.Expense, value: investment, source: 'investments' },
-    ], month, '-', id => id === 'investments', [], id => id === 'investments');
+      { id: 'etf', target: 'ETF purchase', type: EntryType.Investment, value: investment, source: 'investments' },
+    ], month, '-', id => id === 'investments');
     component.showPredictions.set(false);
     component.allMonthsData = {
       '2026-09': project('2026-09', 1000, 1000),

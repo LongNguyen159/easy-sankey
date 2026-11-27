@@ -9,7 +9,7 @@ import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, s
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
-import { DateChanges, EntryType, ExpenseCategoryDetails, UserDefinedLink } from '../models';
+import { DateChanges, EntryType, isCashOutflow, ExpenseCategoryDetails, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CurrencyService } from '../../services/currency.service';
@@ -165,7 +165,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   linkForm: FormGroup; // FormGroup to manage input fields
   initialFormState: UserDefinedLink[] = []; // Initial form state to compare with new data
 
-  linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Tax]; // Types of links
+  linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Investment, EntryType.Tax]; // Types of links
+  protected readonly isCashOutflow = isCashOutflow;
   entryTypes = EntryType; // Enum for entry types
 
   protected categoryService = inject(CategoryService);
@@ -331,15 +332,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
   protected get selectedExpenseCount(): number {
     return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
-      && row.get('type')?.value === EntryType.Expense).length;
+      && isCashOutflow(row.get('type')?.value)).length;
   }
   protected get selectedAssignedExpenseCount(): number {
     return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
-      && row.get('type')?.value === EntryType.Expense && row.get('envelopeId')?.value).length;
+      && isCashOutflow(row.get('type')?.value) && row.get('envelopeId')?.value).length;
   }
 
   protected async createEnvelopeForSelection(row?: FormGroup): Promise<void> {
-    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    if (this.bulkBusy() || (row ? !isCashOutflow(row.get('type')?.value) : !this.selectedExpenseCount)) return;
     this.bulkBusy.set(true);
     try {
       if (!await this.flushPendingEdits()) return;
@@ -363,14 +364,14 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     return this.singleMonthData()?.envelopes?.find(envelope => envelope.id === id)?.name ?? '';
   }
   protected async assignSelectedEnvelope(envelopeId: string | null, row?: FormGroup): Promise<void> {
-    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    if (this.bulkBusy() || (row ? !isCashOutflow(row.get('type')?.value) : !this.selectedExpenseCount)) return;
     if (envelopeId && !this.singleMonthData()?.envelopes?.some(envelope => envelope.id === envelopeId)) return;
     const ids = row ? new Set([row.get('id')?.value]) : new Set(this.selectedEntryIds);
     this.bulkBusy.set(true);
     try {
       if (!await this.flushPendingEdits()) return;
       const entries = (this.linkArray.getRawValue() as UserDefinedLink[]).map(entry =>
-        entry.type === EntryType.Expense && ids.has(entry.id)
+        isCashOutflow(entry.type) && ids.has(entry.id)
           ? {...entry, envelopeId, lastEditedAt: Date.now()} : entry);
       await this.dataService.saveMonthDraft(entries, this.dataMonth);
       if (!row) this.finishEditing();
@@ -419,10 +420,10 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.dialog.open(EnvelopeDialogComponent, {data, width: '44rem', maxWidth: '95vw'});
   }
 
-  protected _createLinkGroup(link?: UserDefinedLink): FormGroup {
+  protected _createLinkGroup(link?: UserDefinedLink, initialType: EntryType | '' = ''): FormGroup {
     const linkGroup = this.fb.group({
       id: [link && link.id ? link.id : uuidv4(), Validators.required], // Generate a unique UUID if link.id is missing.
-      type: [link ? link.type : '', Validators.required],
+      type: [link?.type ?? initialType, Validators.required],
       target: [link ? link.target : '', [
         Validators.required,
 
@@ -447,9 +448,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       linkGroup.get('source')?.disable({ emitEvent: false });
     }
 
-    let typeValue = linkGroup.get('type')?.value;
-
-
     /** Subscribe to Name changes */
     linkGroup.get('target')?.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(200)).subscribe(value => {
       if (value) {
@@ -460,7 +458,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
          */
         this.checkForCycle(value, linkGroup.get('source')?.value, linkGroup, this.linkArray.value);
         this.checkForNonAllowedNames(value, linkGroup)
-        if (typeValue == '' || !typeValue || typeValue == null) {
+        if (!linkGroup.get('type')?.value) {
           this.addErrorMessage(ErrorType.EmptyType, 'Type is empty. Please select a type.')
         } else {
           this.removeErrorMessage(ErrorType.EmptyType)
@@ -482,18 +480,19 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       } else {
         linkGroup.get('source')?.enable({ emitEvent: false });  // Enable source otherwise
       }
-      typeValue = value;
-      if (typeValue && typeValue !== '') {
+      if (value) {
         this.removeErrorMessage(ErrorType.EmptyType)
       }
     });
 
 
-    /** Subscribe to changes in source (category) field. If category is chosen, set type = expense automatically. */
+    /** Subscribe to changes in source (category) field. Default an untyped entry to Expense when a category is chosen. */
     linkGroup.get('source')?.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(value => {
       if (value) {
-        /** Set type automatic to expense if category chosen */
-        linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
+        if (!linkGroup.get('type')?.value) {
+          linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
+          this.removeErrorMessage(ErrorType.EmptyType);
+        }
         this.checkForCycle(value, linkGroup.get('target')?.value, linkGroup, this.linkArray.value);
       }
     });
@@ -1202,7 +1201,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     for (const row of this.visibleEntries()) {
       if (this.newEntries.has(row)) continue;
       let id = '';
-      if (row.get('type')?.value === EntryType.Expense) {
+      if (isCashOutflow(row.get('type')?.value)) {
         id = byBudget
           ? row.get('envelopeId')?.value ?? ''
           : this.categoryService.get(row.get('source')?.value)?.value ?? '';
@@ -1213,9 +1212,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     return [...groups.values(), unassigned].filter(group => group.rows.length > 0);
   }
 
-  addLink(): void {
+  addLink(initialType: EntryType | '' = ''): void {
     this.linkForm.markAsUntouched();
-    const row = this._createLinkGroup();
+    const row = this._createLinkGroup(undefined, initialType);
     this.newEntries.add(row);
     this.linkArray.push(row, { emitEvent: false });
     this.filterLinks('');

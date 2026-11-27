@@ -65,7 +65,6 @@
   {
     "label": "Savings & Investments",
     "value": "Savings & Investments@__system/category__",
-    "classification": "INVESTMENT",
     "icon": "savings",
     "colorLight": "#a68a00",
     "colorDark": "#f3e85c"

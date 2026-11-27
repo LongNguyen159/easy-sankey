@@ -4,7 +4,7 @@ import {testDatabase} from '../testing/database';
 import {CategoryService,CATEGORY_COLORS} from './category.service';
 import {DataService} from './data.service';
 import {UiService} from './ui.service';
-import { CategoryClassification, EntryType, ExpenseCategory } from '../components/models';
+import { EntryType, ExpenseCategory } from '../components/models';
 
 describe('database-backed expense categories',()=>{
  let fake:ReturnType<typeof testDatabase>;let data:DataService;let categories:CategoryService;
@@ -18,26 +18,17 @@ describe('database-backed expense categories',()=>{
   expect((await data.loadSingleMonth('2025-04'))?.rawInput[1].source).toBe(ExpenseCategory.Groceries);
   expect(categories.get(ExpenseCategory.Groceries)?.label).toBe('Supplies');
  });
- it('recalculates active and historical months when a category is reclassified', async () => {
-  await data.saveMonthDraft(entries(), '2025-04');
-  await data.saveMonthDraft(entries(), '2025-05');
-  await data.selectMonth('2025-05');
-  let activeSavings = 0;
-  const subscription = data.getSingleMonthData().subscribe(month => activeSavings = month.savings?.investments ?? 0);
+ it('keeps investment savings when a category is renamed or removed', async () => {
+  const [income, expense] = entries();
+  await data.saveMonthDraft([income, { ...expense, type: EntryType.Investment }], '2025-04');
+  await categories.save('Brokerage', 'trending_up', CATEGORY_COLORS[0], ExpenseCategory.Groceries);
+  expect(data.monthlyData['2025-04'].savings?.investments).toBe(80);
 
-  await categories.save('Investments', 'trending_up', CATEGORY_COLORS[0], ExpenseCategory.Groceries, CategoryClassification.Investment);
-  TestBed.tick();
-  expect(activeSavings).toBe(80);
-  expect(data.monthlyData['2025-04'].savings?.totalSavings).toBe(1000);
-  expect(data.monthlyData['2025-04'].remainingBalance).toBe('920');
-
-  await data.importMonth('2025-06', { entries: entries(), categories: [categories.get(ExpenseCategory.Groceries)!] });
-  expect(data.monthlyData['2025-06'].savings?.investments).toBe(80);
-  await categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries, CategoryClassification.Expense);
-  TestBed.tick();
-  expect(activeSavings).toBe(0);
-  expect(data.monthlyData['2025-06'].savings?.totalSavings).toBe(920);
-  subscription.unsubscribe();
+  await data.removeCategory(ExpenseCategory.Groceries);
+  const month = await data.loadSingleMonth('2025-04');
+  expect(month?.rawInput[1].source).toBeUndefined();
+  expect(month?.savings?.totalSavings).toBe(1000);
+  expect(month?.remainingBalance).toBe('920');
  });
  it('removes category references without deleting entries or changing totals',async()=>{
   await data.saveMonthDraft(entries(),'2025-04');await data.saveMonthDraft(entries(),'2025-05');data.storeCopiedLinks(entries());

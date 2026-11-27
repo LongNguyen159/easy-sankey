@@ -1,12 +1,12 @@
-import { calculateMonth, projectSavings } from '../utils/month-calculation';
+import { calculateMonth } from '../utils/month-calculation';
 import {CONFIGURATION, DATABASE_CLIENT} from '../data/database';
 import {SettingsService} from './settings.service';
 import {FixedCostService} from './fixed-cost.service';
 import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
-import { effect, inject, Injectable, signal, EventEmitter, untracked } from '@angular/core';
-import { CategoryClassification, BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
+import { inject, Injectable, signal, EventEmitter } from '@angular/core';
+import { BudgetEnvelope, EntryType, isCashOutflow, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -128,19 +128,6 @@ export class DataService {
 
 
     constructor() {
-        const investmentIds = () => new Set(this.categories.categories()
-            .filter(category => category.classification === CategoryClassification.Investment)
-            .map(category => category.value));
-        let previousInvestments = investmentIds();
-        effect(() => {
-            const investments = investmentIds();
-            const changedIds = new Set([
-                ...[...previousInvestments].filter(id => !investments.has(id)),
-                ...[...investments].filter(id => !previousInvestments.has(id)),
-            ]);
-            previousInvestments = investments;
-            if (changedIds.size) untracked(() => this.refreshSavingsProjections(changedIds, investments));
-        });
         this.ready=this.initializeData().catch(error => {this.loadError.set(error.message);this.UiService.showSnackBar(`Could not load data: ${error.message}`);}).finally(()=>this.loading.set(false));
     }
 
@@ -353,23 +340,10 @@ export class DataService {
       this.dataSaved$.next(true);
     }
 
-    private refreshSavingsProjections(changedIds: ReadonlySet<string>, investments: ReadonlySet<string>): void {
-        const refresh = (month: SingleMonthData): SingleMonthData => month.treeMapData.some(node => changedIds.has(node.name))
-            ? { ...month, ...projectSavings(month, id => investments.has(id)) }
-            : month;
-        this.monthlyData = Object.fromEntries(Object.entries(this.monthlyData).map(([month, data]) => [month, refresh(data)]));
-        this.multiMonthEntries$.next(this.monthlyData);
-
-        const active = this.processedSingleMonthEntries$.value;
-        const updated = refresh(active);
-        if (updated !== active) this.processedSingleMonthEntries$.next(updated);
-    }
-
     private calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
         hasCategory = (id: string) => !!this.categories.get(id), envelopes: BudgetEnvelope[] = []): SingleMonthData {
         const locals = envelopes.filter(envelope => !envelope.isGlobal);
-        return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals],
-            id => this.categories.get(id)?.classification === CategoryClassification.Investment);
+        return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals]);
     }
 
     async saveEnvelopes(month: string, envelopes: BudgetEnvelope[], globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
@@ -578,7 +552,7 @@ export class DataService {
             .map(envelope => envelope.id));
         const pasted = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => {
             let parent: string | undefined;
-            if (type === EntryType.Expense && source) {
+            if (isCashOutflow(type) && source) {
                 parent = definitions.has(source) ? source : pastedNames.get(normalize(source));
                 parent ??= remainingNames.get(normalize(source));
             }
@@ -589,7 +563,7 @@ export class DataService {
         });
         const links = [...remaining, ...pasted];
 
-        const parents = new Map(links.filter(entry => entry.type === EntryType.Expense)
+        const parents = new Map(links.filter(entry => isCashOutflow(entry.type))
             .map(entry => [normalize(entry.target), entry.source && !definitions.has(entry.source) ? normalize(entry.source) : undefined]));
         const checked = new Set<string>();
         for (const target of parents.keys()) {

@@ -524,59 +524,53 @@ test('central global-envelope editing needs no month and preserves actual entrie
     assert.equal(retained.value,40);assert.equal(retained.source,category);assert.equal(retained.envelopeId,undefined);
   }));
 
-test("investment classifications survive backup restore and older backups default to regular expenses", () =>
+test("investment entries and templates survive backup restore with shared categories", () =>
   fixture(async ({ store, reopen }) => {
-    const id = "ETF@__system/category__";
-    const builtIn = "Savings & Investments@__system/category__";
-    assert.equal((await store.crud.categories.get({ id: builtIn })).classification, "INVESTMENT");
-    await store.crud.categories.create({
-      item: { value: id, label: "ETF", classification: "INVESTMENT" },
-    });
-    await store.crud.categories.update({ id, changes: { label: "ETF contributions" } });
-    await save(store, "2025-04", [{ ...entry("fund", 300), source: id }]);
+    const id = "Brokerage@__system/category__";
+    await store.crud.categories.create({ item: { value: id, label: "Brokerage" } });
+    const contribution = { ...entry("fund", 300), type: "investment", source: id };
+    await save(store, "2025-04", [contribution, { ...entry("fee", 5), source: id }]);
+    await store.crud.fixedCosts.replace({ items: [contribution] });
 
     const backup = await store.exportBackup();
-    assert.equal(JSON.parse(backup).data.expenseCategories.find(item => item.value === id).classification, "INVESTMENT");
     const opened = await reopen();
-    assert.equal((await opened.crud.categories.get({ id })).classification, "INVESTMENT");
     await opened.restore(backup, (await opened.crud.status()).revision);
-    assert.equal((await opened.crud.categories.get({ id })).classification, "INVESTMENT");
-
-    const legacy = JSON.parse(backup);
-    for (const item of legacy.data.expenseCategories) delete item.classification;
-    await opened.restore(JSON.stringify(legacy), (await opened.crud.status()).revision);
-    assert.equal((await opened.crud.categories.get({ id })).classification, "EXPENSE");
-    assert.equal((await opened.crud.categories.get({ id: builtIn })).classification, "INVESTMENT");
-    assert.equal((await opened.crud.months.get("2025-04")).entries[0].source, id);
+    const { entries } = await opened.crud.months.get("2025-04");
+    assert.deepEqual(entries.map(item => [item.type, item.source]), [["investment", id], ["expense", id]]);
+    assert.equal((await opened.crud.fixedCosts.get({ id: contribution.id })).type, "investment");
   }));
 
-test("classification migration preserves existing categories and their entry references", async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "category-classification-"));
+test("investment migration converts classified entries and templates while preserving their references", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "investment-entry-type-"));
   const filename = path.join(dir, "db.sqlite");
   const previous = path.join(dir, "migrations");
   const migrations = path.join(process.cwd(), "prisma/migrations");
   fs.mkdirSync(previous);
   let store;
   try {
-    for (const name of fs.readdirSync(migrations).filter(name => name < "202611260001_category_classification")) {
+    for (const name of fs.readdirSync(migrations).filter(name => name < "202611270002_investment_entry_type")) {
       fs.cpSync(path.join(migrations, name), path.join(previous, name), { recursive: true });
     }
     require("../../electron/migrations").migrate(filename, { directory: previous });
     const db = new Database(filename);
     try {
       db.prepare("INSERT INTO categories (id, label, position) VALUES (?, ?, ?)").run(category, "Housing", 0);
-      db.prepare("INSERT INTO categories (id, label, position) VALUES (?, ?, ?)")
-        .run("Savings & Investments@__system/category__", "Savings & Investments", 1);
+      db.prepare("INSERT INTO categories (id, label, position, classification) VALUES (?, ?, ?, ?)")
+        .run("brokerage", "Brokerage", 1, "INVESTMENT");
       db.prepare("INSERT INTO finance_months (id) VALUES (?)").run("2025-04");
       db.prepare("INSERT INTO finance_entries (month_id, id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
         .run("2025-04", "rent", "expense", "Rent", "rent", 300, 0, category);
+      db.prepare("INSERT INTO finance_entries (month_id, id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run("2025-04", "fund", "expense", "Fund", "fund", 200, 1, "brokerage");
+      db.prepare("INSERT INTO fixed_cost_templates (id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run("fund", "expense", "Fund", "fund", 200, 0, "brokerage");
     } finally {
       db.close();
     }
     store = openDatabase(filename);
-    assert.equal((await store.crud.categories.get({ id: category })).classification, "EXPENSE");
-    assert.equal((await store.crud.months.get("2025-04")).entries[0].source, category);
-    assert.equal((await store.crud.categories.get({ id: "Savings & Investments@__system/category__" })).classification, "INVESTMENT");
+    const { entries } = await store.crud.months.get("2025-04");
+    assert.deepEqual(entries.map(item => [item.type, item.source]), [["expense", category], ["investment", "brokerage"]]);
+    assert.equal((await store.crud.fixedCosts.get({ id: "fund" })).type, "investment");
   } finally {
     await store?.close();
     fs.rmSync(dir, { recursive: true, force: true });

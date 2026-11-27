@@ -355,11 +355,11 @@
         </button>
         <mat-menu #entryMenu="matMenu">
           <div [cdkContextMenuTriggerFor]="entryClipboardMenu" [cdkContextMenuTriggerData]="{ entry: linkGroup }">
-            <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
+            <button mat-menu-item type="button" [disabled]="!isCashOutflow(linkGroup.get('type')?.value)"
               [matMenuTriggerFor]="entryEnvelopeMenu">
               <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
             </button>
-            @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
+            @if (isCashOutflow(linkGroup.get('type')?.value) && linkGroup.get('envelopeId')?.value) {
               <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
                 <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
               </button>

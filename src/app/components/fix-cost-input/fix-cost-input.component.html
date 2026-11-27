@@ -45,8 +45,6 @@
         <p class="py-12 text-center">
           @if (section() === 'fixed') {
             No recurring income or costs yet.
-          } @else if (!investmentCategories().length) {
-            Create an investment category in <a class="underline" [routerLink]="categoriesPage">Categories</a> to add recurring investments.
           } @else {
             No recurring investments yet.
           }
@@ -82,8 +80,7 @@
   <!-- ADD BUTTON -->
   <div class="flex flex-row gap-4 mt-4 w-fit text-center justify-center self-center fixed bottom-5 z-50">
     <div>
-      <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()"
-        [disabled]="section() === 'investments' && !investmentCategories().length">
+      <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
         <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
         <span>{{ section() === 'investments' ? 'Add Investment' : 'Add Income or Cost' }}</span>
       </button>
@@ -136,7 +133,7 @@
             <input matInput value="Investment" readonly />
           } @else {
             <mat-select formControlName="type" (selectionChange)="checkTaxNodeExists()">
-              @for (type of linkTypes; track type) {
+              @for (type of recurringTypes; track type) {
                 <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
               }
             </mat-select>
@@ -155,9 +152,8 @@
         </mat-form-field>
         <!-- Select with search -->
         <app-category-select [control]="categoryControl(linkGroup)"
-          [classification]="section() === 'investments' ? CategoryClassification.Investment : CategoryClassification.Expense"
           (categoryChange)="updateInput()"></app-category-select>
-        @let canAssignBudget = linkGroup.get('type')?.value === entryTypes.Expense;
+        @let canAssignBudget = isCashOutflow(linkGroup.get('type')?.value);
         @let budgetId = linkGroup.get('envelopeId')?.value;
         @let assignedBudget = budgetName(budgetId);
         <button mat-icon-button type="button" class="mt-2 shrink-0"

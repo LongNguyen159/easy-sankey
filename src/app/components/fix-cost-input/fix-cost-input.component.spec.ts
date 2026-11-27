@@ -10,7 +10,7 @@ import { By } from '@angular/platform-browser';
 import { FixCostInputComponent } from './fix-cost-input.component';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
 import { DataService } from '../../services/data.service';
-import { EntryType, ExpenseCategory } from '../models';
+import { EntryType } from '../models';
 
 describe('FixCostInputComponent', () => {
   let component: FixCostInputComponent;
@@ -33,7 +33,7 @@ describe('FixCostInputComponent', () => {
             retrieveFixCostsLinks: () => [
               { id: 'rent', target: 'Rent', type: EntryType.Expense, value: 900 },
               { id: 'internet', target: 'Internet', type: EntryType.Expense, value: 40 },
-              { id: 'etf', target: 'ETF', type: EntryType.Expense, source: ExpenseCategory.Savings, value: 200 },
+              { id: 'etf', target: 'ETF', type: EntryType.Investment, value: 200 },
             ],
           },
         },
@@ -56,7 +56,7 @@ describe('FixCostInputComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows classified investments in their own tab and adds investment drafts there', () => {
+  it('keeps uncategorized investments in their own tab and creates new rows with the investment type', () => {
     const names = () => fixture.debugElement.queryAll(By.css('input[formControlName="target"]'))
       .map(input => (input.nativeElement as HTMLInputElement).value);
     expect(names()).toEqual(['Rent', 'Internet']);
@@ -70,7 +70,9 @@ describe('FixCostInputComponent', () => {
     component.addLink();
     fixture.detectChanges();
     expect(names()).toEqual(['ETF', '']);
-    expect(component.linkArray.at(-1).get('source')?.value).toBe(ExpenseCategory.Savings);
+    expect(component.linkArray.at(-1).get('type')?.value).toBe(EntryType.Investment);
+    expect(component.linkArray.at(-1).get('source')?.value).toBe('');
+    expect(fixture.debugElement.query(By.css('mat-select[formControlName="type"]'))).toBeNull();
   });
 
   it('sorts the displayed costs while keeping the manual order available', () => {

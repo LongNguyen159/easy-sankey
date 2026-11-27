@@ -1,4 +1,4 @@
-import { BudgetEnvelope, EntryType, SankeyData, SankeyLink, SankeyNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, isCashOutflow, SankeyData, SankeyLink, SankeyNode, UserDefinedLink } from '../components/models';
 
 /** Project envelope capacity only after actual spending, category totals and surplus are calculated. */
 export function envelopeSankey(base: SankeyData, entries: UserDefinedLink[], envelopes: BudgetEnvelope[],
@@ -7,10 +7,10 @@ export function envelopeSankey(base: SankeyData, entries: UserDefinedLink[], env
   const income = entries.filter(entry => entry.type === EntryType.Income);
   const root = entries.some(entry => entry.type === EntryType.Tax) ? 'Usable Income'
     : income.length === 1 ? income[0].target : 'Total Income';
-  const expenses = entries.filter(entry => entry.type === EntryType.Expense);
+  const expenses = entries.filter(entry => isCashOutflow(entry.type));
   const byName = new Map(expenses.map(entry => [entry.target, entry]));
   const envelopeMap = new Map(envelopes.map(envelope => [envelope.id, envelope]));
-  const systemNames = new Set(entries.filter(entry => entry.type !== EntryType.Expense).map(entry => entry.target));
+  const systemNames = new Set(entries.filter(entry => !isCashOutflow(entry.type)).map(entry => entry.target));
   systemNames.add('Total Income'); systemNames.add('Usable Income');
   const nodes = new Map<string, SankeyNode>(base.nodes.filter(node => systemNames.has(node.name)).map(node => [node.name, {...node}]));
   if (!nodes.has(root)) nodes.set(root, { name: root, value: 0 });
@@ -57,7 +57,7 @@ export function envelopeSankey(base: SankeyData, entries: UserDefinedLink[], env
       }
       for (const ancestor of path) {
         const name = JSON.stringify(['entry', scope, ancestor.id]);
-        const node = nodes.get(name) ?? { name, displayName: ancestor.target, entryName: ancestor.target, value: 0 };
+        const node = nodes.get(name) ?? { name, displayName: ancestor.target, entryName: ancestor.target, entryType: ancestor.type, value: 0 };
         node.value += ownAmount; nodes.set(name, node);
         addLink(source, name, ownAmount); source = name;
       }
