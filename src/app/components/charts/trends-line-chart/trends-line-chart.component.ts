@@ -9,6 +9,8 @@ import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
 import { isArray } from 'mathjs';
 
+export type CategoryTrendsView = 'stacked-bars' | 'span-bars' | 'stacked-area';
+
 @Component({
     selector: 'app-trends-line-chart',
     imports: [NgxEchartsDirective],
@@ -25,7 +27,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
   readonly monthSelected = output<string>();
   @Input() showCategories: boolean = false;
 
-  @Input() stackCategories: boolean = true;
+  @Input() categoryView: CategoryTrendsView = 'stacked-bars';
 
   chartOptions: EChartsOption = this.getBaseOptions()
   mergeOptions: EChartsOption
@@ -90,26 +92,31 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     */
     this._clearSeries()
 
+    const tooltipBackground = this.colorService.isDarkMode()
+      ? this.colorService.darkBackgroundSecondary
+      : this.colorService.lightBackgroundPrimary;
     const finalOptions: EChartsOption = {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
+        renderMode: 'html',
+        extraCssText: 'backdrop-filter: blur(8px);',
         borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
         borderWidth: 2,
         borderRadius: 16,
         trigger: 'axis',
         axisPointer: {
-          type: this.showCategories ? 'shadow' : 'line',
+          type: this.showCategories && this.categoryView !== 'stacked-area' ? 'shadow' : 'line',
         },
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
+        backgroundColor: `color-mix(in srgb, ${tooltipBackground} 80%, transparent)`,
         textStyle: {
           color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (params: any) => {
           if (!params.length) return "";
           const items = this.showCategories
-            ? params.filter((item: { seriesType: string }) => item.seriesType === 'bar')
+            ? params.filter((item: { seriesType: string }) => item.seriesType !== 'custom')
             : params;
-          return items.length ? this.getCustomTooltip(items, items[0].seriesType) : '';
+          return items.length ? this.getCustomTooltip(items) : '';
         },
       },
       legend: {
@@ -201,22 +208,15 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     this.mergeOptions = finalOptions;
   }
 
-  /** TODO:
-   * Also map [x, y] pairs for the bar series. So this tooltip we will all use item.value[1] instead of item.value
-   * 
-   * Additionally, apply a different style fo the bars for predicted series.
-   */
-  getCustomTooltip(params: any, seriesType: string): string {
+  getCustomTooltip(params: any): string {
     // Filter out items with value 0
     const visibleParams = params.filter((item: any) => isArray(item.value) ?  item.value[1] !== 0 : item.value !== 0);
     
-    // If series type is bar chart, calculate total
     let tooltip = `${params[0].axisValueLabel}<br>`;
     
 
-    if (seriesType === 'bar') {
-      // Calculate the total sum of values for the visible items (only for bar chart)
-      const total = this.stackCategories
+    if (this.showCategories) {
+      const total = this.categoryView !== 'span-bars'
         ? visibleParams.reduce((sum: number, item: any) => sum + item.value, 0)
         : this.chartData[params[0].dataIndex].categories.reduce((sum, category) => sum + category.value, 0);
     
@@ -290,34 +290,41 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
   }
 
   private _getCategoriesSeries(allCategories: string[]): SeriesOption[] {
-    const categorySeries: BarSeriesOption[] = allCategories.map(category => ({
-      name: category,
-      type: 'bar',
-      showSymbol: false,
-      itemStyle: {
-        color: this.categoryService.color(category, this.colorService.isDarkMode()),
-        opacity: 0.9,
-      },
-      stack: this.stackCategories ? 'categories' : '',
-      barCategoryGap: this.stackCategories ? undefined : '24%',
-      data: this.xAxisData.map(month => {
-        // Find the month's data
-        const monthData = this.chartData.find(data => data.month === month);
-        
-        
-        // Find the category value for this month
-        const categoryData = monthData?.categories.find(
-          cat => cat.name === category
-        );
-        
-        return Math.round((categoryData?.value || 0) * 100) / 100; // Default to 0 if missing
-      }),
-    }));
-  
+    const isSpan = this.categoryView === 'span-bars';
+    const categorySeries = allCategories.map((category): BarSeriesOption | LineSeriesOption => {
+      const color = this.categoryService.color(category, this.colorService.isDarkMode());
+      const data = this.chartData.map(month => {
+        const value = month.categories.find(item => item.name === category)?.value ?? 0;
+        return Math.round(value * 100) / 100;
+      });
+
+      if (this.categoryView === 'stacked-area') {
+        return {
+          name: category,
+          type: 'line',
+          stack: 'categories',
+          showSymbol: false,
+          itemStyle: { color },
+          lineStyle: { color, width: 1 },
+          areaStyle: { color, opacity: 0.75 },
+          data,
+        };
+      }
+
+      return {
+        name: category,
+        type: 'bar',
+        itemStyle: { color, opacity: 0.9 },
+        stack: isSpan ? '' : 'categories',
+        barCategoryGap: isSpan ? '24%' : undefined,
+        data,
+      };
+    });
+
     const selected = this._chartInstance?.getOption()?.['legend'] as { selected?: Record<string, boolean> }[] | undefined;
     const firstVisibleSeries = categorySeries.find(series => selected?.[0]?.selected?.[series.name as string] !== false);
     if (firstVisibleSeries) firstVisibleSeries.markArea = this.getCategoryForecastArea();
-    if (this.stackCategories || !categorySeries.length) return categorySeries;
+    if (!isSpan || !categorySeries.length) return categorySeries;
 
     const totalSeries: CustomSeriesOption = {
       name: 'Monthly total',

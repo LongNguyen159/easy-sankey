@@ -82,17 +82,26 @@
           <!-- actions buttons -->
           <div class="flex flex-row w-full justify-end gap-2">
             @if (!showIncomeGrowth) {
-              <button mat-button (click)="stackCategories = !stackCategories">
-                <mat-icon fontSet="material-symbols-outlined">{{ stackCategories ? 'bar_chart_4_bars' : 'stacked_bar_chart' }}</mat-icon>
-                {{ stackCategories ? 'Span Categories' : 'Stack Categories' }}
+              <button mat-button [matMenuTriggerFor]="categoryTrendViewMenu">
+                <mat-icon fontSet="material-symbols-outlined">{{ categoryTrendViews[categoryTrendView].icon }}</mat-icon>
+                {{ categoryTrendViews[categoryTrendView].label }}
               </button>
+              <mat-menu #categoryTrendViewMenu="matMenu">
+                @for (view of categoryTrendViews | keyvalue: null; track view.key) {
+                  <button mat-menu-item (click)="categoryTrendView = view.key"
+                    role="menuitemradio" [attr.aria-checked]="categoryTrendView === view.key">
+                    <mat-icon fontSet="material-symbols-outlined">{{ view.value.icon }}</mat-icon>
+                    {{ view.value.label }}
+                  </button>
+                }
+              </mat-menu>
             }
             <button mat-button (click)="showIncomeGrowth = !showIncomeGrowth">
               <mat-icon fontSet="material-symbols-outlined">{{ showIncomeGrowth ? 'bar_chart' : 'trending_up' }}</mat-icon>
               {{ showIncomeGrowth ? 'View Category Trends' : 'View Income Growth' }}
             </button>
           </div>
-          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData()" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"
+          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData()" [showCategories]="!showIncomeGrowth" [categoryView]="categoryTrendView"
             (monthSelected)="getMonthsDetails($event)"></app-trends-line-chart>
 
 

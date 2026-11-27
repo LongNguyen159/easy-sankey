@@ -31,7 +31,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { TreemapChartComponent } from "../charts/treemap-chart/treemap-chart.component";
 import { MatDividerModule } from '@angular/material/divider';
 import { SimpleMonthPickerComponent } from "../simple-month-picker/simple-month-picker.component";
-import { TrendsLineChartComponent } from "../charts/trends-line-chart/trends-line-chart.component";
+import { TrendsLineChartComponent, type CategoryTrendsView } from "../charts/trends-line-chart/trends-line-chart.component";
 import { DialogsService } from '../../services/dialogs.service';
 import { PredictService } from '../../services/predict.service';
 
@@ -89,10 +89,14 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
   /** Display settings for the charts.
    * Show income growth: Whether to show the income growth chart.
-   * Stack categories: Whether to stack the categories in the income-expense ratio chart
    **/
   showIncomeGrowth: boolean = true
-  stackCategories: boolean = true
+  readonly categoryTrendViews = {
+    'stacked-bars': { label: 'Stacked bars', icon: 'stacked_bar_chart' },
+    'span-bars': { label: 'Span categories', icon: 'bar_chart_4_bars' },
+    'stacked-area': { label: 'Stacked area', icon: 'area_chart' },
+  } satisfies Record<CategoryTrendsView, { label: string; icon: string }>;
+  categoryTrendView: CategoryTrendsView = 'stacked-bars';
 
   /** Available time frame options for the dropdown menu */
   availableOptions: { value: string, label: string }[] = [
