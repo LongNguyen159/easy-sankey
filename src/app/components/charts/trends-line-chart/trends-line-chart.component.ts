@@ -1,5 +1,5 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
-import { BarSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
+import { BarSeriesOption, CustomSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
@@ -45,6 +45,18 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
 
   override onChartInit(chart: EChartsType): void {
     super.onChartInit(chart);
+    chart.on('legendselectchanged', event => {
+      if (!this.showCategories) return;
+      const { selected } = event as { selected: Record<string, boolean> };
+      const categories = this.getSortedCategories();
+      const activeCategory = categories.find(name => selected[name] !== false);
+      chart.setOption({
+        series: categories.map(name => ({
+          name,
+          markArea: (name === activeCategory ? this.getCategoryForecastArea() : undefined) ?? { data: [] },
+        })),
+      });
+    });
     this.bindMonthSelection(chart, index => {
       const entry = this.chartData[index];
       return entry && !entry.isPrediction && !entry.isMissing ? entry.month : undefined;
@@ -67,6 +79,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
 
   updateChart() {
     const months = this.chartData.map(data => data.month);
+    const categories = this.showCategories ? this.getSortedCategories() : [];
     this.xAxisData = months;
     // Extract financial trends
     const totalNetIncome = this.chartData.map(data => data.totalNetIncome);
@@ -93,7 +106,10 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         },
         formatter: (params: any) => {
           if (!params.length) return "";
-          return this.getCustomTooltip(params, params[0].seriesType);
+          const items = this.showCategories
+            ? params.filter((item: { seriesType: string }) => item.seriesType === 'bar')
+            : params;
+          return items.length ? this.getCustomTooltip(items, items[0].seriesType) : '';
         },
       },
       legend: {
@@ -149,9 +165,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
               color: 'inherit',
             }
           }, 
-        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted')) : [
-          ...this.chartData.flatMap(data => data.categories.map(cat => cat.name))
-        ]
+        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted')) : categories
       },
       xAxis: {
         type: 'category',
@@ -181,7 +195,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           type: 'inside',
         }
       ],
-      series: this.showCategories ? this._getCategoriesSeries() : this._getIncomeGrowthAndExpenseSeries(totalExpenses, totalNetIncome),
+      series: this.showCategories ? this._getCategoriesSeries(categories) : this._getIncomeGrowthAndExpenseSeries(totalExpenses, totalNetIncome),
     };
 
     this.mergeOptions = finalOptions;
@@ -202,9 +216,12 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
 
     if (seriesType === 'bar') {
       // Calculate the total sum of values for the visible items (only for bar chart)
-      const total = visibleParams.reduce((sum: number, item: any) => sum + item.value, 0);
+      const total = this.stackCategories
+        ? visibleParams.reduce((sum: number, item: any) => sum + item.value, 0)
+        : this.chartData[params[0].dataIndex].categories.reduce((sum, category) => sum + category.value, 0);
     
-      // Add individual items
+      // Show the largest category amounts first.
+      visibleParams.sort((a: { value: number }, b: { value: number }) => b.value - a.value);
       tooltip += visibleParams.map((item: any) => `
         <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
           <div style="flex: 1; display: flex; align-items: center;">
@@ -260,18 +277,19 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
 
 
   /** Get Category Expenses data */
-  private _getCategoriesSeries(): BarSeriesOption[] {
-    // Extract all unique categories from the chartData
-    const allCategories = Array.from(
-      new Set(
-        this.chartData.flatMap(data =>
-          data.categories.map(cat => cat.name)
-        )
-      )
-    );
+  private getSortedCategories(): string[] {
+    const totals = new Map<string, number>();
+    for (const month of this.chartData) {
+      for (const { name, value } of month.categories) {
+        totals.set(name, (totals.get(name) ?? 0) + (month.isPrediction ? 0 : value));
+      }
+    }
+    return [...totals.entries()]
+      .sort(([nameA, totalA], [nameB, totalB]) => totalB - totalA || nameA.localeCompare(nameB))
+      .map(([name]) => name);
+  }
 
-  
-    // Prepare category series aligned with xAxis data
+  private _getCategoriesSeries(allCategories: string[]): SeriesOption[] {
     const categorySeries: BarSeriesOption[] = allCategories.map(category => ({
       name: category,
       type: 'bar',
@@ -281,6 +299,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         opacity: 0.9,
       },
       stack: this.stackCategories ? 'categories' : '',
+      barCategoryGap: this.stackCategories ? undefined : '24%',
       data: this.xAxisData.map(month => {
         // Find the month's data
         const monthData = this.chartData.find(data => data.month === month);
@@ -295,11 +314,41 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       }),
     }));
   
-    const firstForecastMonth = this.chartData.find(month => month.isPrediction);
-    const firstSeries = categorySeries[0];
-    if (!firstForecastMonth || !firstSeries) return categorySeries;
+    const selected = this._chartInstance?.getOption()?.['legend'] as { selected?: Record<string, boolean> }[] | undefined;
+    const firstVisibleSeries = categorySeries.find(series => selected?.[0]?.selected?.[series.name as string] !== false);
+    if (firstVisibleSeries) firstVisibleSeries.markArea = this.getCategoryForecastArea();
+    if (this.stackCategories || !categorySeries.length) return categorySeries;
 
-    firstSeries.markArea = {
+    const totalSeries: CustomSeriesOption = {
+      name: 'Monthly total',
+      type: 'custom',
+      z: 0,
+      silent: true,
+      clip: true,
+      tooltip: { show: false },
+      encode: { x: 0, y: 1 },
+      data: this.chartData.map((month, index) => [
+        index, month.categories.reduce((sum, category) => sum + category.value, 0),
+      ]),
+      renderItem: (_params, api) => {
+        const [center, top] = api.coord([api.value(0), api.value(1)]);
+        const [, baseline] = api.coord([api.value(0), 0]);
+        const band = api.size?.([1, 0], [api.value(0), 0]);
+        const width = (Array.isArray(band) ? band[0] : 0) * 0.76;
+        return {
+          type: 'rect',
+          shape: { x: center - width / 2, y: Math.min(top, baseline), width, height: Math.abs(baseline - top) },
+          style: { fill: this.colorService.isDarkMode() ? '#45454f' : '#dedee4' },
+        };
+      },
+    };
+    return [totalSeries, ...categorySeries];
+  }
+
+  private getCategoryForecastArea(): BarSeriesOption['markArea'] {
+    const firstForecastMonth = this.chartData.find(month => month.isPrediction);
+    if (!firstForecastMonth) return undefined;
+    return {
       silent: true,
       itemStyle: {
         color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
@@ -314,7 +363,6 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         { xAxis: this.xAxisData.at(-1) },
       ]],
     };
-    return categorySeries;
   }
 
   /** Get Income Growth & Expense Trends data */
