@@ -92,6 +92,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (params: any) => {
+          if (!params.length) return "";
           return this.getCustomTooltip(params, params[0].seriesType);
         },
       },
@@ -280,31 +281,10 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         opacity: 0.9,
       },
       stack: this.stackCategories ? 'categories' : '',
-      markArea: this.isPredictionAvailable ? {
-        itemStyle: {
-          opacity: 0.1,
-          color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
-        },
-        label: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
-        data: [
-          [
-            {
-              name: 'Forecast',
-              xAxis: this.xAxisData[this.xAxisData.length - (MONTHS_TO_PREDICT)]
-            },
-            {
-              xAxis: this.xAxisData[this.xAxisData.length - 1]
-            }
-          ],
-        ]
-      } : { data: [] },
       data: this.xAxisData.map(month => {
         // Find the month's data
         const monthData = this.chartData.find(data => data.month === month);
         
-        // if (!monthData) return 0; // If no data for this month, fill with 0
         
         // Find the category value for this month
         const categoryData = monthData?.categories.find(
@@ -315,6 +295,25 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       }),
     }));
   
+    const firstForecastMonth = this.chartData.find(month => month.isPrediction);
+    const firstSeries = categorySeries[0];
+    if (!firstForecastMonth || !firstSeries) return categorySeries;
+
+    firstSeries.markArea = {
+      silent: true,
+      itemStyle: {
+        color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
+      },
+      label: {
+        show: true,
+        position: 'insideTop',
+        color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+      },
+      data: [[
+        { name: 'Forecast', xAxis: firstForecastMonth.month },
+        { xAxis: this.xAxisData.at(-1) },
+      ]],
+    };
     return categorySeries;
   }
 
@@ -414,13 +413,10 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           itemStyle: {
             color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)', // Adjust color for light mode
           },
-          label: {
-            color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-          },
+          label: { show: false },
           data: [
             [
               {
-                name: 'Forecast',
                 xAxis: this.xAxisData[this.xAxisData.length - (MONTHS_TO_PREDICT + 1)]
               },
               {

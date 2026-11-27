@@ -46,7 +46,10 @@ describe('StorageManagerComponent', () => {
     const october = component.trendsLineChartData().find(month => month.month === '2026-10');
     expect(october?.totalExpenses).toBe(1000);
     expect(october?.balance).toBe(1700);
-    expect(october?.categories).toEqual([{ name: 'Rent', value: 1000 }]);
+    expect(october?.categories).toEqual(jasmine.arrayWithExactContents([
+      { name: 'Rent', value: 1000 },
+      { name: 'investments', value: 300 },
+    ]));
     expect(component.periodSavings()).toEqual({
       income: 4000, investments: 300, totalSavings: 2000, savingsRate: 50,
     });

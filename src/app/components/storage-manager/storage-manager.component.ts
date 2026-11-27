@@ -127,15 +127,16 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   allFilteredMonths: string[] = [];
 
   /** Chart data to plot the surplus and balance of each month  */
-  private readonly chartData = signal<TrendsLineChartData[]>([]);
+  readonly recordedChartData = signal<TrendsLineChartData[]>([]);
+  private readonly forecastChartData = signal<TrendsLineChartData[]>([]);
   readonly showPredictions = signal(true);
   readonly trendsLineChartData = computed(() => {
-    const data = this.chartData();
-    return this.showPredictions() ? data : data.filter(entry => !entry.isPrediction);
+    const data = this.recordedChartData();
+    return this.showPredictions() ? [...data, ...this.forecastChartData()] : data;
   });
   readonly periodSavings = computed(() => {
-    const totals = this.chartData().reduce((totals, month) => {
-      if (month.isMissing || month.isPrediction) return totals;
+    const totals = this.recordedChartData().reduce((totals, month) => {
+      if (month.isMissing) return totals;
       return {
         income: totals.income + month.totalNetIncome,
         investments: totals.investments + (month.savings?.investments ?? 0),
@@ -426,7 +427,8 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
 
     // Include missing months in the chart data
     this.includeMissingMonths(historicalData);
-    this.chartData.set(historicalData);
+    this.recordedChartData.set(historicalData);
+    this.forecastChartData.set([]);
     if (this.showPredictions() && historicalData.length > 0) {
       this.gatherCalculatedMetrics();
     }
@@ -486,9 +488,9 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
     // const avgSpendOnShopping = this.anomalyReports().find(category => category.categoryName === ExpenseCategory.Shopping)?.averageSpending || 0;
   
-    const monthlyIncomeData = this.chartData().map(entry => entry.totalNetIncome);
-    const monthlyExpensesData = this.chartData().map(entry => entry.totalExpenses);
-    const monthlyInvestments = this.chartData().map(entry => entry.savings?.investments ?? 0);
+    const monthlyIncomeData = this.recordedChartData().map(entry => entry.totalNetIncome);
+    const monthlyExpensesData = this.recordedChartData().map(entry => entry.totalExpenses);
+    const monthlyInvestments = this.recordedChartData().map(entry => entry.savings?.investments ?? 0);
   
     // Fetch projections for income and expenses
     const incomeProjection$ = this.predictionService.getPrediction(monthlyIncomeData, this.MONTHS_IN_ADVANCE_TO_PREDICT);
@@ -498,7 +500,23 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       ? this.predictionService.getPrediction(monthlyInvestments, this.MONTHS_IN_ADVANCE_TO_PREDICT)
       : of({ forecast: [[]] });
 
-    const categoryProportions = this.calculateCategoryProportions();
+    const categoryTotals = new Map<string, { expenses: number; investments: number }>();
+    for (const month of this.recordedChartData()) {
+      if (month.isMissing) continue;
+      const expensesByCategory = new Map(
+        this.expenseCategories(this.allMonthsData[month.month]).map(({ name, value }) => [name, value])
+      );
+      for (const { name, value } of month.categories) {
+        const totals = categoryTotals.get(name) ?? { expenses: 0, investments: 0 };
+        const expenses = expensesByCategory.get(name) ?? 0;
+        totals.expenses += expenses;
+        totals.investments += value - expenses;
+        categoryTotals.set(name, totals);
+      }
+    }
+    const historicalExpenses = monthlyExpensesData.reduce((sum, value) => sum + value, 0);
+    const historicalInvestments = monthlyInvestments.reduce((sum, value) => sum + value, 0);
+
     // Synchronize projections using forkJoin
     this.projectionsSubscription = forkJoin([incomeProjection$, expenseProjection$, investmentProjection$]).subscribe(([incomeData, expenseData, investmentData]) => {
       const incomeForecast = incomeData.forecast[0];
@@ -506,9 +524,9 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
       const nextMonths = getNextMonths(this.endMonth, this.MONTHS_IN_ADVANCE_TO_PREDICT);
   
-      const projectedData: TrendsLineChartData[] = nextMonths.map((month, index) => {
+      const projectedData: TrendsLineChartData[] = nextMonths.map((month, index): TrendsLineChartData | null => {
         // Avoid duplicate entries
-        if (this.chartData().some(data => data.month === month)) {
+        if (this.recordedChartData().some(data => data.month === month)) {
           return null
         }
   
@@ -516,26 +534,26 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
         const totalExpenses = expenseForecast[index] || 0;
   
         // Calculate projected surplus
-        const surplus = totalNetIncome - totalExpenses - (investmentData.forecast[0][index] || 0);
-  
-        // Estimate category-level expenses based on historical proportions
-        const categories = Object.keys(categoryProportions).map(categoryName => ({
-          name: categoryName,
-          value: totalExpenses * categoryProportions[categoryName]
-        }));
+        const investments = investmentData.forecast[0][index] || 0;
+        const surplus = totalNetIncome - totalExpenses - investments;
   
         return {
           month,
           totalNetIncome,
           totalExpenses,
           isPrediction: true,
+          isMissing: false,
           balance: 0, // Placeholder value
           surplus,
-          categories
+          categories: Array.from(categoryTotals, ([name, totals]) => ({
+            name,
+            value: (historicalExpenses ? totalExpenses * totals.expenses / historicalExpenses : 0)
+              + (historicalInvestments ? investments * totals.investments / historicalInvestments : 0),
+          })),
         };
       }).filter((entry): entry is TrendsLineChartData => entry !== null);
       // Get the last balance from the existing data
-      const lastBalance = this.chartData().at(-1)?.balance ?? 0;
+      const lastBalance = this.recordedChartData().at(-1)?.balance ?? 0;
 
       // Compute the balance for each month
       for (let i = 0; i < projectedData.length; i++) {
@@ -549,37 +567,10 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       }
 
   
-      const chartData = [...this.chartData(), ...projectedData];
-      chartData.forEach(item => {
-        item.categories.sort((a, b) => b.value - a.value);
-      });
-      this.chartData.set(chartData);
+      this.forecastChartData.set(projectedData);
     });
-  }
-  
-  // Utility: Calculate category proportions based on historical data
-  calculateCategoryProportions(): { [categoryName: string]: number } {
-    const totalExpenses = this.chartData().reduce((sum, data) => sum + data.totalExpenses, 0);
-    if (totalExpenses === 0) return {};
-    const categoryTotals: { [categoryName: string]: number } = {};
-  
-    // Accumulate totals for each category
-    this.chartData().forEach(data => {
-      data.categories.forEach(category => {
-        categoryTotals[category.name] = (categoryTotals[category.name] || 0) + category.value;
-      });
-    });
-  
-    // Calculate proportions
-    const proportions: { [categoryName: string]: number } = {};
-    for (const category in categoryTotals) {
-      proportions[category] = categoryTotals[category] / totalExpenses;
-    }
-  
-    return proportions;
   }
 
-    
   /** Plot the raw values & fitted values of the selected category.
    * @param categoryName: string: Name of the category (raw, with system prefix to pinpoint instead of confusion)
    */
@@ -637,7 +628,8 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
       totalExpenses: this.regularExpenses(value),
       savings: value.savings,
       surplus: parseLocaleStringToNumber(value.remainingBalance) || 0,
-      categories: this.expenseCategories(value)
+      // The final tree node is cash surplus, which is already tracked separately.
+      categories: value.treeMapData.slice(0, -1).map(({ name, value }) => ({ name, value }))
     }))
     .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
   }
