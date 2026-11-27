@@ -6,7 +6,7 @@ import { outputToObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { DataService } from '../../services/data.service';
-import { Abnormality, AbnormalityAnalysis, AbnormalityChartData, AbnormalityConfig, AbnormalityType, ForecastData, MonthlyData, SingleMonthData, TreeNode, TrendsLineChartData } from '../models';
+import { Abnormality, AbnormalityAnalysis, AbnormalityChartData, AbnormalityConfig, AbnormalityType, ForecastData, MonthlyData, SingleMonthData, TreeNode, MonthlyTrendChartData } from '../models';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -16,7 +16,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ConfirmDialogData } from '../dialogs/confirm-dialog/confirm-dialog.component';
 import { MatSelectModule } from '@angular/material/select';
 import { detectAbnormalities, formatBigNumber, formatYYYYMMtoDate, getNextMonths, MONTHS_TO_PREDICT, parseLocaleStringToNumber, sortYearsDescending } from '../../utils/utils';
-import { TotalSurplusLineChartComponent } from "../charts/total-surplus-line-chart/total-surplus-line-chart.component";
+import { SavingsAndSurplusLineChartComponent } from "../charts/savings-and-surplus-line-chart/savings-and-surplus-line-chart.component";
 import { forkJoin, of, Subscription, takeUntil } from 'rxjs';
 import { BasePageComponent } from '../../base-components/base-page/base-page.component';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,20 +31,21 @@ import { MatMenuModule } from '@angular/material/menu';
 import { TreemapChartComponent } from "../charts/treemap-chart/treemap-chart.component";
 import { MatDividerModule } from '@angular/material/divider';
 import { SimpleMonthPickerComponent } from "../simple-month-picker/simple-month-picker.component";
-import { TrendsLineChartComponent, type CategoryTrendsView } from "../charts/trends-line-chart/trends-line-chart.component";
+import { CategoryTrendsChartComponent, type CategoryTrendsView } from "../charts/category-trends-chart/category-trends-chart.component";
+import { IncomeSpendingTrendComponent } from "../charts/income-spending-trend/income-spending-trend.component";
 import { DialogsService } from '../../services/dialogs.service';
 import { PredictService } from '../../services/predict.service';
 
 @Component({
     selector: 'app-storage-manager',
     imports: [FormsModule, MatFormFieldModule, MatIconModule, CommonModule, MatExpansionModule,
-        MatSelectModule, TotalSurplusLineChartComponent, MatButtonModule, IncomeExpenseRatioChartComponent,
+        MatSelectModule, SavingsAndSurplusLineChartComponent, MatButtonModule, IncomeExpenseRatioChartComponent,
         MatCardModule,
         MatSlideToggleModule,
         MatTooltipModule,
         MatMenuModule, TreemapChartComponent,
         MatDividerModule,
-        SimpleMonthPickerComponent, TrendsLineChartComponent],
+        SimpleMonthPickerComponent, IncomeSpendingTrendComponent, CategoryTrendsChartComponent],
     providers: [
         CurrencyPipe,
     ],
@@ -131,10 +132,10 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   allFilteredMonths: string[] = [];
 
   /** Chart data to plot the surplus and balance of each month  */
-  readonly recordedChartData = signal<TrendsLineChartData[]>([]);
-  private readonly forecastChartData = signal<TrendsLineChartData[]>([]);
+  readonly recordedChartData = signal<MonthlyTrendChartData[]>([]);
+  private readonly forecastChartData = signal<MonthlyTrendChartData[]>([]);
   readonly showPredictions = signal(true);
-  readonly trendsLineChartData = computed(() => {
+  readonly monthlyTrendChartData = computed(() => {
     const data = this.recordedChartData();
     return this.showPredictions() ? [...data, ...this.forecastChartData()] : data;
   });
@@ -528,7 +529,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
       const nextMonths = getNextMonths(this.endMonth, this.MONTHS_IN_ADVANCE_TO_PREDICT);
   
-      const projectedData: TrendsLineChartData[] = nextMonths.map((month, index): TrendsLineChartData | null => {
+      const projectedData: MonthlyTrendChartData[] = nextMonths.map((month, index): MonthlyTrendChartData | null => {
         // Avoid duplicate entries
         if (this.recordedChartData().some(data => data.month === month)) {
           return null
@@ -557,7 +558,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
               + (historicalInvestments ? investments * totals.investments / historicalInvestments : 0),
           })),
         };
-      }).filter((entry): entry is TrendsLineChartData => entry !== null);
+      }).filter((entry): entry is MonthlyTrendChartData => entry !== null);
       // Get the last balance from the existing data
       const lastBalance = this.recordedChartData().at(-1)?.balance ?? 0;
 
@@ -675,7 +676,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   /** Helper function to find the missing months in the selected time frame. If found missing, 
    * set all values to 0 and flag them isMissing = true.
    */
-  private includeMissingMonths(chartData: TrendsLineChartData[]) {
+  private includeMissingMonths(chartData: MonthlyTrendChartData[]) {
     const allMonthsSet = new Set(this.allFilteredMonths);
     const startDate = new Date(this.startMonthDate.getFullYear(), this.startMonthDate.getMonth(), 1);
     const endDate = new Date(this.endMonthDate.getFullYear(), this.endMonthDate.getMonth(), 1);

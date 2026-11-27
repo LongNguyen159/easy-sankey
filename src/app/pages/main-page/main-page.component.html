@@ -101,7 +101,7 @@
 
         <!-- NETTO CHART -->
         <section>
-          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+          <app-income-distribution-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses" [savings]="entriesOfOneMonth.savings"
           >
             <button distribution-action mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
@@ -109,7 +109,7 @@
               <span>Did You Know?</span>
             </button>
 
-          </app-pie-chart>
+          </app-income-distribution-chart>
         </section>
 
 
@@ -119,9 +119,9 @@
         @if (showGrossIncomePieChart) {
           <section>
             <!-- BRUTTO CHART -->
-            <app-pie-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
+            <app-income-distribution-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
               [totalIncome]="totalGrossIncome"
-            ></app-pie-chart>
+            ></app-income-distribution-chart>
           </section>
         }
 

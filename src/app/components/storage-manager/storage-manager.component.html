@@ -29,7 +29,7 @@
   </div>
 
   <!-- SURPLUS & BALANCE LINE CHART -->
-  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData()" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
+  <app-savings-and-surplus-line-chart class="w-full" [chartData]="monthlyTrendChartData()" (monthSelected)="getMonthsDetails($event)"></app-savings-and-surplus-line-chart>
 
   @let savings = periodSavings();
   <div class="mt-5 mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
@@ -101,8 +101,13 @@
               {{ showIncomeGrowth ? 'View Category Trends' : 'View Income Growth' }}
             </button>
           </div>
-          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData()" [showCategories]="!showIncomeGrowth" [categoryView]="categoryTrendView"
-            (monthSelected)="getMonthsDetails($event)"></app-trends-line-chart>
+          @if (showIncomeGrowth) {
+            <app-income-spending-trend class="w-full" [chartData]="monthlyTrendChartData()"
+              (monthSelected)="getMonthsDetails($event)"></app-income-spending-trend>
+          } @else {
+            <app-category-trends-chart class="w-full" [chartData]="monthlyTrendChartData()" [categoryView]="categoryTrendView"
+              (monthSelected)="getMonthsDetails($event)"></app-category-trends-chart>
+          }
 
 
           <!-- ANOMALIES REPORT -->

@@ -5,20 +5,20 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideTestDatabase } from '../../../testing/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TrendsLineChartComponent } from './trends-line-chart.component';
+import { CategoryTrendsChartComponent } from './category-trends-chart.component';
 
-describe('TrendsLineChartComponent', () => {
-  let component: TrendsLineChartComponent;
-  let fixture: ComponentFixture<TrendsLineChartComponent>;
+describe('CategoryTrendsChartComponent', () => {
+  let component: CategoryTrendsChartComponent;
+  let fixture: ComponentFixture<CategoryTrendsChartComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase()],
-      imports: [TrendsLineChartComponent]
+      imports: [CategoryTrendsChartComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(TrendsLineChartComponent);
+    fixture = TestBed.createComponent(CategoryTrendsChartComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
@@ -43,7 +43,6 @@ describe('TrendsLineChartComponent', () => {
       { ...actual, month: '2026-11', isPrediction: true, categories: [{ name: 'Rent', value: 35 }] },
       { ...actual, month: '2026-12', isPrediction: true },
     ]);
-    fixture.componentRef.setInput('showCategories', true);
     fixture.componentRef.setInput('categoryView', 'stacked-area');
     fixture.detectChanges();
 

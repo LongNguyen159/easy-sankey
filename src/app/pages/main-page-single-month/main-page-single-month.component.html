@@ -22,16 +22,16 @@
     </section>
     <!-- NETTO CHART -->
     <section>
-        <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="chartData.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+        <app-income-distribution-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="chartData.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
             [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses" [savings]="chartData.savings"
-        ></app-pie-chart>
+        ></app-income-distribution-chart>
     </section>
 
     @if (showGrossIncomePieChart) {
         <mat-divider [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
         <!-- BRUTTO CHART -->
-        <app-pie-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Income Distribution'"
+        <app-income-distribution-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Income Distribution'"
             [totalIncome]="totalGrossIncome"
-        ></app-pie-chart>
+        ></app-income-distribution-chart>
     }
 </div>

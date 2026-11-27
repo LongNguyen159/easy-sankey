@@ -17,17 +17,17 @@ import { TreemapChartComponent } from '../treemap-chart/treemap-chart.component'
 type DistributionView = 'pie' | 'totals' | 'stacked' | 'treemap' | 'sunburst';
 
 @Component({
-    selector: 'app-pie-chart',
+    selector: 'app-income-distribution-chart',
     imports: [NgxEchartsDirective, CommonModule, MatButtonModule, MatButtonToggleModule, MatIconModule, MatMenuModule, MatSlideToggleModule, TreemapChartComponent],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
     ],
-    templateUrl: './pie-chart.component.html',
+    templateUrl: './income-distribution-chart.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrl: './pie-chart.component.scss'
+    styleUrl: './income-distribution-chart.component.scss'
 })
-export class PieChartComponent extends BaseChartComponent implements OnChanges {
+export class IncomeDistributionChartComponent extends BaseChartComponent implements OnChanges {
   @Input() pieChartData: PieData[] = []
   @Input() treeMapData: TreeNode[] = []
   @Input() regularExpenseTree?: TreeNode[];

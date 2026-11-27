@@ -2,25 +2,25 @@ import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetec
 import { EChartsOption, EChartsType } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { TrendsLineChartData } from '../../models';
+import { MonthlyTrendChartData } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
 import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 
 @Component({
-    selector: 'app-total-surplus-line-chart',
+    selector: 'app-savings-and-surplus-line-chart',
     imports: [NgxEchartsDirective],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
     ],
-    templateUrl: './total-surplus-line-chart.component.html',
+    templateUrl: './savings-and-surplus-line-chart.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrls: ['./total-surplus-line-chart.component.scss']
+    styleUrls: ['./savings-and-surplus-line-chart.component.scss']
 })
-export class TotalSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
-  @Input() chartData: TrendsLineChartData[] = [];
+export class SavingsAndSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
+  @Input() chartData: MonthlyTrendChartData[] = [];
   readonly monthSelected = output<string>();
 
   private legendSelection: Record<string, boolean> = {

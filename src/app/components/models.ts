@@ -182,7 +182,7 @@ export interface SavingsMetrics {
   savingsRate: number | null;
 }
 
-export interface TrendsLineChartData {
+export interface MonthlyTrendChartData {
   savings?: SavingsMetrics;
   month: string
   isMissing: boolean // Flag to indicate missing data

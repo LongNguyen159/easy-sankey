@@ -5,20 +5,20 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideTestDatabase } from '../../../testing/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TotalSurplusLineChartComponent } from './total-surplus-line-chart.component';
+import { SavingsAndSurplusLineChartComponent } from './savings-and-surplus-line-chart.component';
 
-describe('TotalSurplusLineChartComponent', () => {
-  let component: TotalSurplusLineChartComponent;
-  let fixture: ComponentFixture<TotalSurplusLineChartComponent>;
+describe('SavingsAndSurplusLineChartComponent', () => {
+  let component: SavingsAndSurplusLineChartComponent;
+  let fixture: ComponentFixture<SavingsAndSurplusLineChartComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase()],
-      imports: [TotalSurplusLineChartComponent]
+      imports: [SavingsAndSurplusLineChartComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(TotalSurplusLineChartComponent);
+    fixture = TestBed.createComponent(SavingsAndSurplusLineChartComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

@@ -1,4 +1,4 @@
-import { Abnormality, AbnormalityAnalysis, AbnormalityType, DifferenceItem, ForecastData, MonthlyData, PieData, SYSTEM_PREFIX, TrendAnalysis, TrendsLineChartData } from "../components/models";
+import { Abnormality, AbnormalityAnalysis, AbnormalityType, DifferenceItem, ForecastData, MonthlyData, PieData, SYSTEM_PREFIX, TrendAnalysis, MonthlyTrendChartData } from "../components/models";
 import { evaluate } from 'mathjs/number';
 import { PolynomialRegression } from 'ml-regression-polynomial';
 import { PredictService } from "../services/predict.service";
@@ -256,7 +256,7 @@ export function calculateDifferences(currentMonth: PieData[], lastMonth: PieData
 
 /** Detect Anomalies in Spending of each Category. */
 export async function detectAbnormalities(
-  data: TrendsLineChartData[],
+  data: MonthlyTrendChartData[],
   allMonths: string[],
   currencySymbol: string = '',
   predictService: PredictService | null,
@@ -364,7 +364,7 @@ export function evaluateMetrics(
 //#region Helper Functions
 /** Step 1: Aggregate data by category. */
 function _aggregateCategoryData(
-  data: TrendsLineChartData[],
+  data: MonthlyTrendChartData[],
   allMonths: string[]
 ): Map<string, { values: number[]; months: string[] }> {
   const categoryMap = new Map<string, { values: number[]; months: string[] }>();

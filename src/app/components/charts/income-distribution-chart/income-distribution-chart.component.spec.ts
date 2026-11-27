@@ -5,20 +5,20 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideTestDatabase } from '../../../testing/database';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { PieChartComponent } from './pie-chart.component';
+import { IncomeDistributionChartComponent } from './income-distribution-chart.component';
 
-describe('PieChartComponent', () => {
-  let component: PieChartComponent;
-  let fixture: ComponentFixture<PieChartComponent>;
+describe('IncomeDistributionChartComponent', () => {
+  let component: IncomeDistributionChartComponent;
+  let fixture: ComponentFixture<IncomeDistributionChartComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [DatePipe, provideNoopAnimations(), provideRouter([]), { provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: { close: () => {} } }, ...provideTestDatabase()],
-      imports: [PieChartComponent]
+      imports: [IncomeDistributionChartComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(PieChartComponent);
+    fixture = TestBed.createComponent(IncomeDistributionChartComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
