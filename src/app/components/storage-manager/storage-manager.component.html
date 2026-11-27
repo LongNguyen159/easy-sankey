@@ -17,7 +17,8 @@
         Show predictions
       </mat-slide-toggle>
       <mat-form-field appearance="outline" class="w-64 max-w-full">
-        <mat-select [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
+        <mat-icon matPrefix fontSet="material-symbols-outlined" aria-hidden="true">date_range</mat-icon>
+        <mat-select aria-label="Timeframe" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
           @for (option of availableOptions; track option) {
             <mat-option [value]="option.value">
               {{ option.label }}
@@ -28,26 +29,63 @@
     </div>
   </div>
 
-  <!-- SURPLUS & BALANCE LINE CHART -->
-  <app-savings-and-surplus-line-chart class="w-full" [chartData]="monthlyTrendChartData()" (monthSelected)="getMonthsDetails($event)"></app-savings-and-surplus-line-chart>
-
   @let savings = periodSavings();
-  <div class="mt-5 mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-    <span>Invested <strong>{{ savings.investments | currency: currencyService.getSelectedCurrency() }}</strong></span>
-    <span>Total savings <strong>{{ savings.totalSavings | currency: currencyService.getSelectedCurrency() }}</strong></span>
-    <span matTooltip="Total savings divided by total net income in the selected period.">
-      Savings rate <strong>{{ savings.savingsRate === null ? '—' : (savings.savingsRate / 100 | percent: '1.0-1') }}</strong>
-    </span>
-  </div>
+  @let currency = currencyService.getSelectedCurrency();
+  <section class="mt-4" aria-labelledby="finance-overview-title">
+    <h2 id="finance-overview-title" class="mb-3 text-2xl font-bold">Overview</h2>
+    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5
+      [&>div]:rounded-2xl [&>div]:bg-(--app-summary-card-background) [&>div]:p-4
+      [&_dt]:text-sm [&_dt]:font-medium [&_dd]:mt-1 [&_dd]:tabular-nums">
+      <div class="sm:col-span-2">
+        <dt class="text-base!">Total savings</dt>
+        <dd class="text-3xl font-bold">{{ savings.totalSavings | currency: currency }}</dd>
+      </div>
+      <div>
+        <dt matTooltip="The sum of recorded monthly cash surplus in the selected period.">Cumulative cash surplus</dt>
+        <dd class="text-xl font-semibold">
+          <span [ngClass]="getBalanceClass()" class="inline-block rounded-full px-3 text-neutral-950">
+            {{ calculateTotalSurplusAllTimeFiltered() }}
+          </span>
+        </dd>
+      </div>
+      <div>
+        <dt class="opacity-75">Invested</dt>
+        <dd class="text-lg font-medium">{{ savings.investments | currency: currency }}</dd>
+        @if (savings.totalSavings > 0) {
+          <dd class="text-xs opacity-75">{{ savings.investments / savings.totalSavings | percent: '1.0-1' }} of total savings</dd>
+        }
+      </div>
+      <div>
+        <dt class="opacity-75" matTooltip="Total savings divided by total net income in the selected period.">Savings rate</dt>
+        <dd class="text-lg font-medium">{{ savings.savingsRate === null ? '—' : (savings.savingsRate / 100 | percent: '1.0-1') }}</dd>
+        @if (savings.savingsRate !== null) {
+          <dd class="text-xs opacity-75">of net income</dd>
+        }
+      </div>
+    </dl>
+  </section>
 
-  <!-- ALL TIME BALANCE -->
-  <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
-    <span matTooltip="The sum of recorded monthly cash surplus in the selected period.">Cumulative cash surplus</span>
-    <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-[5px]">
-      {{ calculateTotalSurplusAllTimeFiltered() }}
-    </span>
-  </h3>
+  @if (startMonth && endMonth) {
+    <div class="finance-summary-position sticky top-(--finance-summary-top) z-[998] h-0">
+      <div class="finance-summary-bar mx-auto flex w-fit max-w-full translate-y-3 flex-wrap items-baseline
+        justify-center gap-x-6 gap-y-1 rounded-full bg-(--app-summary-card-background)/80 px-5 py-2 text-sm
+        shadow-md backdrop-blur-md">
+        <span class="font-semibold" aria-label="Selected period">
+          {{ startMonthDate | date: 'MMM y' }}
+          @if (startMonth !== endMonth) {
+            <span aria-hidden="true"> – </span>{{ endMonthDate | date: 'MMM y' }}
+          }
+        </span>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 tabular-nums">
+          <span>Total savings <strong>{{ savings.totalSavings | currency: currency }}</strong></span>
+          <span>Cash surplus <strong>{{ calculateTotalSurplusAllTimeFiltered() }}</strong></span>
+        </div>
+      </div>
+    </div>
+  }
 
+  <!-- SURPLUS & BALANCE LINE CHART -->
+  <app-savings-and-surplus-line-chart class="mt-10 block w-full" [chartData]="monthlyTrendChartData()" (monthSelected)="getMonthsDetails($event)"></app-savings-and-surplus-line-chart>
 
   <div class="flex flex-row w-full justify-end">
     <button mat-button (click)="showReports = !showReports">
@@ -65,7 +103,7 @@
       <!-- Chart Container -->
       <div class="flex flex-col items-center">
 
-        <!-- INCOME/EXPENSE RATIO CHART -->
+        <!-- INCOME/EXPENSE RATIO CHART
         <div class="flex flex-col w-full justify-center items-center mb-14">
           <h2 class="text-2xl font-bold text-center mt-4">Net Income and Expenses</h2>
           <p class="text-sm" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-neutral-500!'">
@@ -74,7 +112,7 @@
           <app-income-expense-ratio-chart class="w-full" [totalExpense]="totalExpenses" [totalIncome]="totalNetIncome"></app-income-expense-ratio-chart>
         </div>
 
-        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
+        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider> -->
 
 
         <!-- INCOME GROWTH & EXPENSE TRENDS -->

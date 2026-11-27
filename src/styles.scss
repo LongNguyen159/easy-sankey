@@ -91,7 +91,7 @@ html, body, h1, h2, h3, h4, h5, h6, p, span, button, input, textarea, select, a,
   @include mat.all-component-densities($theme);
 
   --app-form-field-background: #{mat.get-theme-color($theme, surface-container-highest)};
-  --app-summary-card-background: #{mat.get-theme-color($theme, surface-container)};
+  --app-summary-card-background: #{if(sass(mat.get-theme-type($theme) == dark): #353535; else: mat.get-theme-color($theme, surface-container))};
   --app-category-heading-hover-background: #{mat.get-theme-color($theme, surface-container)};
   --app-budget-progress-fill: #{if(sass(mat.get-theme-type($theme) == light): #749bc7; else: mat.get-theme-color($theme, primary))};
   --app-budget-progress-under: #{if(sass(mat.get-theme-type($theme) == dark): #b0ebc5; else: #67ad5b)};
