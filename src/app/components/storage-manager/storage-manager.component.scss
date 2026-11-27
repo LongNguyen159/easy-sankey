@@ -39,3 +39,24 @@
     padding-bottom: 12px !important;
     height: auto !important;
 }
+.finance-summary-position {
+    container-type: scroll-state;
+}
+
+.finance-summary-bar {
+    opacity: 0;
+    visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .finance-summary-bar {
+        transition: opacity 180ms ease-out, visibility 180ms;
+    }
+}
+
+@container scroll-state(stuck: top) {
+    .finance-summary-bar {
+        opacity: 1;
+        visibility: visible;
+    }
+}

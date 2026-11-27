@@ -1,9 +1,9 @@
 import { CategoryService } from '../../services/category.service';
 
 import { Component, inject, NgZone, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
-import { EChartsType, format } from 'echarts';
+import { EChartsType, format, type TooltipComponentOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
-import { provideAppEcharts } from './echarts.provider';
+import { appChartInitOptions, provideAppEcharts } from './echarts.provider';
 import { ColorService } from '../../services/color.service';
 
 @Component({
@@ -17,6 +17,7 @@ import { ColorService } from '../../services/color.service';
     styleUrl: './base-chart.component.scss'
 })
 export class BaseChartComponent implements OnDestroy {
+  protected readonly chartInitOptions = appChartInitOptions;
   protected colorService = inject(ColorService)
   protected readonly categoryService = inject(CategoryService);
   private readonly zone = inject(NgZone);
@@ -25,6 +26,24 @@ export class BaseChartComponent implements OnDestroy {
   /** On chart init, assign chart instance. */
   onChartInit(chart: EChartsType) {
     this._chartInstance = chart;
+  }
+
+  protected getTooltipStyle(): TooltipComponentOption {
+    const dark = this.colorService.isDarkMode();
+    const background = dark ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary;
+
+    return {
+      renderMode: 'html',
+      className: 'app-chart-tooltip',
+      extraCssText: 'backdrop-filter: blur(8px);',
+      backgroundColor: `color-mix(in srgb, ${background} 80%, transparent)`,
+      borderColor: dark ? '#484753' : '#E0E6F1',
+      borderWidth: 2,
+      borderRadius: 16,
+      textStyle: {
+        color: dark ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+      },
+    };
   }
 
   protected formatDistributionTooltip(

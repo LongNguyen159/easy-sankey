@@ -3,7 +3,7 @@ import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetec
 import { EChartsOption, EChartsType, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { DifferenceItem, SankeyData, SankeyNode } from '../../models';
+import { EntryType, DifferenceItem, SankeyData, SankeyNode, SavingsMetrics } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -37,6 +37,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
   /** Chart data input */
   @Input() sankeyData: SankeyData
   @Input() remainingBalance: string = '-'
+  @Input() savings?: SavingsMetrics;
   @Input() surplusAfterBudgets?: number;
   @Input() surplusAtBudgetLimits?: number;
   @Input() totalBudgetOverspending?: number;
@@ -182,21 +183,18 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     return {
       animation: true,
       tooltip: {
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'item',
         position: 'top',
         triggerOn: 'mousemove',
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (params: any) => {
           if (params.dataType === 'node') {
             const nodeName = format.encodeHTML(this.nodeLabel(params.data));
             if (params.data.envelopeId) {
-              return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.spent, this.currencyService.getSelectedCurrency())} / ${this.currencyPipe.transform(params.data.budget, this.currencyService.getSelectedCurrency())}</strong><br>Allowance shown for planning; Surplus uses actual spending.`;
+              return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.spent, this.currencyService.getSelectedCurrency())} / ${this.currencyPipe.transform(params.data.budget, this.currencyService.getSelectedCurrency())}</strong><br>Allowance shown for planning; Cash surplus uses actual spending.`;
             }
-            return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>`;
+            const investment = params.data.entryType === EntryType.Investment;
+            return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>${investment ? '<br>Investment contribution' : ''}`;
           } else {
             const label = (name: string) => {
               const node = this.displayedData.nodes.find(item => item.name === name);
@@ -371,17 +369,8 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
 
 
   //#region Helper Functions
-  isPositiveBalance(): boolean {
-    const balanceNumber = parseLocaleStringToNumber(this.remainingBalance);
-    return balanceNumber >= 0;
-  }
-
   parseLocaleStringToNumber(value: string): number {
     return parseLocaleStringToNumber(value);
-  }
-
-  getBalanceClass(): string {
-    return this.isPositiveBalance() ? 'positive-balance' : 'negative-balance';
   }
 
   categoryLabel(name: string): string {

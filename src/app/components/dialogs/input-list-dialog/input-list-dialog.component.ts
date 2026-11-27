@@ -43,7 +43,7 @@ export class InputListDialogComponent extends BasePageComponent implements OnIni
     this.dataService.getNavigateFixCostState().pipe(takeUntil(this.componentDestroyed$)).subscribe((navigating: boolean) => {
         if (navigating && this.router.url === RoutePath.FixCostsPage) {
           this.dialogRef.close();
-          this.uiService.showSnackBar('Already in Fix Costs Page')
+          this.uiService.showSnackBar('You’re already on the Monthly Recurring page')
         }
     })
   }

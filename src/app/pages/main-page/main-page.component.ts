@@ -13,7 +13,7 @@ import { NavbarComponent } from "../../components/navbar/navbar.component";
 import { ColorService } from '../../services/color.service';
 import { MonthPickerComponent } from "../../components/month-picker/month-picker.component";
 import { onMonthChanges } from '../../utils/data-utils';
-import { PieChartComponent } from '../../components/charts/pie-chart/pie-chart.component';
+import { IncomeDistributionChartComponent } from '../../components/charts/income-distribution-chart/income-distribution-chart.component';
 import { SankeyChartComponent } from '../../components/charts/sankey-chart/sankey-chart.component';
 import { DialogsService } from '../../services/dialogs.service';
 import { DateChanges } from '../../components/models';
@@ -27,7 +27,7 @@ import { calculateDifferences, getLastMonth } from '../../utils/utils';
 import { MatTooltipModule } from '@angular/material/tooltip';
 @Component({
     selector: 'app-main-page',
-    imports: [SankeyChartComponent, PieChartComponent,
+    imports: [SankeyChartComponent, IncomeDistributionChartComponent,
         MatButtonModule, CommonModule, MatIconModule, MatMenuModule, MatDividerModule,
         NavbarComponent, MonthPickerComponent,
         MatChipsModule, BudgetRadarChartComponent,

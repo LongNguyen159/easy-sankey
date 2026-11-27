@@ -230,6 +230,7 @@ export class CategoryService {
   }
 
   label(id: string): string {
+    if (id === 'Surplus') return 'Cash surplus';
     return this.get(id)?.label ?? removeSystemPrefix(id);
   }
 

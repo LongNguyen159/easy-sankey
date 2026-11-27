@@ -17,7 +17,7 @@
         <div class="text-sm flex flex-row items-center gap-1" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400' : 'text-neutral-500'">
           <mat-icon fontSet="material-symbols-outlined">history</mat-icon>
           <span matTooltip="Last edited" [ngClass]="{'bg-neutral-700': colorService.isDarkMode(), 'bg-neutral-200': !colorService.isDarkMode()}" class="text-highlight">
-            {{ monthData.lastUpdated | date: 'dd. MMM yyyy' }}
+            <span data-sensitive-data>{{ monthData.lastUpdated | date: 'dd. MMM yyyy' }}</span>
           </span>
         </div>
       }
@@ -61,7 +61,7 @@
         <mat-checkbox [checked]="allSelected" [indeterminate]="someSelected" [disabled]="bulkBusy() || !selectableRows.length"
           [matTooltip]="selectedEntryIds.size ? (allSelected ? 'Clear selection' : 'Select all') : ''"
           (change)="selectAll($event.checked)">
-          <span aria-live="polite" class="whitespace-nowrap">{{ selectedEntryIds.size ? selectedEntryIds.size + ' selected' : 'Select all' }}</span>
+          <span aria-live="polite" class="whitespace-nowrap"><span data-sensitive-data>{{ selectedEntryIds.size ? selectedEntryIds.size + ' selected' : 'Select all' }}</span></span>
         </mat-checkbox>
         @if (selectedEntryIds.size) {
           <button mat-button type="button" [disabled]="bulkBusy()" (click)="copyLinks()">
@@ -73,7 +73,7 @@
           <mat-menu #envelopeMenu="matMenu">
             @for (envelope of monthData?.envelopes ?? []; track envelope.id) {
               <button mat-menu-item type="button" [disabled]="!selectedExpenseCount" (click)="assignSelectedEnvelope(envelope.id)">
-                {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+                <span data-sensitive-data>{{ envelope.name }}</span> · <span data-sensitive-data>{{ envelope.budget | currency: currencyService.getSelectedCurrency() }}</span> · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
               </button>
             }
             @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
@@ -138,25 +138,25 @@
     <mat-divider class="mb-4!" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
     <div class="entry-cost-header" [class.entry-cost-header-compact]="groupedEntries">
       @if (!groupedEntries) {
-        <button mat-icon-button type="button" class="mr-2" aria-label="Fix Costs"
+        <button mat-icon-button type="button" class="mr-2" aria-label="Monthly Recurring"
           [attr.aria-expanded]="isFixCostsExpanded || isSearching" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isFixCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
         <p class="font-bold text-2xl m-0! cursor-pointer" (click)="isFixCostsExpanded = !isFixCostsExpanded">
-          Fix Costs ({{ fixCosts.length }})
+          Monthly Recurring (<span data-sensitive-data>{{ fixCosts.length }}</span>)
         </p>
       }
 
-      <div class="entry-fix-cost-actions" role="group" aria-label="Fix Costs actions">
+      <div class="entry-fix-cost-actions" role="group" aria-label="Monthly Recurring actions">
         <button mat-button type="button" (click)="navigateToFixCosts()">
           <mat-icon fontSet="material-symbols-outlined">open_in_new</mat-icon>
-          Edit Fix Costs
+          Edit Monthly Recurring
         </button>
         @if (!groupedEntries || fixedLinks.length > 0) {
           <button [matButton]="groupedEntries ? 'text' : 'outlined'" type="button"
             (click)="pasteFixCosts()" [disabled]="fixedLinks.length === 0">
             <mat-icon fontSet="material-symbols-outlined">{{ fixCosts.length ? 'update' : 'content_paste' }}</mat-icon>
-            {{ fixCosts.length ? 'Update Fix Costs' : fixedLinks.length ? 'Paste Fix Costs' : 'No Fix costs defined' }}
+            <span data-sensitive-data>{{ fixCosts.length ? 'Update Monthly Recurring' : fixedLinks.length ? 'Apply Monthly Recurring' : 'No recurring amounts set up' }}</span>
           </button>
         }
       </div>
@@ -182,7 +182,7 @@
               } @else {
                 <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
               }
-              <span class="category-section-label">{{ group.label }}</span>
+              <span class="category-section-label"><span data-sensitive-data>{{ group.label }}</span></span>
               <!-- <span class="category-section-count">{{ group.rows.length }} {{ group.rows.length === 1 ? 'entry' : 'entries' }}</span> -->
               <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
             </button>
@@ -204,7 +204,7 @@
         @if (isFixCostsExpanded || isSearching) {
           <mat-card-content>
             @if (!fixCosts.length && !isSearching) {
-              <p class="text-center">No fix costs pasted. Click "Paste Fix Costs", or start by "Edit Fix Costs" if you haven't defined any.</p>
+              <p class="text-center">Use "Apply Monthly Recurring" to add them to this month. Use "Edit Monthly Recurring" to set them up.</p>
             }
             <ng-container *ngTemplateOutlet="entryList; context: { $implicit: visibleEntries(true) }"></ng-container>
           </mat-card-content>
@@ -264,7 +264,7 @@
         <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
           @if (groupedEntries && linkGroup.get('isFixCost')?.value) {
-            <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Fixed cost" aria-label="Fixed cost">event_repeat</mat-icon>
+            <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Repeats monthly" aria-label="Repeats monthly">event_repeat</mat-icon>
           }
           <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
           @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
@@ -299,7 +299,7 @@
         <!-- Value -->
         <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
-          <input matInput class="w-max!" formControlName="value" type="text" placeholder="Value" (keypress)="validateKeyPress($event)" (paste)="validatePaste($event)" (keydown.enter)="updateInput(linkGroup)" (blur)="updateInput(linkGroup)" />
+          <input matInput class="w-max!" data-sensitive-data formControlName="value" type="text" placeholder="Value" (keypress)="validateKeyPress($event)" (paste)="validatePaste($event)" (keydown.enter)="updateInput(linkGroup)" (blur)="updateInput(linkGroup)" />
           @if (!linkGroup.get('isFixCost')?.value) {
             <!-- button to toggle logs. Only show logs of one input row (determined by ID) -->
             <button
@@ -324,7 +324,7 @@
               } @else if (history?.status === 'loaded') {
                 @for (log of history.items; track $index) {
                   <p class="m-0!">
-                    <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
+                    <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[<span data-sensitive-data>{{log.timestamp}}</span>]</span> <span data-sensitive-data>{{ log.value }}</span>
                   </p>
                 } @empty {
                   <p class="m-0!">No changes in the past 30 days.</p>
@@ -355,11 +355,11 @@
         </button>
         <mat-menu #entryMenu="matMenu">
           <div [cdkContextMenuTriggerFor]="entryClipboardMenu" [cdkContextMenuTriggerData]="{ entry: linkGroup }">
-            <button mat-menu-item type="button" [disabled]="linkGroup.get('type')?.value !== entryTypes.Expense"
+            <button mat-menu-item type="button" [disabled]="!isCashOutflow(linkGroup.get('type')?.value)"
               [matMenuTriggerFor]="entryEnvelopeMenu">
-              <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}
+              <mat-icon fontSet="material-symbols-outlined">savings</mat-icon><span data-sensitive-data>{{ envelopeName(linkGroup.get('envelopeId')?.value) || 'Add to budget' }}</span>
             </button>
-            @if (linkGroup.get('type')?.value === entryTypes.Expense && linkGroup.get('envelopeId')?.value) {
+            @if (isCashOutflow(linkGroup.get('type')?.value) && linkGroup.get('envelopeId')?.value) {
               <button mat-menu-item type="button" (click)="assignSelectedEnvelope(null, linkGroup)">
                 <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
               </button>
@@ -375,7 +375,7 @@
               [class.entry-budget-selected]="linkGroup.get('envelopeId')?.value === envelope.id"
               [attr.aria-current]="linkGroup.get('envelopeId')?.value === envelope.id ? 'true' : null">
               <mat-icon fontSet="material-symbols-outlined">{{ linkGroup.get('envelopeId')?.value === envelope.id ? 'check' : 'savings' }}</mat-icon>
-              {{ envelope.name }} · {{ envelope.budget | currency: currencyService.getSelectedCurrency() }} · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
+              <span data-sensitive-data>{{ envelope.name }}</span> · <span data-sensitive-data>{{ envelope.budget | currency: currencyService.getSelectedCurrency() }}</span> · {{ envelope.isGlobal ? 'Monthly' : 'This month' }}
             </button>
           }
           @if (monthData?.envelopes?.length) { <mat-divider></mat-divider> }
@@ -396,14 +396,14 @@
     @if (entry) {
       @let entryName = entry.get('target')?.value?.trim() || 'Unnamed entry';
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
-        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry], true)">
+        [title]="'Copy &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="copyLinks([entry])">
         <mat-icon fontSet="material-symbols-outlined">content_copy</mat-icon>
-        Copy "<span class="entry-clipboard-name">{{ entryName }}</span>"
+        Copy "<span class="entry-clipboard-name"><span data-sensitive-data>{{ entryName }}</span></span>"
       </button>
       <button mat-menu-item cdkMenuItem type="button" [disabled]="cutDisabled"
         [title]="'Cut &quot;' + entryName + '&quot;'" (cdkMenuItemTriggered)="cutLinks(entry)">
         <mat-icon fontSet="material-symbols-outlined">content_cut</mat-icon>
-        Cut "<span class="entry-clipboard-name">{{ entryName }}</span>"
+        Cut "<span class="entry-clipboard-name"><span data-sensitive-data>{{ entryName }}</span></span>"
       </button>
       <mat-divider></mat-divider>
     }
@@ -430,7 +430,7 @@
       <button mat-menu-item cdkMenuItem type="button" [disabled]="bulkBusy()"
         (cdkMenuItemTriggered)="pasteLinks(pasteMonthDialog, true)">
         <mat-icon fontSet="material-symbols-outlined">find_replace</mat-icon>
-        Paste and replace {{ count }} selected {{ count === 1 ? 'entry' : 'entries' }}
+        Paste and replace <span data-sensitive-data>{{ count }}</span> selected <span data-sensitive-data>{{ count === 1 ? 'entry' : 'entries' }}</span>
       </button>
     }
   </div>
@@ -440,13 +440,13 @@
   <h2 mat-dialog-title>Paste entries</h2>
   <mat-dialog-content>
     @if (data.replacedIds.size) {
-      <p>Pasting replaces {{ data.replacedIds.size }} selected entries in {{ data.month }}.</p>
+      <p>Pasting replaces <span data-sensitive-data>{{ data.replacedIds.size }}</span> selected entries in <span data-sensitive-data>{{ data.month }}</span>.</p>
     } @else {
-      <p>Pasting appends the copied entries to {{ data.month }}.</p>
+      <p>Pasting appends the copied entries to <span data-sensitive-data>{{ data.month }}</span>.</p>
     }
     <mat-form-field appearance="outline" class="w-full">
       <mat-label>Copied entries JSON</mat-label>
-      <textarea matInput #monthJson rows="4"></textarea>
+      <textarea matInput data-sensitive-data #monthJson rows="4"></textarea>
     </mat-form-field>
   </mat-dialog-content>
   <mat-dialog-actions align="end">

@@ -6,10 +6,12 @@ const { PrismaClient } = require("../generated/prisma/client");
 const { migrate } = require("./migrations");
 const { canonical, envelopes: validateEnvelopes, entries: validateEntries } = require("./import-export");
 const {
+  isCashOutflow,
   sourceData,
   legacyData,
   entryDto,
   entryColumns,
+  validateTemplateBudgets,
   categoryDto,
   historyDto,
   preferenceColumns,
@@ -121,7 +123,7 @@ function openDatabase(filename, { onQuery } = {}) {
         categoryId: null,
         [template ? "parentId" : "parentEntryId"]: null,
       };
-    if (item.type !== "expense")
+    if (!isCashOutflow(item.type))
       throw new Error("Only expenses may have a parent/category.");
     if (await db.category.findUnique({ where: { id: item.source } }))
       return {
@@ -440,8 +442,13 @@ function openDatabase(filename, { onQuery } = {}) {
       data: { averageIncome: 0, targetSurplus: 0 },
     });
   }
+  async function checkTemplateBudgets(db, items) {
+    if (items.some(item => item.envelopeId))
+      validateTemplateBudgets(items, await listGlobalEnvelopes(db));
+  }
   async function saveTemplates(db, items) {
     validateEntries(items);
+    await checkTemplateBudgets(db, items);
     await db.fixedCostTemplate.updateMany({ data: { parentId: null } });
     for (const row of await db.fixedCostTemplate.findMany({
       select: { id: true },
@@ -456,8 +463,8 @@ function openDatabase(filename, { onQuery } = {}) {
     for (const [position, item] of items.entries())
       await db.fixedCostTemplate.upsert({
         where: { id: item.id },
-        create: { ...entryColumns(item, true), position },
-        update: { ...entryColumns(item, true), position },
+        create: { ...entryColumns(item), position },
+        update: { ...entryColumns(item), position },
       });
     for (const item of items)
       await db.fixedCostTemplate.update({
@@ -654,11 +661,12 @@ function openDatabase(filename, { onQuery } = {}) {
     create: (p) =>
       command(p, async (db) => {
         validateEntries([p.item]);
+        await checkTemplateBudgets(db, [p.item]);
         const relations = await relation(db, p.item, null, true);
         await checkCycle(db, null, p.item.id, relations.parentId, true);
         const row = await db.fixedCostTemplate.create({
           data: {
-            ...entryColumns(p.item, true),
+            ...entryColumns(p.item),
             ...relations,
             position:
               ((
@@ -681,11 +689,12 @@ function openDatabase(filename, { onQuery } = {}) {
         if (item.id !== p.id)
           throw new Error("Template identity cannot change.");
         validateEntries([item]);
+        await checkTemplateBudgets(db, [item]);
         const relations = await relation(db, item, null, true);
         await checkCycle(db, null, item.id, relations.parentId, true);
         const row = await db.fixedCostTemplate.update({
           where: { id: p.id },
-          data: { ...entryColumns(item, true), ...relations },
+          data: { ...entryColumns(item), ...relations },
           include: { parent: { select: { name: true } } },
         });
         return { value: entryDto(row) };

@@ -6,7 +6,7 @@ export interface UserDefinedLink {
     target: string;   // The name of the current node
     value: number;    // Amount associated with the link
     envelopeId?: string | null; // Optional monthly spending envelope; independent of category
-    source?: string;  // Category ID or parent node (only for expenses)
+    source?: string;  // Category ID or parent node (for expenses and investments)
     isFixCost?: boolean;  // Optional flag to indicate fix cost
     demo?: boolean;   // Optional flag to indicate demo data
     lastEditedAt?: number | null; // Entry edit time in milliseconds; independent of manual order
@@ -15,7 +15,12 @@ export interface UserDefinedLink {
 export enum EntryType {
   Income = 'income',
   Expense = 'expense',
+  Investment = 'investment',
   Tax = 'tax'
+}
+
+export function isCashOutflow(type: EntryType): boolean {
+  return type === EntryType.Expense || type === EntryType.Investment;
 }
 
 //#endregion
@@ -36,6 +41,8 @@ export interface SingleMonthData {
   totalTax: number;
   totalExpenses: number;
   remainingBalance: string;
+  savings?: SavingsMetrics;
+  regularExpenseTree?: TreeNode[];
   surplusAfterBudgets?: number;
   surplusAtBudgetLimits?: number;
   totalBudgetOverspending?: number;
@@ -118,6 +125,7 @@ export interface DateChanges {
 //#region Chart Data
 
 export interface SankeyNode {
+  entryType?: EntryType;
     name: string;
     value: number;
     displayName?: string;
@@ -168,7 +176,14 @@ export interface SurplusBalanceLineChartData {
   balance: number
 }
 
-export interface TrendsLineChartData {
+export interface SavingsMetrics {
+  investments: number;
+  totalSavings: number;
+  savingsRate: number | null;
+}
+
+export interface MonthlyTrendChartData {
+  savings?: SavingsMetrics;
   month: string
   isMissing: boolean // Flag to indicate missing data
   surplus: number

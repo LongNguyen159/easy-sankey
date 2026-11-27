@@ -4,8 +4,8 @@ import { ColorService } from '../../services/color.service';
 export interface FeaturePreview {
   title: string;
   description: string;
-  image: string;
-  alt: string;
+  image?: string;
+  alt?: string;
   withBorder?: boolean;
 }
 
@@ -13,18 +13,20 @@ export interface FeaturePreview {
   selector: 'app-release-features',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @for (feature of features(); track feature.image) {
-      <section class="feature-card">
+    @for (feature of features(); track feature.title) {
+      <section class="feature-card" [class.text-only]="!feature.image">
         <div class="feature-copy">
           <h2 class="mb-3 text-3xl font-bold">{{ feature.title }}</h2>
           <p>{{ feature.description }}</p>
         </div>
-        <img
-          [class.with-border]="feature.withBorder"
-          [src]="'assets/images/' + feature.image + '-' + (colorService.isDarkMode() ? 'dark' : 'light') + '.png'"
-          [alt]="feature.alt"
-          [loading]="$first ? 'eager' : 'lazy'"
-        >
+        @if (feature.image) {
+          <img
+            [class.with-border]="feature.withBorder"
+            [src]="'assets/images/' + feature.image + '-' + (colorService.isDarkMode() ? 'dark' : 'light') + '.png'"
+            [alt]="feature.alt ?? ''"
+            [loading]="$first ? 'eager' : 'lazy'"
+          >
+        }
       </section>
     }
   `,
@@ -41,6 +43,11 @@ export interface FeaturePreview {
       grid-template-areas: "copy image";
       align-items: center;
       gap: clamp(1rem, 4vw, 3rem);
+    }
+
+    .feature-card.text-only .feature-copy {
+      grid-column: 1 / -1;
+      max-width: 42rem;
     }
 
     .feature-copy {
@@ -63,7 +70,7 @@ export interface FeaturePreview {
     }
 
     @media (width > 720px) {
-      .feature-card:nth-child(even) {
+      .feature-card:has(img):nth-child(even) {
         grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
         grid-template-areas: "image copy";
       }

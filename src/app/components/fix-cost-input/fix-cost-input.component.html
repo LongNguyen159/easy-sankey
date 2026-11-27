@@ -16,13 +16,13 @@
   <div class="mb-14">
 
     <div class="flex flex-wrap items-center gap-2 w-full mb-4">
-      <h1 class="m-0! text-2xl font-bold">Fix Costs</h1>
+      <h1 class="m-0! text-2xl font-bold">Monthly Recurring</h1>
       <button mat-icon-button class="flex! flex-row items-center" [matTooltip]="fixCostsInfoTooltip">
         <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
       </button>
       <span class="text-xs text-(--mat-sys-on-surface-variant) ml-2" role="status">{{ saveStatus() }}</span>
       <app-amount-sort class="ml-auto" [value]="sortOrder" (valueChange)="setSort($event)"></app-amount-sort>
-      <button mat-icon-button type="button" class="shrink-0" aria-label="Fix Costs options" [matMenuTriggerFor]="menu">
+      <button mat-icon-button type="button" class="shrink-0" aria-label="Monthly Recurring options" [matMenuTriggerFor]="menu">
         <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
       </button>
       <mat-menu #menu="matMenu" xPosition="before">
@@ -32,46 +32,49 @@
         </button>
       </mat-menu>
     </div>
-    <div class="mb-4">
-      <p>
-        Fix costs are costs that occur regularly and are not influenced by your actions. They are fixed and
-        predictable. Examples are rent, insurance, or subscriptions.
-      </p>
-    </div>
-    @if (linkArray.controls.length == 0) {
-      <div class="flex flex-col w-full items-center justify-center gap-2 middle-screen">
-        <span class="font-bold">
-          No Fix Costs defined yet. Add some by clicking 'Add Entries' below.
-        </span>
-        <mat-icon fontSet="material-symbols-outlined" class="big-icon">
-          arrow_downward
-        </mat-icon>
-      </div>
-    }
-    @if (entryView === 'category') {
-      @for (group of entryGroups; track group.id) {
-        <section class="entry-category-section">
-          <h3 class="category-section-title">
-            <button type="button" class="category-section-heading" (click)="toggleGroup(group.id)"
-              [attr.aria-expanded]="!collapsedGroups.has(group.id)">
-              @if (group.category; as category) {
-                <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-              } @else {
-                <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
-              }
-              <span class="category-section-label">{{ group.label }}</span>
-              <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
-            </button>
-          </h3>
-          @if (!collapsedGroups.has(group.id)) {
-            <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
-          }
-        </section>
-        <mat-divider></mat-divider>
+    <nav mat-tab-nav-bar [tabPanel]="recurringPanel" aria-label="Monthly Recurring" class="mb-4">
+      <button mat-tab-link type="button" [active]="section() === 'fixed'" (click)="section.set('fixed')">Income &amp; Costs</button>
+      <button mat-tab-link type="button" [active]="section() === 'investments'" (click)="section.set('investments')">Investments</button>
+    </nav>
+    <mat-tab-nav-panel #recurringPanel>
+      @let rows = visibleEntries();
+      @if (section() === 'investments') {
+        <p class="mb-4">Planned monthly contributions <strong class="ml-2 tabular-nums"><span data-sensitive-data>{{ investmentTotal(rows) | currency: currencyService.getSelectedCurrency() }}</span></strong></p>
       }
-    } @else {
-      <ng-container *ngTemplateOutlet="entryList; context: { $implicit: visibleEntries() }"></ng-container>
-    }
+      @if (!rows.length) {
+        <p class="py-12 text-center">
+          @if (section() === 'fixed') {
+            No recurring income or costs yet.
+          } @else {
+            No recurring investments yet.
+          }
+        </p>
+      }
+      @if (entryView === 'category') {
+        @for (group of entryGroups; track group.id) {
+          <section class="entry-category-section">
+            <h3 class="category-section-title">
+              <button type="button" class="category-section-heading" (click)="toggleGroup(group.id)"
+                [attr.aria-expanded]="!collapsedGroups.has(group.id)">
+                @if (group.category; as category) {
+                  <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
+                } @else {
+                  <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
+                }
+                <span class="category-section-label"><span data-sensitive-data>{{ group.label }}</span></span>
+                <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
+              </button>
+            </h3>
+            @if (!collapsedGroups.has(group.id)) {
+              <ng-container *ngTemplateOutlet="entryList; context: { $implicit: group.rows }"></ng-container>
+            }
+          </section>
+          <mat-divider></mat-divider>
+        }
+      } @else {
+        <ng-container *ngTemplateOutlet="entryList; context: { $implicit: rows }"></ng-container>
+      }
+    </mat-tab-nav-panel>
   </div>
 
   <!-- ADD BUTTON -->
@@ -79,7 +82,7 @@
     <div>
       <button mat-stroked-button class="app-button-primary backdrop-blur-[200px]" (click)="addLink()">
         <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
-        <span>Add Entries</span>
+        <span>{{ section() === 'investments' ? 'Add Investment' : 'Add Income or Cost' }}</span>
       </button>
     </div>
   </div>
@@ -92,7 +95,7 @@
       <div [formGroup]="linkGroup" class="link-row entry-editor-row" cdkDrag cdkDragLockAxis="y" [cdkDragDisabled]="!canReorder">
         <button mat-icon-button type="button" class="entry-reorder-handle" cdkDragHandle
           [disabled]="!canReorder"
-          [attr.aria-label]="'Reorder ' + (linkGroup.get('target')?.value || 'new entry')"
+          [attr.aria-label]="'Reorder ' + (linkGroup.get('target')?.value || 'new amount')"
           aria-description="Use Up and Down arrow keys to move this entry"
           (keydown.arrowup)="moveEntryWithKeyboard($event, rows, index, index - 1)"
           (keydown.arrowdown)="moveEntryWithKeyboard($event, rows, index, index + 1)">
@@ -125,16 +128,21 @@
         </mat-form-field>
         <!-- Type (Income, Expense, Tax) -->
         <mat-form-field appearance="outline">
-          <mat-select formControlName="type" placeholder="Type" (selectionChange)="checkTaxNodeExists()">
-            @for (type of linkTypes; track type) {
-              <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
-            }
-          </mat-select>
+          <mat-label>Type</mat-label>
+          @if (section() === 'investments') {
+            <input matInput value="Investment" readonly />
+          } @else {
+            <mat-select formControlName="type" (selectionChange)="checkTaxNodeExists()">
+              @for (type of recurringTypes; track type) {
+                <mat-option [disabled]="type == entryTypes.Tax && taxNodeExists " [value]="type">{{ type | titlecase }}</mat-option>
+              }
+            </mat-select>
+          }
         </mat-form-field>
         <!-- Value -->
         <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
-          <input matInput formControlName="value" type="number" placeholder="Value"
+          <input matInput data-sensitive-data formControlName="value" type="number" placeholder="Value"
             (focus)="startAmountEdit(linkGroup)" (blur)="finishAmountEdit()" />
           @if (linkGroup.get('value')?.hasError('min')) {
             <mat-error>
@@ -143,11 +151,40 @@
           }
         </mat-form-field>
         <!-- Select with search -->
-        <app-category-select [control]="categoryControl(linkGroup)" (categoryChange)="updateInput()"></app-category-select>
-        <!-- Remove Button -->
-        <button mat-icon-button class="app-button-warn mt-2" type="button" aria-label="Remove entry" (click)="removeEntry(linkGroup)">
-          <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+        <app-category-select [control]="categoryControl(linkGroup)"
+          (categoryChange)="updateInput()"></app-category-select>
+        @let canAssignBudget = isCashOutflow(linkGroup.get('type')?.value);
+        @let budgetId = linkGroup.get('envelopeId')?.value;
+        @let assignedBudget = budgetName(budgetId);
+        <button mat-icon-button type="button" class="mt-2 shrink-0"
+          [attr.aria-label]="'Actions for ' + (linkGroup.get('target')?.value || 'new amount')"
+          [matTooltip]="assignedBudget || 'Actions'" [matMenuTriggerFor]="entryMenu">
+          <mat-icon fontSet="material-symbols-outlined">{{ assignedBudget ? 'savings' : 'more_vert' }}</mat-icon>
         </button>
+        <mat-menu #entryMenu="matMenu">
+          <button mat-menu-item type="button" [disabled]="!canAssignBudget" [matMenuTriggerFor]="budgetMenu">
+            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon><span data-sensitive-data>{{ assignedBudget || 'Add to budget' }}</span>
+          </button>
+          @if (canAssignBudget && assignedBudget) {
+            <button mat-menu-item type="button" (click)="setBudget(linkGroup, null)">
+              <mat-icon fontSet="material-symbols-outlined">remove_circle_outline</mat-icon>Remove from budget
+            </button>
+          }
+          <button mat-menu-item type="button" class="app-button-warn" (click)="removeEntry(linkGroup)">
+            <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>Delete
+          </button>
+        </mat-menu>
+        <mat-menu #budgetMenu="matMenu">
+          @for (budget of globalBudgets(); track budget.id) {
+            <button mat-menu-item type="button" (click)="setBudget(linkGroup, budget.id)"
+              [attr.aria-current]="budgetId === budget.id ? 'true' : null">
+              <mat-icon fontSet="material-symbols-outlined">{{ budgetId === budget.id ? 'check' : 'savings' }}</mat-icon>
+              <span data-sensitive-data>{{ budget.name }}</span>
+            </button>
+          } @empty {
+            <button mat-menu-item type="button" disabled>No global budgets</button>
+          }
+        </mat-menu>
       </div>
     }
   </div>

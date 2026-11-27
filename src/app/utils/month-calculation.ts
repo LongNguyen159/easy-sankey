@@ -1,9 +1,9 @@
 import { envelopeSankey } from './envelope-sankey';
-import { BudgetEnvelope, EntryType, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, isCashOutflow, SankeyLink, SankeyNode, SingleMonthData, TreeNode, UserDefinedLink } from '../components/models';
 
 interface ExpenseData {
  totalExpenses: number;
- topLevelexpenses: { name: string; value: number }[];
+ topLevelExpenses: { name: string; value: number }[];
  changedExpensesDuringCalculation: TreeNode[];
  wholeTree: TreeNode[];
 }
@@ -34,7 +34,7 @@ class MonthCalculator {
             } else if (link.type === EntryType.Tax) {
                 nodesMap.get(link.target)!.value += link.value;
                 totalTaxValue += link.value;
-            } else if (link.type === EntryType.Expense) {
+            } else if (isCashOutflow(link.type)) {
                 if (!link.source) {
                     // Top-level expenses (those without a source)
                     nodesMap.get(link.target)!.value += link.value;
@@ -86,6 +86,10 @@ class MonthCalculator {
         /** This will be the default root node for Sankey Chart. The source for all expenses to flow from. */
         const sourceForExpenses = hasTax ? 'Usable Income' : incomeSource;
 
+        if (incomeNodes.length === 0 && userDefinedLinks.length > 0) {
+            nodesMap.set('Total Income', { value: 0, type: EntryType.Income });
+        }
+
         // Step 4: Create links for expenses, using default expense source.
         userDefinedLinks.forEach(link => {
             if (link.type == EntryType.Income) {
@@ -96,7 +100,7 @@ class MonthCalculator {
                         value: link.value
                     });
                 }
-            } else if (link.type === EntryType.Expense) {
+            } else if (isCashOutflow(link.type)) {
                 let sourceNode = link.source || sourceForExpenses;
 
                 // Check if the source node exists in nodesMap or is an allowed category
@@ -106,7 +110,7 @@ class MonthCalculator {
 
                     // Calculate its total value by summing all links that use it as a source
                     const sourceValue = userDefinedLinks
-                        .filter(childLink => childLink.source === sourceNode)
+                        .filter(childLink => isCashOutflow(childLink.type) && childLink.source === sourceNode)
                         .reduce((sum, childLink) => sum + childLink.value, 0);
                     
                     // Set the source node's accumulated value
@@ -165,7 +169,7 @@ class MonthCalculator {
         */
        let pieSeriesData: {name: string, value: number}[] = []
 
-        const { totalExpenses, topLevelexpenses: pieData, changedExpensesDuringCalculation: changedExpensesDuringCalculation, wholeTree: treeMapData } = this._getExpensesData(uniqueLinks, hasTax, incomeNodes.length);
+        const { totalExpenses, topLevelExpenses: pieData, changedExpensesDuringCalculation: changedExpensesDuringCalculation, wholeTree: treeMapData } = this._getExpensesData(uniqueLinks, sourceForExpenses);
         const remainingBalance: number = (totalIncomeValue - totalExpenses - totalTaxValue)
 
         // Push remaining balance number to Pie Data to show how much is left proportionally.
@@ -188,7 +192,7 @@ class MonthCalculator {
         // Update Sankey nodes and links based on updatedRawInput
         const updatedNodes = nodes.map(node => {
             const updatedNode = updatedRawInput.find(link => link.target === node.name);
-            return updatedNode ? { ...node, value: updatedNode.value } : node; // Update value or leave as is
+            return updatedNode ? { ...node, value: updatedNode.value, entryType: updatedNode.type } : node; // Update value or leave as is
         });
 
         const updatedLinks = links.map(link => {
@@ -216,31 +220,8 @@ class MonthCalculator {
     }
 
     //#region Create Tree from Sankey
-    /** Helper function to determine root node of sankey.
-     * Root node will be the income node.
-     * Root node will be used as the starting point to build the expense tree.
-     */
-    private _determineRootNode(links: SankeyLink[], hasTax: boolean, incomeSources: number): string {
-        if (hasTax) {
-            return "Usable Income";
-        } else if (!hasTax && incomeSources === 1) {
-            // Find the node that only appears as a source, never as a target
-            const sourceNodes = new Set(links.map(link => link.source));
-            const targetNodes = new Set(links.map(link => link.target));
-    
-            for (const source of sourceNodes) {
-                if (!targetNodes.has(source)) {
-                    return source;
-                }
-            }
-        } else if (!hasTax && incomeSources > 1) {
-            return "Total Income";
-        }
-        return '';
-    }
-
     /** Function to generate a tree structure from Sankey data (source, target, value) => Tree with name, value and children */
-    private _buildTree(links: SankeyLink[], rootNodeName: string): TreeNode {
+    private _buildTree(links: SankeyLink[], rootNodeName: string): TreeNode | undefined {
         const nodeMap = new Map<string, TreeNode>();
     
         // Create nodes for all source and target in the links
@@ -259,7 +240,7 @@ class MonthCalculator {
         });
     
         // Return the root node as the entry point to the tree
-        return nodeMap.get(rootNodeName)!;
+        return nodeMap.get(rootNodeName);
     }
 
     //#endregion
@@ -272,7 +253,7 @@ class MonthCalculator {
     private _calculateNodeExpense(node: TreeNode, isRoot: boolean = false): number {
         // If the node has no children, it's a leaf node, so we return its value directly
         if (node.children.length === 0) {
-            return node.value;
+            return isRoot ? 0 : node.value;
         }
     
         // Otherwise, recursively calculate the total of all child nodes
@@ -301,21 +282,11 @@ class MonthCalculator {
     }
 
 
-    private _getExpensesData(links: SankeyLink[], hasTax: boolean, incomeSources: number): ExpenseData {
-        // Step 1: Determine the root node based on the conditions
-        const rootNodeName: string = this._determineRootNode(links, hasTax, incomeSources);
-
-        if (!rootNodeName) {
-            return {
-                totalExpenses: 0,
-                topLevelexpenses: [],
-                changedExpensesDuringCalculation: [],
-                wholeTree: []
-            }
+    private _getExpensesData(links: SankeyLink[], rootNodeName: string): ExpenseData {
+        const treeFromRootNode = this._buildTree(links, rootNodeName);
+        if (!treeFromRootNode) {
+            return { totalExpenses: 0, topLevelExpenses: [], changedExpensesDuringCalculation: [], wholeTree: [] };
         }
-    
-        // Step 2: Build the tree from the root node
-        let treeFromRootNode: TreeNode = this._buildTree(links, rootNodeName);
 
         /** Tree might be modified during calculations. So if you want to use the tree structure, write code after these lines. */
         const totalExpenses: number = this._calculateNodeExpense(treeFromRootNode, true);
@@ -334,7 +305,7 @@ class MonthCalculator {
 
         return {
             totalExpenses: totalExpenses,
-            topLevelexpenses: pieData,
+            topLevelExpenses: pieData,
             changedExpensesDuringCalculation: changedNodes,
             wholeTree: treeFromRootNode.children
         }
@@ -374,11 +345,45 @@ class MonthCalculator {
 
 }
 
+export function savingsRate(totalSavings: number, income: number): number | null {
+  return income > 0 ? totalSavings * 100 / income : null;
+}
+
+function projectSavings(month: SingleMonthData) {
+  const investmentNames = new Set(month.rawInput
+    .filter(entry => entry.type === EntryType.Investment)
+    .map(entry => entry.target));
+  let investments = 0;
+
+  function regularExpense(node: TreeNode): TreeNode | undefined {
+    const children = node.children.map(regularExpense).filter(child => child !== undefined);
+    // Parent amounts include their children. Only the remainder belongs to the parent entry.
+    const ownAmount = node.value - node.children.reduce((sum, child) => sum + child.value, 0);
+    const investment = investmentNames.has(node.name);
+    if (investment) investments += ownAmount;
+    if (!children.length && (investment || (node.children.length && ownAmount === 0))) return undefined;
+    const value = (investment ? 0 : ownAmount) + children.reduce((sum, child) => sum + child.value, 0);
+    return { ...node, value, children };
+  }
+
+  // The final node is cash surplus.
+  const regularExpenseTree = month.treeMapData.slice(0, -1)
+    .map(regularExpense).filter(node => node !== undefined);
+  const totalSavings = month.totalUsableIncome - month.totalExpenses + investments;
+  const savings = { investments, totalSavings, savingsRate: savingsRate(totalSavings, month.totalUsableIncome) };
+  return { regularExpenseTree, savings };
+}
+
 export function calculateMonth(entries: UserDefinedLink[], month: string, lastUpdated: Date | string,
   hasCategory: (id: string) => boolean, envelopes: BudgetEnvelope[] = []): SingleMonthData {
   const result = new MonthCalculator().calculate(entries, month, lastUpdated, hasCategory);
   const sankeyData = envelopeSankey(result.sankeyData, result.rawInput, envelopes, hasCategory);
-  const monthData = { ...result, envelopes: structuredClone(envelopes), sankeyData };
+  const monthData = {
+    ...result,
+    ...projectSavings(result),
+    envelopes: structuredClone(envelopes),
+    sankeyData,
+  };
   const budgetsWithSpending = sankeyData.nodes.filter(node => node.envelopeId && (node.spent ?? 0) > 0);
   if (!budgetsWithSpending.length) return monthData;
 

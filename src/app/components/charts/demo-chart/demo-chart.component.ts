@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
-import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
+import { appChartInitOptions, provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 
 @Component({
     selector: 'app-demo-chart',
@@ -14,6 +14,7 @@ import { provideAppEcharts } from '../../../base-components/base-chart/echarts.p
     styleUrl: './demo-chart.component.scss'
 })
 export class DemoChartComponent {
+  protected readonly chartInitOptions = appChartInitOptions;
 
   chartOption: EChartsOption = {
     series: [

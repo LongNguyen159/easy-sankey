@@ -1,6 +1,6 @@
 <div class="mb-4 flex flex-row items-center justify-between pr-6 w-full">
   <h2 mat-dialog-title class="font-bold! text-xl">
-    Edit values for {{ data.name }}
+    Edit values for <span data-sensitive-data>{{ data.name }}</span>
   </h2>
 </div>
 
@@ -11,7 +11,7 @@
           <!-- Regular value input -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Amount</mat-label>
-            <input matInput formControlName="amount" placeholder="Enter value" (keypress)="validateKeyPress($event)" (blur)="updateInput()" (keydown.enter)="updateInput()" (paste)="validatePaste($event)">
+            <input matInput data-sensitive-data formControlName="amount" placeholder="Enter value" (keypress)="validateKeyPress($event)" (blur)="updateInput()" (keydown.enter)="updateInput()" (paste)="validatePaste($event)">
 
             <!-- button to toggle logs. Only show logs of one input row (determined by ID) -->
             <button
@@ -37,7 +37,7 @@
                 } @else if (history?.status === 'loaded') {
                   @for (log of history.items; track $index) {
                     <p class="m-0!">
-                      <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[{{log.timestamp}}]</span> {{ log.value }}
+                      <span [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">[<span data-sensitive-data>{{log.timestamp}}</span>]</span> <span data-sensitive-data>{{ log.value }}</span>
                     </p>
                   } @empty {
                     <p class="m-0!">No changes in the past 30 days.</p>

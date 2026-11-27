@@ -27,6 +27,10 @@ export class WhatsNewPageComponent {
 
   protected readonly features: readonly FeaturePreview[] = [
     {
+      title: 'Calculate Total Savings',
+      description: 'Total savings adds the money you have left after expenses and investments (your cash surplus) to the amount you invested. Choose Investment as the entry type to count a contribution toward savings.',
+    },
+    {
       title: 'Resize the Sankey Chart',
       description: 'Drag the handle below the chart up or down to adjust its height. You can also focus the handle and use the Up and Down arrow keys.',
       image: 'whats-new/sankey-resize',

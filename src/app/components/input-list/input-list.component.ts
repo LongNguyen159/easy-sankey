@@ -9,7 +9,7 @@ import { afterNextRender, Component, DestroyRef, ElementRef, inject, Injector, s
 import {MatButtonModule} from '@angular/material/button';
 import { DataService } from '../../services/data.service';
 import { MonthlyData, SingleMonthData } from '../models';
-import { DateChanges, EntryType, ExpenseCategoryDetails, UserDefinedLink } from '../models';
+import { DateChanges, EntryType, isCashOutflow, ExpenseCategoryDetails, UserDefinedLink } from '../models';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, FormsModule, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CurrencyService } from '../../services/currency.service';
@@ -165,7 +165,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   linkForm: FormGroup; // FormGroup to manage input fields
   initialFormState: UserDefinedLink[] = []; // Initial form state to compare with new data
 
-  linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Tax]; // Types of links
+  linkTypes: EntryType[] = [EntryType.Income, EntryType.Expense, EntryType.Investment, EntryType.Tax]; // Types of links
+  protected readonly isCashOutflow = isCashOutflow;
   entryTypes = EntryType; // Enum for entry types
 
   protected categoryService = inject(CategoryService);
@@ -331,15 +332,15 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   }
   protected get selectedExpenseCount(): number {
     return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
-      && row.get('type')?.value === EntryType.Expense).length;
+      && isCashOutflow(row.get('type')?.value)).length;
   }
   protected get selectedAssignedExpenseCount(): number {
     return this.linkArray.controls.filter(row => this.selectedEntryIds.has(row.get('id')?.value)
-      && row.get('type')?.value === EntryType.Expense && row.get('envelopeId')?.value).length;
+      && isCashOutflow(row.get('type')?.value) && row.get('envelopeId')?.value).length;
   }
 
   protected async createEnvelopeForSelection(row?: FormGroup): Promise<void> {
-    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    if (this.bulkBusy() || (row ? !isCashOutflow(row.get('type')?.value) : !this.selectedExpenseCount)) return;
     this.bulkBusy.set(true);
     try {
       if (!await this.flushPendingEdits()) return;
@@ -363,14 +364,14 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     return this.singleMonthData()?.envelopes?.find(envelope => envelope.id === id)?.name ?? '';
   }
   protected async assignSelectedEnvelope(envelopeId: string | null, row?: FormGroup): Promise<void> {
-    if (this.bulkBusy() || (row ? row.get('type')?.value !== EntryType.Expense : !this.selectedExpenseCount)) return;
+    if (this.bulkBusy() || (row ? !isCashOutflow(row.get('type')?.value) : !this.selectedExpenseCount)) return;
     if (envelopeId && !this.singleMonthData()?.envelopes?.some(envelope => envelope.id === envelopeId)) return;
     const ids = row ? new Set([row.get('id')?.value]) : new Set(this.selectedEntryIds);
     this.bulkBusy.set(true);
     try {
       if (!await this.flushPendingEdits()) return;
       const entries = (this.linkArray.getRawValue() as UserDefinedLink[]).map(entry =>
-        entry.type === EntryType.Expense && ids.has(entry.id)
+        isCashOutflow(entry.type) && ids.has(entry.id)
           ? {...entry, envelopeId, lastEditedAt: Date.now()} : entry);
       await this.dataService.saveMonthDraft(entries, this.dataMonth);
       if (!row) this.finishEditing();
@@ -419,10 +420,10 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     this.dialog.open(EnvelopeDialogComponent, {data, width: '44rem', maxWidth: '95vw'});
   }
 
-  protected _createLinkGroup(link?: UserDefinedLink): FormGroup {
+  protected _createLinkGroup(link?: UserDefinedLink, initialType: EntryType | '' = ''): FormGroup {
     const linkGroup = this.fb.group({
       id: [link && link.id ? link.id : uuidv4(), Validators.required], // Generate a unique UUID if link.id is missing.
-      type: [link ? link.type : '', Validators.required],
+      type: [link?.type ?? initialType, Validators.required],
       target: [link ? link.target : '', [
         Validators.required,
 
@@ -447,9 +448,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       linkGroup.get('source')?.disable({ emitEvent: false });
     }
 
-    let typeValue = linkGroup.get('type')?.value;
-
-
     /** Subscribe to Name changes */
     linkGroup.get('target')?.valueChanges.pipe(takeUntil(this.componentDestroyed$), debounceTime(200)).subscribe(value => {
       if (value) {
@@ -460,7 +458,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
          */
         this.checkForCycle(value, linkGroup.get('source')?.value, linkGroup, this.linkArray.value);
         this.checkForNonAllowedNames(value, linkGroup)
-        if (typeValue == '' || !typeValue || typeValue == null) {
+        if (!linkGroup.get('type')?.value) {
           this.addErrorMessage(ErrorType.EmptyType, 'Type is empty. Please select a type.')
         } else {
           this.removeErrorMessage(ErrorType.EmptyType)
@@ -482,18 +480,19 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       } else {
         linkGroup.get('source')?.enable({ emitEvent: false });  // Enable source otherwise
       }
-      typeValue = value;
-      if (typeValue && typeValue !== '') {
+      if (value) {
         this.removeErrorMessage(ErrorType.EmptyType)
       }
     });
 
 
-    /** Subscribe to changes in source (category) field. If category is chosen, set type = expense automatically. */
+    /** Subscribe to changes in source (category) field. Default an untyped entry to Expense when a category is chosen. */
     linkGroup.get('source')?.valueChanges.pipe(takeUntil(this.componentDestroyed$)).subscribe(value => {
       if (value) {
-        /** Set type automatic to expense if category chosen */
-        linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
+        if (!linkGroup.get('type')?.value) {
+          linkGroup.get('type')?.setValue(EntryType.Expense, { emitEvent: false });
+          this.removeErrorMessage(ErrorType.EmptyType);
+        }
         this.checkForCycle(value, linkGroup.get('target')?.value, linkGroup, this.linkArray.value);
       }
     });
@@ -734,13 +733,12 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   //#region Copy & Paste Links
   protected async copyLinks(
     rows = this.linkArray.controls.filter(control => this.selectedEntryIds.has(control.get('id')?.value)),
-    allowSameMonth = rows.length !== this.linkArray.length,
   ): Promise<void> {
     if (!rows.length || this.bulkBusy()) return;
-    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy', allowSameMonth);
+    await this.writeEntriesToClipboard(rows, this.dataMonth, 'copy');
   }
 
-  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut', allowSameMonth: boolean): Promise<boolean> {
+  private async writeEntriesToClipboard(rows: FormGroup[], month: string, action: 'copy' | 'cut'): Promise<boolean> {
     const entries = rows.map(control => control.getRawValue() as UserDefinedLink);
     if (rows.some(control => control.invalid) || this.dataService.checkDuplicateNames(entries)) {
       this.uiService.showSnackBar(`Fix invalid entries before you ${action} them.`);
@@ -749,11 +747,11 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
     const envelopeIds = new Set(entries.map(entry => entry.envelopeId));
     const envelopes = (this.singleMonthData()?.envelopes ?? []).filter(envelope => envelopeIds.has(envelope.id));
-    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month, allowSameMonth);
+    const text = exportMonth(entries, this.categoryService.categories(), envelopes, month);
     let savedInTab = false;
     try {
       this.dataService.storeCopiedLinks(entries);
-      this.dataService.storeCopiedEnvelopes(envelopes, month, allowSameMonth);
+      this.dataService.storeCopiedEnvelopes(envelopes, month);
       savedInTab = true;
     } catch {
       // The system clipboard is still available if session storage is full.
@@ -799,7 +797,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       }
       const rows = this.linkArray.controls.filter(control => ids.has(control.get('id')?.value));
       if (rows.length !== ids.size) return;
-      if (!await this.writeEntriesToClipboard(rows, month, 'cut', true)) {
+      if (!await this.writeEntriesToClipboard(rows, month, 'cut')) {
         this.uiService.showSnackBar('Could not cut entries to the clipboard.');
         return;
       }
@@ -881,17 +879,33 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
       categories: [],
       envelopes: this.dataService.retrieveCopiedEnvelopes(),
       sourceMonth: this.dataService.retrieveCopiedSourceMonth(),
-      allowSameMonth: this.dataService.copiedEntriesAllowSameMonth(),
     }, month, replacedIds);
   }
 
   private async applyMonthTransfer(transfer: MonthTransfer, month: string, replacedIds: ReadonlySet<string>): Promise<boolean> {
     if (this.destroyRef.destroyed || month !== this.dataMonth || !month || this.bulkBusy()) return false;
-    if (transfer.sourceMonth === month && !transfer.allowSameMonth) return false;
     this.bulkBusy.set(true);
     try {
       await this.monthNavigation;
       if (this.destroyRef.destroyed || month !== this.dataMonth || !await this.flushPendingEdits()) return false;
+      const destinationEntries = (this.linkArray.getRawValue() as UserDefinedLink[])
+        .filter(entry => !replacedIds.size || replacedIds.has(entry.id));
+      const destinationByName = new Map(destinationEntries.map(entry => [entry.target, entry]));
+      const identical = transfer.entries.length === destinationEntries.length
+        && new Set(transfer.entries.map(entry => entry.target)).size === transfer.entries.length
+        && transfer.entries.every(entry => {
+          const current = destinationByName.get(entry.target);
+          return current && current.type === entry.type && current.value === entry.value
+            && (current.source || '') === (entry.source || '')
+            && !!current.isFixCost === !!entry.isFixCost
+            && (current.envelopeId || null) === (entry.envelopeId || null);
+        });
+
+      if (identical) {
+        this.uiService.showSnackBar('These entries are already identical.');
+        return false;
+      }
+
       const undo = await this.dataService.importMonth(month, transfer, replacedIds);
       if (!this.destroyRef.destroyed && month === this.dataMonth) {
         this.selectedEntryIds.clear();
@@ -917,7 +931,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   async pasteFixCosts() {
     if (this.fixedLinks.length == 0) {
-      this.uiService.showSnackBar('No fix costs found', 'Dismiss');
+      this.uiService.showSnackBar('No recurring amounts set up', 'Dismiss');
       return;
     }
   
@@ -953,7 +967,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   
       await this.dataService.saveMonthDraft(this.linkForm.value.links, this.dataMonth);
       this.hasChanges = true;
-      this.uiService.showSnackBar('Fix costs updated!', 'Ok');
+      this.uiService.showSnackBar('Recurring amounts updated!', 'Ok');
     }
   }
   //#endregion
@@ -1146,7 +1160,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     const controls = [...this.linkArray.controls].sort((a, b) => editTime(b) - editTime(a));
     this.linkArray.clear({ emitEvent: false });
     this.linkArray.push(controls, { emitEvent: false });
-    this.updateSavedFormValuesOnFormChanges();
     await this.saveEntryOrder();
     this.uiService.showSnackBar('Entries arranged by most recently edited.');
     void this.announcer.announce('Entries sorted by most recently edited. You can continue reordering them.');
@@ -1157,7 +1170,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (!collapsed.delete(id)) collapsed.add(id);
   }
 
-  private async saveEntryOrder(): Promise<void> {
+  protected async saveEntryOrder(): Promise<void> {
+    this.updateSavedFormValuesOnFormChanges();
     if (!this.linkForm.valid) return;
     // Persist without rebuilding the editor, preserving focus and draft row state.
     await this.dataService.saveMonthDraft(this.savedFormValues, this.dataMonth, { emitObservable: false });
@@ -1187,7 +1201,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     for (const row of this.visibleEntries()) {
       if (this.newEntries.has(row)) continue;
       let id = '';
-      if (row.get('type')?.value === EntryType.Expense) {
+      if (isCashOutflow(row.get('type')?.value)) {
         id = byBudget
           ? row.get('envelopeId')?.value ?? ''
           : this.categoryService.get(row.get('source')?.value)?.value ?? '';
@@ -1198,9 +1212,9 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     return [...groups.values(), unassigned].filter(group => group.rows.length > 0);
   }
 
-  addLink(): void {
+  addLink(initialType: EntryType | '' = ''): void {
     this.linkForm.markAsUntouched();
-    const row = this._createLinkGroup();
+    const row = this._createLinkGroup(undefined, initialType);
     this.newEntries.add(row);
     this.linkArray.push(row, { emitEvent: false });
     this.filterLinks('');
@@ -1240,7 +1254,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     slots.forEach((slot, index) => controls[slot] = reordered[index]);
     this.linkArray.clear({ emitEvent: false });
     this.linkArray.push(controls, { emitEvent: false });
-    this.updateSavedFormValuesOnFormChanges();
     const name = reordered[to].get('target')?.value || 'New entry';
     await this.saveEntryOrder();
     void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);

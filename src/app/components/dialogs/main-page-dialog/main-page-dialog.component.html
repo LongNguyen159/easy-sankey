@@ -1,5 +1,5 @@
 <div class="dialog-header">
-    <h2 mat-dialog-title class="font-bold!">Details for {{ dialogData.monthData.month }}</h2>
+    <h2 mat-dialog-title class="font-bold!">Details for <span data-sensitive-data>{{ dialogData.monthData.month }}</span></h2>
     <button mat-icon-button class="app-button-warn" type="button" aria-label="Close month details" [mat-dialog-close]="true" cdkFocusInitial>
         <mat-icon fontSet="material-symbols-outlined">close</mat-icon>
     </button>
@@ -7,8 +7,8 @@
 <mat-dialog-content>
     @if (dialogData.categoryId; as categoryId) {
         <p class="mb-4">
-            <strong>{{ categoryService.label(categoryId) }}</strong>
-            {{ categorySpending | currency: currencyService.getSelectedCurrency() }}
+            <strong><span data-sensitive-data>{{ categoryService.label(categoryId) }}</span></strong>
+            <span data-sensitive-data>{{ categorySpending | currency: currencyService.getSelectedCurrency() }}</span>
         </p>
     }
     <app-main-page-single-month [chartData]="dialogData.monthData" [highlightedCategoryId]="dialogData.categoryId"></app-main-page-single-month>

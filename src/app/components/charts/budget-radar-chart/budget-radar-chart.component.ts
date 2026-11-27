@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { format, type EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { ColorService } from '../../../services/color.service';
+import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { CurrencyService } from '../../../services/currency.service';
 
 @Component({
@@ -10,26 +10,23 @@ import { CurrencyService } from '../../../services/currency.service';
   imports: [NgxEchartsDirective],
   providers: [provideAppEcharts()],
   template: `
-    <div echarts [options]="options()" class="budget-radar"
+    <div echarts [initOpts]="chartInitOptions" [options]="options()" class="budget-radar"
       role="img" aria-label="Radar chart comparing budget and actual spending. Exact amounts are listed below.">
     </div>
   `,
   styles: '.budget-radar { height: clamp(320px, 50vw, 460px); width: 100%; }',
 })
-export class BudgetRadarChartComponent {
+export class BudgetRadarChartComponent extends BaseChartComponent {
   readonly budgets = input.required<ReadonlyArray<{name: string; budget: number; spent: number}>>();
 
-  private readonly colors = inject(ColorService);
   private readonly currency = inject(CurrencyService);
 
   protected readonly options = computed<EChartsOption>(() => {
     const budgets = this.budgets();
-    const dark = this.colors.isDarkMode();
-    const textColor = dark ? this.colors.darkTextPrimary : this.colors.lightTextPrimary;
+    const dark = this.colorService.isDarkMode();
+    const textColor = dark ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary;
     const budgetColor = dark ? '#b0ebc5' : '#67ad5b';
     const spendingColor = dark ? '#ffadad' : '#d36e76';
-    const gridColor = dark ? '#5c6260' : '#c5cdca';
-    const tooltipBackground = dark ? this.colors.darkBackgroundSecondary : this.colors.lightBackgroundPrimary;
     const maximum = Math.max(1, ...budgets.map(({budget, spent}) => Math.max(budget, spent)));
     const currency = new Intl.NumberFormat(undefined, {
       style: 'currency',
@@ -59,12 +56,8 @@ export class BudgetRadarChartComponent {
       animation: false,
       legend: {top: 0, textStyle: {color: textColor}},
       tooltip: {
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'item',
-        backgroundColor: tooltipBackground,
-        borderColor: gridColor,
-        textStyle: {color: textColor},
-        renderMode: 'html',
         confine: true,
         enterable: true,
         formatter: () => `

@@ -21,11 +21,12 @@
 </div>
 
 <div
-    echarts
+    echarts [initOpts]="chartInitOptions"
     [options]="chartOptions"
     [merge]="mergeOptions"
     style="height: 65vh; width: 100%; min-height: 350px;"
     (chartInit)="onChartInit($event)"
+    (chartFinished)="onChartFinished()"
 >
 </div>
 

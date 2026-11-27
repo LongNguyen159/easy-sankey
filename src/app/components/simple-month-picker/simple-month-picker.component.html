@@ -1,7 +1,7 @@
 <div class="flex flex-row justify-center items-center">
     <button mat-button (click)="toggleCalendar()" [matMenuTriggerFor]="calendarMenu">
       <span class="px-4">
-        {{ selectedDate() | date: 'MMM yyyy' }}
+        <span data-sensitive-data>{{ selectedDate() | date: 'MMM yyyy' }}</span>
       </span>
     </button>
 </div>

@@ -1,0 +1,126 @@
+<div class="flex flex-wrap items-center justify-end gap-2">
+    @if (regularExpenseTree) {
+        <mat-slide-toggle [checked]="expenseDistribution" (change)="setExpenseDistribution($event.checked)">
+            Show expenses only
+        </mat-slide-toggle>
+    }
+    <ng-content select="[distribution-action]"></ng-content>
+</div>
+<div class="flex flex-col w-full justify-center items-center gap-2">
+    <h2 class="text-2xl font-bold">
+         {{ expenseDistribution ? 'Expense Distribution' : chartTitle }}
+    </h2>
+    @if (expenseDistribution) {
+        @if (distributionTree.length) {
+            <p class="text-base font-medium">
+                Total spending <span data-sensitive-data>{{ regularExpenses | currency: currencyService.getSelectedCurrency() }}</span>
+            </p>
+        }
+    } @else if (totalExpenses !== -1) {
+        <p class="text-base">
+            Total outflows <span data-sensitive-data>{{ totalExpenses | currency: currencyService.getSelectedCurrency() }}</span> of <span data-sensitive-data>{{ totalIncome | currency: currencyService.getSelectedCurrency() }}</span>
+            @if (totalIncome > 0) {
+                <span class="font-semibold" data-sensitive-data>({{ ((totalExpenses / totalIncome) * 100).toFixed(2) }}% of your net income)</span>
+            }
+        </p>
+    } @else {
+        <p class="text-base font-medium">
+            Total income: <span data-sensitive-data>{{ totalIncome | currency: currencyService.getSelectedCurrency() }}</span>
+        </p>
+    }
+    
+    <p class="text-sm italic" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400' : 'text-neutral-500'">
+         <span data-sensitive-data>{{ chartDescription }}</span>
+    </p>
+</div>
+@if (savings; as summary) {
+    @let currency = currencyService.getSelectedCurrency();
+    <dl class="my-4 flex flex-wrap justify-center gap-3 text-start
+        [&>div]:w-40 [&>div]:max-w-full [&>div]:rounded-2xl [&>div]:bg-(--app-summary-card-background) [&>div]:p-4">
+        <div>
+            <dt class="text-sm font-medium">Total savings</dt>
+            <dd class="text-xl font-bold tabular-nums"><span data-sensitive-data>{{ summary.totalSavings | currency: currency }}</span></dd>
+            <dd class="text-xs opacity-75">Cash surplus + investments</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Savings rate</dt>
+            <dd class="text-xl  tabular-nums">
+                <span data-sensitive-data>{{ summary.savingsRate === null ? '—' : (summary.savingsRate / 100 | percent: '1.0-1') }}</span>
+            </dd>
+            @if (summary.savingsRate !== null) {
+                <dd class="text-xs opacity-75">Of net income</dd>
+            }
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Invested</dt>
+            <dd class="text-xl font-semibold tabular-nums"><span data-sensitive-data>{{ summary.investments | currency: currency }}</span></dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Cash surplus</dt>
+            <dd class="text-xl font-semibold tabular-nums"><span data-sensitive-data>{{ (totalIncome - totalExpenses) | currency: currency }}</span></dd>
+        </div>
+    </dl>
+}
+<div class="chart-view-switcher">
+    <div class="chart-view-controls gap-2 pt-2 pb-8">
+        <mat-button-toggle-group hideSingleSelectionIndicator
+            [attr.aria-label]="chartTitle + ' chart group'"
+            [value]="chartGroup" (change)="setChartGroup($event.value)">
+            <mat-button-toggle value="pie">Pie</mat-button-toggle>
+            <mat-button-toggle value="bars">Bars</mat-button-toggle>
+            @if (showBreakdown) {
+                <mat-button-toggle value="breakdown">Breakdown</mat-button-toggle>
+            }
+        </mat-button-toggle-group>
+        <div class="chart-view-options flex h-10 items-center justify-center">
+            @if (chartGroup !== 'pie') {
+                @let views = chartGroup === 'bars' ? barViews : breakdownViews;
+                <button matButton type="button" [matMenuTriggerFor]="chartViewMenu">
+                    {{ chartView === views[0].id ? views[0].label : views[1].label }}
+                    <mat-icon iconPositionEnd fontSet="material-symbols-outlined">expand_more</mat-icon>
+                </button>
+                <mat-menu #chartViewMenu="matMenu" class="app-menu">
+                    @for (view of views; track view.id) {
+                        <button mat-menu-item type="button" role="menuitemradio"
+                            [attr.aria-checked]="chartView === view.id"
+                            (click)="setChartView(view.id)">
+                            {{ view.label }}
+                        </button>
+                    }
+                </mat-menu>
+            }
+        </div>
+    </div>
+</div>
+<div #chartContent>
+    @if (expenseDistribution && !distributionTree.length) {
+        <p class="py-8 text-center opacity-75">No spending this month.</p>
+    } @else if (chartView === 'totals' || chartView === 'stacked') {
+        <div class="flex flex-wrap justify-center gap-x-3 gap-y-1" role="group" aria-label="Bar chart categories">
+            @for (item of barLegend; track $index) {
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    [attr.aria-pressed]="!hiddenBars.has(item.name)"
+                    (click)="toggleBar(item.name)"
+                >
+                    <span class="h-3 w-3 rounded-sm" [style.background-color]="item.itemStyle.color"
+                        [class.opacity-50]="hiddenBars.has(item.name)" aria-hidden="true"></span>
+                    <span [class.line-through]="hiddenBars.has(item.name)"><span data-sensitive-data>{{ categoryService.label(item.name) }}</span></span>
+                </button>
+            }
+        </div>
+        <div
+            echarts [initOpts]="chartInitOptions"
+            [options]="barOption"
+            [style.height]="chartHeight"
+            [style.min-height.px]="visibleBarCount * 28 + 80"
+        ></div>
+    } @else if ((chartView === 'treemap' || chartView === 'sunburst') && showBreakdown) {
+        <div class="flex justify-center">
+            <app-treemap-chart class="w-[80%]" [treeData]="distributionTree" [chartType]="chartView" [totalNetIncome]="expenseDistribution ? regularExpenses : totalIncome"></app-treemap-chart>
+        </div>
+    } @else {
+        <div echarts [initOpts]="chartInitOptions" [options]="pieOption" [merge]="pieMergeOption" [style.height]="chartHeight"></div>
+    }
+</div>

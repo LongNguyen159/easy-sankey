@@ -55,10 +55,8 @@ export class IncomeExpenseRatioChartComponent extends BaseChartComponent impleme
   getBaseChartOptions(): EChartsOption {
     return {
       tooltip: {
+        ...this.getTooltipStyle(),
         trigger: 'axis',
-        borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
-        borderWidth: 2,
-        borderRadius: 16,
         padding: [10, 16],
         position: function (pos, params, dom, rect, size) {
           // tooltip will be fixed on the right if mouse hovering on the left,
@@ -68,10 +66,6 @@ export class IncomeExpenseRatioChartComponent extends BaseChartComponent impleme
           return obj;
         },
         axisPointer: { type: 'none' },
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (params: any) => this.getCustomTooltip(params),
       },
       grid: {
@@ -135,7 +129,7 @@ export class IncomeExpenseRatioChartComponent extends BaseChartComponent impleme
         },
       },
       {
-        name: 'Total Expense',
+        name: 'Expenses',
         type: 'bar',
         data: [this.totalExpense],
         barWidth: this.barWidth,

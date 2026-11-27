@@ -2,7 +2,7 @@
     <div class="sankey-title">
         <h2 class="font-bold">Income Flow and Expense Allocation</h2>
         @if (showTooltip) {
-            <button mat-icon-button aria-label="Chart information" matTooltip="Click an entry to edit its amount. Budget labels show spent / allowance; Surplus uses actual spending.">
+            <button mat-icon-button aria-label="Chart information" matTooltip="Click an entry to edit its amount. Budget labels show spent / allowance; Cash surplus uses actual spending.">
                 <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             </button>
         }
@@ -32,12 +32,12 @@
             @for (item of monthInsights; track $index) {
                 <mat-chip disableRipple>
                     <div class="flex flex-row gap-2 items-center justify-center w-full">
-                        <span>{{ categoryLabel(item.name) }}:</span>
+                        <span><span data-sensitive-data>{{ categoryLabel(item.name) }}</span>:</span>
                         @if (item.isPositive === undefined) {
                             <span 
                                 class="font-bold"
                                 [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'"
-                            >{{ item.difference }}</span>
+                            ><span data-sensitive-data>{{ item.difference }}</span></span>
                         } @else {
                             <span
                                 class="font-bold"
@@ -48,7 +48,7 @@
                                     'negative-light': !item.isPositive && !colorService.isDarkMode()
                                 }"
                             
-                            >{{ item.difference }}</span>
+                            ><span data-sensitive-data>{{ item.difference }}</span></span>
                         }
                     </div>
                 </mat-chip>
@@ -67,53 +67,112 @@
     </div>
 }
 
-<h3 class="font-bold flex flex-row items-center gap-2 mb-4">
-    <span>Surplus: </span>
-    <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-1.25">
-        {{ parseLocaleStringToNumber(remainingBalance) | currency: currencyService.getSelectedCurrency() }}
+@let currency = currencyService.getSelectedCurrency();
+@let darkMode = colorService.isDarkMode();
+@let cashSurplus = parseLocaleStringToNumber(remainingBalance);
+@let hasInvestments = savings && savings.investments !== 0;
+@let rate = savings?.savingsRate;
+<ng-template #savingsRate>
+    <span class="mt-2" matTooltip="Share of net income retained as cash surplus or investments.">
+        <span data-sensitive-data>{{ rate == null ? '—' : (rate / 100 | percent: '1.0-1') }}</span> savings rate
     </span>
-</h3>
-@if (surplusAfterBudgets !== undefined) {
-    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        <span class="opacity-70">Surplus if you use up your remaining budget</span>
-        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
-            {{ surplusAfterBudgets | currency: currencyService.getSelectedCurrency() }}
-        </span>
+</ng-template>
+
+<ng-template #financialSummary>
+    <div class="mb-3 flex flex-wrap justify-start gap-x-10 gap-y-3 text-start">
+        <div class="flex flex-col justify-center items-center rounded-2xl px-4 py-3 backdrop-blur-md"
+            [ngClass]="darkMode ? 'bg-neutral-700/65' : 'bg-neutral-200/65'">
+            <h3 class="text-sm font-medium pb-2">Cash surplus</h3>
+            <span class="block text-2xl leading-8 font-bold tabular-nums"
+                [ngClass]="cashSurplus < 0
+                    ? (darkMode ? 'text-red-400' : 'text-red-700')
+                    : cashSurplus > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : ''">
+                <span data-sensitive-data>{{ cashSurplus | currency: currency }}</span>
+            </span>
+            <p class="text-sm opacity-75">
+                <!-- After expenses{{ hasInvestments ? ' and investments' : '' }} -->
+                @if (savings && !hasInvestments) {
+                    <span aria-hidden="true"> </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+                }
+            </p>
+        </div>
+
+        @if (savings && hasInvestments) {
+            <div class="flex flex-col justify-center-center py-3">
+                <h3 class="text-sm">Total savings</h3>
+                <span class="block text-base leading-8 font-medium tabular-nums"
+                [ngClass]="savings.totalSavings < 0
+                    ? (darkMode ? 'text-red-400' : 'text-red-700')
+                    : savings.totalSavings > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
+                    <span data-sensitive-data>{{ savings.totalSavings | currency: currency }}</span>
+                </span>
+                <p class="text-sm opacity-75">
+                    <span data-sensitive-data>{{ savings.investments | currency: currency }}</span> invested
+                    <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
+                </p>
+            </div>
+        }
     </div>
-}
-@if (surplusAtBudgetLimits !== undefined) {
-    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-        <span class="opacity-70" matTooltip="A benchmark based on spending exactly the limit in each budget you’ve used.">
-            Theoretical surplus at budget limits
-        </span>
-        <span [ngClass]="getBalanceClass()" class="rounded-full px-3 py-0.5 text-neutral-950">
-            {{ surplusAtBudgetLimits | currency: currencyService.getSelectedCurrency() }}
-        </span>
+</ng-template>
+
+<ng-template #budgetSummary>
+    @if (surplusAfterBudgets !== undefined) {
+        <span matTooltip="Current cash surplus minus the amount left in your budgets.">Cash surplus after using your remaining budgets</span>
+        <strong class="tabular-nums"><span data-sensitive-data>{{ surplusAfterBudgets | currency: currency }}</span></strong>
+    } @else if (totalBudgetOverspending !== undefined) {
+        <span>Over budget by</span>
+        <strong class="tabular-nums"><span data-sensitive-data>{{ totalBudgetOverspending | currency: currency }}</span></strong>
+    }
+</ng-template>
+
+<div>
+    <div #chartContainer class="sankey-resize"
+        [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
+        [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
+        <div
+            echarts [initOpts]="chartInitOptions"
+            class="sankey-canvas"
+            [options]="sankeyOption"
+            [merge]="sankeyMerge"
+            (chartInit)="onChartInit($event)"
+            (chartFinished)="applyCategoryEmphasis()"
+        ></div>
     </div>
-}
-@if (totalBudgetOverspending !== undefined) {
-    <p class="mt-1 text-sm">
-        <span class="opacity-70">Total overspent</span>
-        <strong class="ml-2">{{ totalBudgetOverspending | currency: currencyService.getSelectedCurrency() }}</strong>
+    <button type="button" class="sankey-resize-handle"
+        aria-label="Resize chart height with the Up and Down arrow keys"
+        (pointerdown)="startChartResize($event, chartContainer.offsetHeight)"
+        (pointermove)="moveChartResize($event)"
+        (lostpointercapture)="endChartResize($event)"
+        (keydown.arrowup)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight - 32)"
+        (keydown.arrowdown)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight + 32)">
+    </button>
+    @if (sankeyData?.nodes?.length) {
+        <div class="sticky bottom-4 z-1 w-fit max-w-full">
+            <ng-container [ngTemplateOutlet]="financialSummary"></ng-container>
+        </div>
+    }
+</div>
+
+@if (surplusAtBudgetLimits !== undefined || (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined)) {
+    <details class="group mb-2 pt-2 text-sm">
+        <summary class="flex w-fit cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 rounded">
+            <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
+            <mat-icon aria-hidden="true" class="group-open:rotate-180">expand_more</mat-icon>
+        </summary>
+        <div class="mt-1 space-y-1 opacity-75">
+            @if (surplusAtBudgetLimits !== undefined) {
+                <p matTooltip="Cash surplus if you had spent exactly the limit in each budget you’ve used.">
+                    Theoretical cash surplus at budget limits
+                    <strong class="ml-1 tabular-nums"><span data-sensitive-data>{{ surplusAtBudgetLimits | currency: currency }}</span></strong>
+                </p>
+            }
+            @if (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined) {
+                <p>Total overspent <strong class="ml-1 tabular-nums"><span data-sensitive-data>{{ totalBudgetOverspending | currency: currency }}</span></strong></p>
+            }
+        </div>
+    </details>
+} @else if (surplusAfterBudgets !== undefined || totalBudgetOverspending !== undefined) {
+    <p class="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-2 text-sm">
+        <ng-container [ngTemplateOutlet]="budgetSummary"></ng-container>
     </p>
 }
-<div #chartContainer class="sankey-resize"
-    [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
-    [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
-    <div
-        echarts
-        class="sankey-canvas"
-        [options]="sankeyOption"
-        [merge]="sankeyMerge"
-        (chartInit)="onChartInit($event)"
-        (chartFinished)="applyCategoryEmphasis()"
-    ></div>
-</div>
-<button type="button" class="sankey-resize-handle"
-    aria-label="Resize chart height with the Up and Down arrow keys"
-    (pointerdown)="startChartResize($event, chartContainer.offsetHeight)"
-    (pointermove)="moveChartResize($event)"
-    (lostpointercapture)="endChartResize($event)"
-    (keydown.arrowup)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight - 32)"
-    (keydown.arrowdown)="$event.preventDefault(); resizeChart(chartContainer.offsetHeight + 32)">
-</button>

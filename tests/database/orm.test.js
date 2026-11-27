@@ -523,3 +523,79 @@ test('central global-envelope editing needs no month and preserves actual entrie
     const retained=(await store.crud.months.get('2026-11')).entries[0];
     assert.equal(retained.value,40);assert.equal(retained.source,category);assert.equal(retained.envelopeId,undefined);
   }));
+
+test("investment entries and templates survive backup restore with shared categories", () =>
+  fixture(async ({ store, reopen }) => {
+    const id = "Brokerage@__system/category__";
+    await store.crud.categories.create({ item: { value: id, label: "Brokerage" } });
+    const contribution = { ...entry("fund", 300), type: "investment", source: id };
+    await save(store, "2025-04", [contribution, { ...entry("fee", 5), source: id }]);
+    await store.crud.fixedCosts.replace({ items: [contribution] });
+
+    const backup = await store.exportBackup();
+    const opened = await reopen();
+    await opened.restore(backup, (await opened.crud.status()).revision);
+    const { entries } = await opened.crud.months.get("2025-04");
+    assert.deepEqual(entries.map(item => [item.type, item.source]), [["investment", id], ["expense", id]]);
+    assert.equal((await opened.crud.fixedCosts.get({ id: contribution.id })).type, "investment");
+  }));
+
+test("investment migration converts classified entries and templates while preserving their references", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "investment-entry-type-"));
+  const filename = path.join(dir, "db.sqlite");
+  const previous = path.join(dir, "migrations");
+  const migrations = path.join(process.cwd(), "prisma/migrations");
+  fs.mkdirSync(previous);
+  let store;
+  try {
+    for (const name of fs.readdirSync(migrations).filter(name => name < "202611270002_investment_entry_type")) {
+      fs.cpSync(path.join(migrations, name), path.join(previous, name), { recursive: true });
+    }
+    require("../../electron/migrations").migrate(filename, { directory: previous });
+    const db = new Database(filename);
+    try {
+      db.prepare("INSERT INTO categories (id, label, position) VALUES (?, ?, ?)").run(category, "Housing", 0);
+      db.prepare("INSERT INTO categories (id, label, position, classification) VALUES (?, ?, ?, ?)")
+        .run("brokerage", "Brokerage", 1, "INVESTMENT");
+      db.prepare("INSERT INTO finance_months (id) VALUES (?)").run("2025-04");
+      db.prepare("INSERT INTO finance_entries (month_id, id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run("2025-04", "rent", "expense", "Rent", "rent", 300, 0, category);
+      db.prepare("INSERT INTO finance_entries (month_id, id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .run("2025-04", "fund", "expense", "Fund", "fund", 200, 1, "brokerage");
+      db.prepare("INSERT INTO fixed_cost_templates (id, type, name, normalized_name, amount, position, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run("fund", "expense", "Fund", "fund", 200, 0, "brokerage");
+    } finally {
+      db.close();
+    }
+    store = openDatabase(filename);
+    const { entries } = await store.crud.months.get("2025-04");
+    assert.deepEqual(entries.map(item => [item.type, item.source]), [["expense", category], ["investment", "brokerage"]]);
+    assert.equal((await store.crud.fixedCosts.get({ id: "fund" })).type, "investment");
+  } finally {
+    await store?.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("fixed cost templates keep global budget assignments through backup and clear them on deletion", () =>
+  fixture(async ({ store }) => {
+    const global = { id: "housing", name: "Housing", budget: 1000, isGlobal: true };
+    const local = { id: "local", name: "Local", budget: 1000 };
+    await store.crud.envelopes.replaceGlobal({ items: [global], base: [] });
+    await store.crud.months.save({ month: "2026-11", entries: [], envelopes: [local], lastUpdated: "-" });
+    const template = {
+      id: "rent-template", target: "Rent", type: "expense", value: 800,
+      isFixCost: true, envelopeId: global.id,
+    };
+    await assert.rejects(store.crud.fixedCosts.replace({
+      items: [{ ...template, envelopeId: local.id }],
+    }), /You can only assign global budgets to recurring amounts/);
+    await store.crud.fixedCosts.replace({ items: [template] });
+    const backup = await store.exportBackup();
+    await store.restore(backup, (await store.crud.status()).revision);
+    assert.equal((await store.crud.fixedCosts.get({ id: template.id })).envelopeId, global.id);
+    await store.crud.envelopes.replaceGlobal({ items: [], base: [global] });
+    const saved = await store.crud.fixedCosts.get({ id: template.id });
+    assert.equal(saved.envelopeId, undefined);
+    assert.equal(saved.value, 800);
+  }));

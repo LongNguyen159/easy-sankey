@@ -1,40 +1,35 @@
 import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, output } from '@angular/core';
-import { BarSeriesOption, EChartsOption, EChartsType, format, LineSeriesOption, SeriesOption } from 'echarts';
+import { EChartsOption, EChartsType, format, LineSeriesOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
-import { TrendsLineChartData } from '../../models';
+import { MonthlyTrendChartData } from '../../models';
 import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
-import { isArray } from 'mathjs';
 
 @Component({
-    selector: 'app-trends-line-chart',
+    selector: 'app-income-spending-trend',
     imports: [NgxEchartsDirective],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
     ],
-    templateUrl: './trends-line-chart.component.html',
+    templateUrl: './income-spending-trend.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrl: './trends-line-chart.component.scss'
+    styleUrl: './income-spending-trend.component.scss'
 })
-export class TrendsLineChartComponent extends BaseChartComponent implements OnChanges {
-  @Input() chartData: TrendsLineChartData[] = [];
+export class IncomeSpendingTrendComponent extends BaseChartComponent implements OnChanges {
+  @Input() chartData: Pick<MonthlyTrendChartData, 'month' | 'isPrediction' | 'isMissing' | 'totalNetIncome' | 'totalExpenses'>[] = [];
   readonly monthSelected = output<string>();
-  @Input() showCategories: boolean = false;
-
-  @Input() stackCategories: boolean = true;
 
   chartOptions: EChartsOption = this.getBaseOptions()
   mergeOptions: EChartsOption
   currencyPipe = inject(CurrencyPipe)
   currencyService = inject(CurrencyService)
-  
+
 
   xAxisData: string[] = []
-  isPredictionAvailable: boolean = false
 
   constructor() {
     super()
@@ -73,26 +68,21 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     const totalExpenses = this.chartData.map(data => data.totalExpenses);
 
     /** Clear Series before changing chart type to avoid conflicts.
-     * 
+     *
     */
     this._clearSeries()
 
     const finalOptions: EChartsOption = {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
-        borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
-        borderWidth: 2,
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'axis',
         axisPointer: {
-          type: this.showCategories ? 'shadow' : 'line',
-        },
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+          type: 'line',
         },
         formatter: (params: any) => {
-          return this.getCustomTooltip(params, params[0].seriesType);
+          if (!params.length) return "";
+          return this.getCustomTooltip(params);
         },
       },
       legend: {
@@ -101,7 +91,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         width: '80%',
         padding: 12,
         itemStyle: {
-          opacity: this.showCategories ? 1 : 0,
+          opacity: 0,
         },
         lineStyle: {
           width: 10,
@@ -123,14 +113,13 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           fontSize: 12,
         },
         formatter: (name: string) => this.categoryService.label(name),
-        data: !this.showCategories ? 
-        [
+        data: [
           {
             name: 'Net Income',
-          }, 
+          },
           {
             name: 'Expenses',
-          }, 
+          },
           {
             name: 'Forecasted Net Income',
             lineStyle: {
@@ -138,8 +127,8 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
               width: 4,
               color: 'inherit',
             }
-          }, 
-          
+          },
+
           {
             name: 'Forecasted Expenses',
             lineStyle: {
@@ -147,10 +136,8 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
               width: 4,
               color: 'inherit',
             }
-          }, 
-        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted')) : [
-          ...this.chartData.flatMap(data => data.categories.map(cat => cat.name))
-        ]
+          },
+        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted'))
       },
       xAxis: {
         type: 'category',
@@ -180,69 +167,29 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           type: 'inside',
         }
       ],
-      series: this.showCategories ? this._getCategoriesSeries() : this._getIncomeGrowthAndExpenseSeries(totalExpenses, totalNetIncome),
+      series: this._getIncomeGrowthAndExpenseSeries(totalExpenses, totalNetIncome),
     };
 
     this.mergeOptions = finalOptions;
   }
 
-  /** TODO:
-   * Also map [x, y] pairs for the bar series. So this tooltip we will all use item.value[1] instead of item.value
-   * 
-   * Additionally, apply a different style fo the bars for predicted series.
-   */
-  getCustomTooltip(params: any, seriesType: string): string {
+  getCustomTooltip(params: any): string {
     // Filter out items with value 0
-    const visibleParams = params.filter((item: any) => isArray(item.value) ?  item.value[1] !== 0 : item.value !== 0);
-    
-    // If series type is bar chart, calculate total
-    let tooltip = `${params[0].axisValueLabel}<br>`;
-    
+    const visibleParams = params.filter((item: any) => item.value[1] !== 0);
 
-    if (seriesType === 'bar') {
-      // Calculate the total sum of values for the visible items (only for bar chart)
-      const total = visibleParams.reduce((sum: number, item: any) => sum + item.value, 0);
-    
-      // Add individual items
-      tooltip += visibleParams.map((item: any) => `
-        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-          <div style="flex: 1; display: flex; align-items: center;">
-            ${item.marker} ${format.encodeHTML(this.categoryService.label(item.seriesName))}:
-          </div>
-          <div style="width: 16px;"></div>
-          <div style="flex: 1; text-align: right;">
-            <strong>${Math.round(item.value * 100) / 100}</strong>
-          </div>
-        </div>`).join('');
-    
-      // Add a divider before the total
-      tooltip += `<hr style="margin: 8px 0; border: 0; border-top: 1px solid #ccc;">`;
-  
-      // Add total at the bottom
-      tooltip += `
-        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-          <div style="flex: 1; display: flex; align-items: center;">
-            <strong>Total:</strong>
-          </div>
-          <div style="width: 16px;"></div>
-          <div style="flex: 1; text-align: right;">
-            <strong>${this.currencyPipe.transform(total, this.currencyService.getSelectedCurrency())}</strong>
-          </div>
-        </div>`;
-    } else {
-      // For other series types, just show the individual items without the total
-      tooltip += visibleParams.map((item: any) => `
-        <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-          <div style="flex: 1; display: flex; align-items: center;">
-            ${item.marker} ${format.encodeHTML(this.categoryService.label(item.seriesName))}:
-          </div>
-          <div style="width: 16px;"></div>
-          <div style="flex: 1; text-align: right;">
-            <strong>${this.currencyPipe.transform(item.value[1], this.currencyService.getSelectedCurrency())}</strong>
-          </div>
-        </div>`).join('');
-    }
-  
+    let tooltip = `${params[0].axisValueLabel}<br>`;
+
+    tooltip += visibleParams.map((item: any) => `
+      <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+        <div style="flex: 1; display: flex; align-items: center;">
+          ${item.marker} ${format.encodeHTML(this.categoryService.label(item.seriesName))}:
+        </div>
+        <div style="width: 16px;"></div>
+        <div style="flex: 1; text-align: right;">
+          <strong>${this.currencyPipe.transform(item.value[1], this.currencyService.getSelectedCurrency())}</strong>
+        </div>
+      </div>`).join('');
+
     return tooltip;
   }
 
@@ -258,66 +205,6 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
 
 
 
-  /** Get Category Expenses data */
-  private _getCategoriesSeries(): BarSeriesOption[] {
-    // Extract all unique categories from the chartData
-    const allCategories = Array.from(
-      new Set(
-        this.chartData.flatMap(data =>
-          data.categories.map(cat => cat.name)
-        )
-      )
-    );
-
-  
-    // Prepare category series aligned with xAxis data
-    const categorySeries: BarSeriesOption[] = allCategories.map(category => ({
-      name: category,
-      type: 'bar',
-      showSymbol: false,
-      itemStyle: {
-        color: this.categoryService.color(category, this.colorService.isDarkMode()),
-        opacity: 0.9,
-      },
-      stack: this.stackCategories ? 'categories' : '',
-      markArea: this.isPredictionAvailable ? {
-        itemStyle: {
-          opacity: 0.1,
-          color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
-        },
-        label: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
-        data: [
-          [
-            {
-              name: 'Forecast',
-              xAxis: this.xAxisData[this.xAxisData.length - (MONTHS_TO_PREDICT)]
-            },
-            {
-              xAxis: this.xAxisData[this.xAxisData.length - 1]
-            }
-          ],
-        ]
-      } : { data: [] },
-      data: this.xAxisData.map(month => {
-        // Find the month's data
-        const monthData = this.chartData.find(data => data.month === month);
-        
-        // if (!monthData) return 0; // If no data for this month, fill with 0
-        
-        // Find the category value for this month
-        const categoryData = monthData?.categories.find(
-          cat => cat.name === category
-        );
-        
-        return Math.round((categoryData?.value || 0) * 100) / 100; // Default to 0 if missing
-      }),
-    }));
-  
-    return categorySeries;
-  }
-
   /** Get Income Growth & Expense Trends data */
   private _getIncomeGrowthAndExpenseSeries(totalExpenses: number[], totalNetIncome: number[]): LineSeriesOption[] {
     // Split the data into actual and predicted segments
@@ -326,7 +213,7 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     const actualNetIncome = [];
     const predictedNetIncome = [];
     const missingMonths = []
-    
+
     /** Map Series into [x, y] pairs. Because prediction series starts after real series. */
     for (let i = 0; i < this.chartData.length; i++) {
       if (this.chartData[i].isPrediction) {
@@ -346,18 +233,16 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
         if (this.chartData[i].isMissing) {
           missingMonths.push(i)
         }
-      } 
-      
-    }
+      }
 
-    this.isPredictionAvailable = predictedExpenses.length > 0 || predictedNetIncome.length > 0;
+    }
 
 
     const markLines: any = missingMonths.flatMap(index => [
       { xAxis: this.xAxisData[index] }
-    ]);    
-  
-  
+    ]);
+
+
     const trendSeries: LineSeriesOption[] = [
       {
         name: 'Expenses',
@@ -415,6 +300,8 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
             color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)', // Adjust color for light mode
           },
           label: {
+            show: true,
+            position: 'insideTop',
             color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
           },
           data: [
@@ -469,4 +356,5 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
       },
     ];
     return trendSeries;
-  }}
+  }
+}

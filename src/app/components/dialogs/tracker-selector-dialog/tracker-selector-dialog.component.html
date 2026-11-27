@@ -1,7 +1,7 @@
 <h2 mat-dialog-title class="font-bold! text-2xl">Choose Categories to track</h2>
 <mat-dialog-content>
   <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">
-    Selected: {{ selectedCategories.length }} / {{ allCategories().length }}
+    Selected: <span data-sensitive-data>{{ selectedCategories.length }}</span> / <span data-sensitive-data>{{ allCategories().length }}</span>
   </p>
   <button mat-button (click)="toggleSelectAll(categoryList)">
     {{ isAllSelected ? 'Deselect All' : 'Select All' }}
@@ -15,7 +15,7 @@
                     [ngStyle]="{ color: colorService.isDarkMode() ? category.colorDark : category.colorLight }"
                 >{{ category.icon }}</mat-icon>
                 <span>
-                    {{ category.label }}
+                    <span data-sensitive-data>{{ category.label }}</span>
                 </span>
             </div>
         </mat-list-option>
@@ -24,5 +24,5 @@
 </mat-dialog-content>
 <mat-dialog-actions>
     <button mat-stroked-button [mat-dialog-close]="false">Cancel</button>
-  <button mat-flat-button (click)="onDialogClose()" [disabled]="selectedCategories.length == 0">Track ({{ selectedCategories.length }})</button>
+  <button mat-flat-button (click)="onDialogClose()" [disabled]="selectedCategories.length == 0">Track (<span data-sensitive-data>{{ selectedCategories.length }}</span>)</button>
 </mat-dialog-actions>

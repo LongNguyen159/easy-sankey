@@ -1,6 +1,6 @@
 import { Component, inject, Input, OnChanges, signal, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { SankeyChartComponent } from "../../components/charts/sankey-chart/sankey-chart.component";
-import { PieChartComponent } from "../../components/charts/pie-chart/pie-chart.component";
+import { IncomeDistributionChartComponent } from "../../components/charts/income-distribution-chart/income-distribution-chart.component";
 import { ColorService } from '../../services/color.service';
 import { MatDividerModule } from '@angular/material/divider';
 import { PieData, SingleMonthData, TreeNode } from '../../components/models';
@@ -10,7 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 
 @Component({
     selector: 'app-main-page-single-month',
-    imports: [SankeyChartComponent, PieChartComponent,
+    imports: [SankeyChartComponent, IncomeDistributionChartComponent,
         MatDividerModule, CommonModule,
         MatIconModule,
         MatButtonModule

@@ -2,26 +2,31 @@ import { Component, Input, OnChanges, SimpleChanges, effect, inject, ChangeDetec
 import { EChartsOption, EChartsType } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { TrendsLineChartData } from '../../models';
+import { MonthlyTrendChartData } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { CurrencyPipe } from '@angular/common';
 import { CurrencyService } from '../../../services/currency.service';
 import { MONTHS_TO_PREDICT } from '../../../utils/utils';
 
 @Component({
-    selector: 'app-total-surplus-line-chart',
+    selector: 'app-savings-and-surplus-line-chart',
     imports: [NgxEchartsDirective],
     providers: [
         provideAppEcharts(),
         CurrencyPipe
     ],
-    templateUrl: './total-surplus-line-chart.component.html',
+    templateUrl: './savings-and-surplus-line-chart.component.html',
     changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrls: ['./total-surplus-line-chart.component.scss']
+    styleUrls: ['./savings-and-surplus-line-chart.component.scss']
 })
-export class TotalSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
-  @Input() chartData: TrendsLineChartData[] = [];
+export class SavingsAndSurplusLineChartComponent extends BaseChartComponent implements OnChanges {
+  @Input() chartData: MonthlyTrendChartData[] = [];
   readonly monthSelected = output<string>();
+
+  private legendSelection: Record<string, boolean> = {
+    Invested: false,
+    'Cumulative cash surplus': false,
+  };
 
   chartOptions: EChartsOption = this.getBaseOption()
   mergeOptions: EChartsOption = {};
@@ -37,6 +42,9 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
 
   override onChartInit(chart: EChartsType): void {
     super.onChartInit(chart);
+    chart.on('legendselectchanged', event => {
+      this.legendSelection = (event as { selected: Record<string, boolean> }).selected;
+    });
     this.bindMonthSelection(chart, index => {
       const entry = this.chartData[index];
       return entry && !entry.isPrediction && !entry.isMissing ? entry.month : undefined;
@@ -46,19 +54,15 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
   getBaseOption(): EChartsOption {
     return {
       tooltip: {
-        borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
-        borderWidth: 2,
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'axis',
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (param: any) => {
           return this.getCustomTooltip(param);
         }
       },
       legend: {
+        type: 'scroll',
+        selected: this.legendSelection,
         itemGap: 22,
         textStyle: {
           padding: 8,
@@ -72,43 +76,25 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           inactiveWidth: 8,
           cap: 'round',
         },
-        data: [
-          {
-            name: 'Surplus',
-          }, 
-          {
-            name: 'Balance',
-          }, 
-          {
-            name: 'Forecasted Surplus',
-            lineStyle: {
-              opacity: 1,
-              width: 4,
-              color: 'inherit',
-            }
-          }, 
-          
-          {
-            name: 'Forecasted Balance',
-            lineStyle: {
-              opacity: 1,
-              width: 4,
-              color: 'inherit',
-            }
-          }, 
-        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted'))
+        data: ['Monthly savings', 'Cash surplus', 'Invested', 'Cumulative cash surplus'],
       },
+      grid: { top: 84, containLabel: true },
       xAxis: {
         type: 'category',
         data: [],
         axisLine: {
           lineStyle: {
             color: this.colorService.isDarkMode() ? '#B0B0B0' : this.colorService.lightTextSecondary,
+            width: 1.5,
           },
         },
       },
       yAxis: {
         type: 'value',
+        axisLabel: {
+          formatter: (value: number) =>
+            this.currencyPipe.transform(value, this.currencyService.getSelectedCurrency(), 'symbol', '1.0-2') ?? '',
+        },
         splitLine: {
           show: true,
           lineStyle: {
@@ -132,12 +118,26 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
   }
 
   getCustomTooltip(params: any): string {
-    // Filter out items with value 0
-    const visibleParams = params
+    const order = ['Monthly savings', 'Cash surplus', 'Invested'];
+    const rows = params
+      .filter((item: any) => item.value?.[1] != null)
+      .filter((item: any) => !item.seriesId.startsWith('forecast-') || this.chartData[item.value[0]]?.isPrediction)
+      .map((item: any) => ({
+        ...item,
+        seriesName: item.seriesId.startsWith('forecast-') ? `Forecasted ${item.seriesName.toLowerCase()}` : item.seriesName,
+      }));
+    const index = rows[0]?.value[0];
+    const month = this.chartData[index];
+    if (month?.savings && !month.isMissing && !month.isPrediction &&
+        !rows.some((item: any) => item.seriesName === 'Invested')) {
+      rows.push({ marker: '', seriesName: 'Invested', value: [index, month.savings.investments] });
+    }
+    rows.sort((a: any, b: any) =>
+      (order.includes(a.seriesName) ? order.indexOf(a.seriesName) : order.length) -
+      (order.includes(b.seriesName) ? order.indexOf(b.seriesName) : order.length));
     
-    // If series type is bar chart, calculate total
-    let tooltip = `${params[0].axisValueLabel}<br>`;
-    tooltip += visibleParams.map((item: any) => `
+    let tooltip = `${params[0]?.axisValueLabel ?? ''}<br>`;
+    tooltip += rows.map((item: any) => `
       <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
         <div style="flex: 1; display: flex; align-items: center;">
           ${item.marker} ${item.seriesName}:
@@ -158,6 +158,10 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
   }
 
   updateChart() {
+    const colors = this.colorService.isDarkMode()
+      ? { cashSurplus: '#ff7f50', cumulativeCashSurplus: '#1e90ff', investments: '#e879f9', totalSavings: '#86efac' }
+      : { cashSurplus: '#ff6f00', cumulativeCashSurplus: '#4682b4', investments: '#a21caf', totalSavings: '#15803d' };
+
     const months = this.chartData.map(data => data.month);
     const surplusValues = this.chartData.map(data => data.surplus);
     const balanceValues = this.chartData.map(data => data.balance);
@@ -221,6 +225,20 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
       xAxis: months[i],
     }))
 
+    const predictedSavingsValues: [number, number][] = this.chartData.flatMap(
+      (month, index): [number, number][] =>
+        month.isPrediction && month.savings ? [[index, month.savings.totalSavings]] : []
+    );
+    if (predictedSavingsValues.length) {
+      for (let index = predictedSavingsValues[0][0] - 1; index >= 0; index--) {
+        const month = this.chartData[index];
+        if (!month.isPrediction && !month.isMissing && month.savings) {
+          predictedSavingsValues.unshift([index, month.savings.totalSavings]);
+          break;
+        }
+      }
+    }
+
     this.mergeOptions = {
       ...this.getBaseOption(),
       xAxis: {
@@ -229,25 +247,23 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
         axisLine: {
           lineStyle: {
             color: this.colorService.isDarkMode() ? '#B0B0B0' : this.colorService.lightTextSecondary,
+            width: 1.5,
           },
         },
       },
       series: [
         {
-          name: 'Surplus',
+          id: 'cash-surplus',
+          name: 'Cash surplus',
           type: 'line',
           data: actualSurplusValues.map(([x, y]) => [x, Math.round(y * 100) / 100]),
-          smooth: true,
           showSymbol: false,
           itemStyle: {
-            color: this.colorService.isDarkMode() ? '#ff7f50' : '#ff6f00', // Orange for both dark and light modes
+            color: colors.cashSurplus,
           },
           lineStyle: {
             width: 2,
-            color: this.colorService.isDarkMode() ? '#ff7f50' : '#ff6f00',
-          },
-          areaStyle: {
-            color: this.colorService.isDarkMode() ? 'rgba(255, 127, 80, 0.3)' : 'rgba(255, 165, 0, 0.3)', // Light orange for background
+            color: colors.cashSurplus,
           },
 
           markLine: {
@@ -266,44 +282,56 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           }
         },
         {
-          name: 'Balance',
+          id: 'cumulative-cash-surplus',
+          name: 'Cumulative cash surplus',
           type: 'line',
           data: actualBalance.map(([x, y]) => [x, Math.round(y * 100) / 100]),
-          smooth: true,
           showSymbol: false,
           itemStyle: {
-            color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4', // Blue for both dark and light modes
+            color: colors.cumulativeCashSurplus,
           },
           lineStyle: {
             width: 2,
-            color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4',
-          },
-          areaStyle: {
-            color: this.colorService.isDarkMode() ? 'rgba(30, 144, 255, 0.3)' : 'rgba(70, 130, 180, 0.3)', // Light blue for background
+            color: colors.cumulativeCashSurplus,
           },
         },
         {
-          name: 'Forecasted Balance',
+          id: 'forecast-cumulative-cash-surplus',
+          name: 'Cumulative cash surplus',
           type: 'line',
           data: predictedBalance.map(([x, y]) => [x, Math.round(y * 100) / 100]),
-          smooth: true,
           showSymbol: false,
           itemStyle: {
-            color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4', // Blue for both dark and light modes
+            color: colors.cumulativeCashSurplus,
           },
           lineStyle: {
             width: 2,
             type: 'dashed',
-            color: this.colorService.isDarkMode() ? '#1e90ff' : '#4682b4',
+            color: colors.cumulativeCashSurplus,
           },
-          areaStyle: {
-            color: this.colorService.isDarkMode() ? 'rgba(30, 144, 255, 0.2)' : 'rgba(70, 130, 180, 0.2)', // Light blue for background
+        },
+
+        {
+          id: 'forecast-cash-surplus',
+          name: 'Cash surplus',
+          type: 'line',
+          data: predictedSurplusValues.map(([x, y]) => [x, Math.round(y * 100) / 100]),
+          showSymbol: false,
+          itemStyle: {
+            color: colors.cashSurplus,
           },
-          markArea: predictedBalance.length > 0 ? {
+          lineStyle: {
+            width: 2,
+            type: 'dashed',
+            color: colors.cashSurplus,
+          },
+          markArea: predictedSurplusValues.length > 0 ? {
             itemStyle: {
               color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
             },
             label: {
+              show: true,
+              position: 'insideTop',
               color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
             },
             data: [
@@ -319,24 +347,29 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
             ]
           } : { data: [] },
         },
-
-        {
-          name: 'Forecasted Surplus',
-          type: 'line',
-          data: predictedSurplusValues.map(([x, y]) => [x, Math.round(y * 100) / 100]),
-          smooth: true,
+        ...([
+          { name: 'Invested', key: 'investments', color: colors.investments },
+          { name: 'Monthly savings', key: 'totalSavings', color: colors.totalSavings },
+        ] as const).map(({ name, key, color }) => ({
+          id: key === 'totalSavings' ? 'monthly-savings' : 'invested',
+          name,
+          itemStyle: { color },
+          lineStyle: { color, width: key === 'totalSavings' ? 3 : 2 },
+          z: key === 'totalSavings' ? 3 : 2,
+          type: 'line' as const,
           showSymbol: false,
-          itemStyle: {
-            color: this.colorService.isDarkMode() ? '#ff7f50' : '#ff6f00', // Orange for both dark and light modes
-          },
-          lineStyle: {
-            width: 2,
-            type: 'dashed',
-            color: this.colorService.isDarkMode() ? '#ff7f50' : '#ff6f00',
-          },
-          areaStyle: {
-            color: this.colorService.isDarkMode() ? 'rgba(255, 127, 80, 0.2)' : 'rgba(255, 165, 0, 0.2)', // Light orange for background
-          }
+          data: this.chartData.map((month, index): [number, number | null] =>
+            [index, month.isMissing || month.isPrediction ? null : month.savings?.[key] ?? null]),
+        })),
+        {
+          id: 'forecast-monthly-savings',
+          name: 'Monthly savings',
+          type: 'line',
+          data: predictedSavingsValues,
+          showSymbol: false,
+          itemStyle: { color: colors.totalSavings },
+          lineStyle: { color: colors.totalSavings, width: 3, type: 'dashed' },
+          z: 3,
         },
       ],
     };

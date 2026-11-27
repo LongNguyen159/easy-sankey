@@ -35,6 +35,7 @@
           <app-sankey-chart
             [sankeyData]="entriesOfOneMonth.sankeyData"
             [remainingBalance]="entriesOfOneMonth.remainingBalance"
+            [savings]="entriesOfOneMonth.savings"
             [surplusAfterBudgets]="entriesOfOneMonth.surplusAfterBudgets"
             [surplusAtBudgetLimits]="entriesOfOneMonth.surplusAtBudgetLimits"
             [totalBudgetOverspending]="entriesOfOneMonth.totalBudgetOverspending"
@@ -53,7 +54,7 @@
             @if (entriesOfOneMonth.totalBudgetOverspending !== undefined) {
               <p class="text-center text-sm">
                 <span class="opacity-70">Total overspent</span>
-                <strong class="ml-2">{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
+                <strong class="ml-2" data-sensitive-data>{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
               </p>
             }
             @if (budgets.length >= 3) {
@@ -67,7 +68,7 @@
                 <li [class.budget-under-limit]="remaining > 0" [class.budget-over-limit]="remaining < 0">
                   <div class="budget-progress-header">
                     <span class="budget-progress-name">
-                      {{ envelope.name }}
+                      <span data-sensitive-data>{{ envelope.name }}</span>
                       @if (!envelope.isGlobal) {
                         <small>• This month</small>
                       }
@@ -76,16 +77,16 @@
                   <div class="budget-progress-detail">
                     <span class="budget-progress-status">
                       @if (remaining < 0) {
-                        {{ -remaining | currency: currency }} over
+                        <span data-sensitive-data>{{ -remaining | currency: currency }}</span> over
                       } @else if (remaining > 0) {
-                        {{ remaining | currency: currency }} left
+                        <span data-sensitive-data>{{ remaining | currency: currency }}</span> left
                       } @else {
                         On budget
                       }
                     </span>
                     <progress max="1" [value]="remaining <= 0 ? 1 : envelope.spent / envelope.budget"
                       [attr.aria-label]="envelope.name" [attr.aria-valuetext]="spent + ' spent of ' + limit"></progress>
-                    <span class="budget-progress-amount text-neutral-400">{{ spent }} / {{ limit }}</span>
+                    <span class="budget-progress-amount text-neutral-400" data-sensitive-data>{{ spent }} / {{ limit }}</span>
                   </div>
                 </li>
               }
@@ -100,19 +101,15 @@
 
         <!-- NETTO CHART -->
         <section>
-          <div class="flex flex-row w-full items-center justify-end gap-2">
-
-            <button mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
+          <app-income-distribution-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
+            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses" [savings]="entriesOfOneMonth.savings"
+          >
+            <button distribution-action mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
               <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>
               <span>Did You Know?</span>
             </button>
 
-          </div>
-
-
-          <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
-            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
-          ></app-pie-chart>
+          </app-income-distribution-chart>
         </section>
 
 
@@ -122,9 +119,9 @@
         @if (showGrossIncomePieChart) {
           <section>
             <!-- BRUTTO CHART -->
-            <app-pie-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
+            <app-income-distribution-chart [treeMapData]="treeMapData" [pieChartData]="pieChartDataBrutto" [chartTitle]="'Total Gross Income Distribution'"
               [totalIncome]="totalGrossIncome"
-            ></app-pie-chart>
+            ></app-income-distribution-chart>
           </section>
         }
 

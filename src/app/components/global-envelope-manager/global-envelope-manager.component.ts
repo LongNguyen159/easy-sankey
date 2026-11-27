@@ -33,7 +33,7 @@ import { UiService } from '../../services/ui.service';
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Monthly amount</mat-label>
-            <input #amountInput matInput formControlName="budget" type="number" min="0.01" step="0.01"
+            <input #amountInput matInput data-sensitive-data formControlName="budget" type="number" min="0.01" step="0.01"
               (blur)="saveRow(row)" (keydown.enter)="amountInput.blur()">
           </mat-form-field>
           <button mat-icon-button type="button" class="app-button-warn" (click)="remove(row)"
@@ -47,7 +47,7 @@ import { UiService } from '../../services/ui.service';
           <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add budget
         </button>
       </div>
-      @if (error()) { <p role="alert">{{ error() }}</p> }
+      @if (error()) { <p role="alert" data-sensitive-data>{{ error() }}</p> }
     </section>
   `,
   styles: `

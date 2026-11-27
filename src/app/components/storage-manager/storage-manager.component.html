@@ -17,7 +17,8 @@
         Show predictions
       </mat-slide-toggle>
       <mat-form-field appearance="outline" class="w-64 max-w-full">
-        <mat-select [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
+        <mat-icon matPrefix fontSet="material-symbols-outlined" aria-hidden="true">date_range</mat-icon>
+        <mat-select aria-label="Timeframe" [(ngModel)]="selectedOption" (selectionChange)="onOptionSelected()">
           @for (option of availableOptions; track option) {
             <mat-option [value]="option.value">
               {{ option.label }}
@@ -28,17 +29,63 @@
     </div>
   </div>
 
+  @let savings = periodSavings();
+  @let currency = currencyService.getSelectedCurrency();
+  <section class="mt-4" aria-labelledby="finance-overview-title">
+    <h2 id="finance-overview-title" class="mb-3 text-2xl font-bold">Overview</h2>
+    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5
+      [&>div]:rounded-2xl [&>div]:bg-(--app-summary-card-background) [&>div]:p-4
+      [&_dt]:text-sm [&_dt]:font-medium [&_dd]:mt-1 [&_dd]:tabular-nums">
+      <div class="sm:col-span-2">
+        <dt class="text-base!">Total savings</dt>
+        <dd class="text-3xl font-bold"><span data-sensitive-data>{{ savings.totalSavings | currency: currency }}</span></dd>
+      </div>
+      <div>
+        <dt matTooltip="The sum of recorded monthly cash surplus in the selected period.">Cumulative cash surplus</dt>
+        <dd class="text-xl font-semibold">
+          <span [ngClass]="getBalanceClass()" class="inline-block rounded-full px-3 text-neutral-950">
+            <span data-sensitive-data>{{ calculateTotalSurplusAllTimeFiltered() }}</span>
+          </span>
+        </dd>
+      </div>
+      <div>
+        <dt class="opacity-75">Invested</dt>
+        <dd class="text-lg font-medium"><span data-sensitive-data>{{ savings.investments | currency: currency }}</span></dd>
+        @if (savings.totalSavings > 0) {
+          <dd class="text-xs opacity-75"><span data-sensitive-data>{{ savings.investments / savings.totalSavings | percent: '1.0-1' }}</span> of total savings</dd>
+        }
+      </div>
+      <div>
+        <dt class="opacity-75" matTooltip="Total savings divided by total net income in the selected period.">Savings rate</dt>
+        <dd class="text-lg font-medium"><span data-sensitive-data>{{ savings.savingsRate === null ? '—' : (savings.savingsRate / 100 | percent: '1.0-1') }}</span></dd>
+        @if (savings.savingsRate !== null) {
+          <dd class="text-xs opacity-75">of net income</dd>
+        }
+      </div>
+    </dl>
+  </section>
+
+  @if (startMonth && endMonth) {
+    <div class="finance-summary-position sticky top-(--finance-summary-top) z-[998] h-0">
+      <div class="finance-summary-bar mx-auto flex w-fit max-w-full translate-y-3 flex-wrap items-baseline
+        justify-center gap-x-6 gap-y-1 rounded-full bg-(--app-summary-card-background)/80 px-5 py-2 text-sm
+        shadow-md backdrop-blur-md">
+        <span class="font-semibold" aria-label="Selected period">
+          <span data-sensitive-data>{{ startMonthDate | date: 'MMM y' }}</span>
+          @if (startMonth !== endMonth) {
+            <span aria-hidden="true"> – </span><span data-sensitive-data>{{ endMonthDate | date: 'MMM y' }}</span>
+          }
+        </span>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 tabular-nums">
+          <span>Total savings <strong><span data-sensitive-data>{{ savings.totalSavings | currency: currency }}</span></strong></span>
+          <span>Cash surplus <strong><span data-sensitive-data>{{ calculateTotalSurplusAllTimeFiltered() }}</span></strong></span>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- SURPLUS & BALANCE LINE CHART -->
-  <app-total-surplus-line-chart class="w-full" [chartData]="trendsLineChartData()" (monthSelected)="getMonthsDetails($event)"></app-total-surplus-line-chart>
-
-  <!-- ALL TIME BALANCE -->
-  <h3 class="font-bold flex flex-row w-full justify-center items-center gap-2">
-    <span>Balance: </span>
-    <span [ngClass]="getBalanceClass()" class="flex flex-row items-center rounded-full text-neutral-950 text-base px-5 py-[5px]">
-      {{ calculateTotalSurplusAllTimeFiltered() }}
-    </span>
-  </h3>
-
+  <app-savings-and-surplus-line-chart class="mt-10 block w-full" [chartData]="monthlyTrendChartData()" (monthSelected)="getMonthsDetails($event)"></app-savings-and-surplus-line-chart>
 
   <div class="flex flex-row w-full justify-end">
     <button mat-button (click)="showReports = !showReports">
@@ -56,13 +103,16 @@
       <!-- Chart Container -->
       <div class="flex flex-col items-center">
 
-        <!-- INCOME/EXPENSE RATIO CHART -->
+        <!-- INCOME/EXPENSE RATIO CHART
         <div class="flex flex-col w-full justify-center items-center mb-14">
-          <h2 class="text-2xl font-bold text-center mt-4">Total Income - Total Expense</h2>
+          <h2 class="text-2xl font-bold text-center mt-4">Net Income and Expenses</h2>
+          <p class="text-sm" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-neutral-500!'">
+            Investments do not count as expenses
+          </p>
           <app-income-expense-ratio-chart class="w-full" [totalExpense]="totalExpenses" [totalIncome]="totalNetIncome"></app-income-expense-ratio-chart>
         </div>
 
-        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
+        <mat-divider class="my-10! w-full" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider> -->
 
 
         <!-- INCOME GROWTH & EXPENSE TRENDS -->
@@ -70,18 +120,32 @@
           <!-- actions buttons -->
           <div class="flex flex-row w-full justify-end gap-2">
             @if (!showIncomeGrowth) {
-              <button mat-button (click)="stackCategories = !stackCategories">
-                <mat-icon fontSet="material-symbols-outlined">{{ stackCategories ? 'bar_chart_4_bars' : 'stacked_bar_chart' }}</mat-icon>
-                {{ stackCategories ? 'Span Categories' : 'Stack Categories' }}
+              <button mat-button [matMenuTriggerFor]="categoryTrendViewMenu">
+                <mat-icon fontSet="material-symbols-outlined">{{ categoryTrendViews[categoryTrendView].icon }}</mat-icon>
+                {{ categoryTrendViews[categoryTrendView].label }}
               </button>
+              <mat-menu #categoryTrendViewMenu="matMenu">
+                @for (view of categoryTrendViews | keyvalue: null; track view.key) {
+                  <button mat-menu-item (click)="categoryTrendView = view.key"
+                    role="menuitemradio" [attr.aria-checked]="categoryTrendView === view.key">
+                    <mat-icon fontSet="material-symbols-outlined">{{ view.value.icon }}</mat-icon>
+                    {{ view.value.label }}
+                  </button>
+                }
+              </mat-menu>
             }
             <button mat-button (click)="showIncomeGrowth = !showIncomeGrowth">
               <mat-icon fontSet="material-symbols-outlined">{{ showIncomeGrowth ? 'bar_chart' : 'trending_up' }}</mat-icon>
               {{ showIncomeGrowth ? 'View Category Trends' : 'View Income Growth' }}
             </button>
           </div>
-          <app-trends-line-chart class="w-full" [chartData]="trendsLineChartData()" [showCategories]="!showIncomeGrowth" [stackCategories]="stackCategories"
-            (monthSelected)="getMonthsDetails($event)"></app-trends-line-chart>
+          @if (showIncomeGrowth) {
+            <app-income-spending-trend class="w-full" [chartData]="monthlyTrendChartData()"
+              (monthSelected)="getMonthsDetails($event)"></app-income-spending-trend>
+          } @else {
+            <app-category-trends-chart class="w-full" [chartData]="monthlyTrendChartData()" [categoryView]="categoryTrendView"
+              (monthSelected)="getMonthsDetails($event)"></app-category-trends-chart>
+          }
 
 
           <!-- ANOMALIES REPORT -->
@@ -119,11 +183,11 @@
                           <span class="flex flex-row items-center">
                             <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? $safeNavigationMigration(category.categoryConfig?.colorDark) : $safeNavigationMigration(category.categoryConfig?.colorLight) }">{{ category.categoryConfig?.icon }}</mat-icon>
                           </span>
-                          <span class="flex flex-row items-center">{{ category.name }}</span>
+                          <span class="flex flex-row items-center"><span data-sensitive-data>{{ category.name }}</span></span>
                         </div>
                       </mat-panel-title>
                       @if (category.averageSpending && category.averageSpending > 0) {
-                        <mat-panel-description>Monthly average: {{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</mat-panel-description>
+                        <mat-panel-description>Monthly average: <span data-sensitive-data>{{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</span></mat-panel-description>
                       }
                     </mat-expansion-panel-header>
 
@@ -166,7 +230,7 @@
                                 <strong>{{ abnormality.type }}</strong>
                               </td>
                               <td class="px-4 py-2">
-                                <span class="whitespace-pre-line">{{ abnormality.description }}</span>
+                                <span class="whitespace-pre-line"><span data-sensitive-data>{{ abnormality.description }}</span></span>
                               </td>
                             </tr>
                           }
@@ -187,11 +251,11 @@
                           <span class="flex flex-row items-center">
                             <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? $safeNavigationMigration(category.categoryConfig?.colorDark) : $safeNavigationMigration(category.categoryConfig?.colorLight) }">{{ category.categoryConfig?.icon }}</mat-icon>
                           </span>
-                          <span class="flex flex-row items-center">{{ category.name }}</span>
+                          <span class="flex flex-row items-center"><span data-sensitive-data>{{ category.name }}</span></span>
                         </div>
                       </mat-panel-title>
                       @if (category.averageSpending && category.averageSpending > 0) {
-                        <mat-panel-description>Monthly average: {{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</mat-panel-description>
+                        <mat-panel-description>Monthly average: <span data-sensitive-data>{{ category.averageSpending | currency: currencyService.getSelectedCurrency() }}</span></mat-panel-description>
                       }
                     </mat-expansion-panel-header>
 
@@ -234,7 +298,7 @@
                                 <strong>{{ abnormality.type }}</strong>
                               </td>
                               <td class="px-4 py-2">
-                                <span class="whitespace-pre-line">{{ abnormality.description }}</span>
+                                <span class="whitespace-pre-line"><span data-sensitive-data>{{ abnormality.description }}</span></span>
                               </td>
                             </tr>
                           }
@@ -302,9 +366,9 @@
           <div class="flex flex-row gap-2 justify-between items-center" (click)="$event.stopPropagation()">
             <div class="flex flex-row items-center">
               <mat-slide-toggle color="primary" (toggleChange)="isHighlightSurplus = !isHighlightSurplus" [(ngModel)]="isHighlightSurplus"></mat-slide-toggle>
-              <span class="ml-2">Highlight Surplus</span>
+              <span class="ml-2">Highlight cash surplus</span>
             </div>
-            <button mat-icon-button matTooltip="Highlight surplus values with colours.">
+            <button mat-icon-button matTooltip="Highlight cash surplus values with colours.">
               <mat-icon fontSet="material-symbols-outlined">info</mat-icon>
             </button>
           </div>
@@ -328,10 +392,10 @@
           [expanded]="year === selectedYear">
           <mat-expansion-panel-header class="header-light">
             <mat-panel-title class="text-xl">
-              {{ year }}
+              <span data-sensitive-data>{{ year }}</span>
             </mat-panel-title>
             <mat-panel-description>
-              <strong>Total Surplus: </strong>&nbsp;{{ calculateTotalSurplusOfYear(year) }}
+              <strong>Total cash surplus </strong>&nbsp;<span data-sensitive-data>{{ calculateTotalSurplusOfYear(year) }}</span>
             </mat-panel-description>
           </mat-expansion-panel-header>
           <!-- Child panel logic continues here -->
@@ -349,14 +413,14 @@
                 #panel="matExpansionPanel">
                 <mat-expansion-panel-header>
                   <mat-panel-title>
-                    {{ month }}
+                    <span data-sensitive-data>{{ month }}</span>
                   </mat-panel-title>
                   <mat-panel-description class="flex flex-row gap-6">
-                    <!-- <p><strong>Surplus:</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
+                    <!-- <p><strong>Cash surplus</strong> {{ getFormattedRemainingBalance(month) }}</p> -->
                     <p class="font-bold flex flex-row items-center gap-2">
-                      <span>Surplus: </span>
+                      <span>Cash surplus </span>
                       <span [ngClass]="getSurplusClass(month)" class="flex flex-row items-center rounded-full text-base px-5 py-[5px]">
-                        {{ getFormattedRemainingBalance(month) }}
+                        <span data-sensitive-data>{{ getFormattedRemainingBalance(month) }}</span>
                       </span>
                     </p>
                   </mat-panel-description>
@@ -373,7 +437,7 @@
                 @if (panel.expanded) {
                   <!-- TOTAL INCOME/TOTAL EXPENSE CHART -->
                   <div class="w-[60%] self-center">
-                    <app-income-expense-ratio-chart [gridLeft]="'2%'" [gridRight]="'5%'" [totalIncome]="allMonthsData[month].totalUsableIncome" [totalExpense]="allMonthsData[month].totalExpenses"
+                    <app-income-expense-ratio-chart [gridLeft]="'2%'" [gridRight]="'5%'" [totalIncome]="allMonthsData[month].totalUsableIncome" [totalExpense]="regularExpenses(allMonthsData[month])"
                     ></app-income-expense-ratio-chart>
                   </div>
                   <!-- MONTHLY DETAILS -->
@@ -382,14 +446,14 @@
                       @for (input of getMonthDisplayInfos(month); track $index) {
                         <li>
                           <p>
-                            {{ input.name }}:
+                            <span data-sensitive-data>{{ input.name }}</span>:
                             <span [ngClass]="{
                               'positive-light': input.type === entryTypeEnums.Income && !colorService.isDarkMode(),
                               'positive-dark': input.type === entryTypeEnums.Income && colorService.isDarkMode(),
                               'negative-light': (input.type === entryTypeEnums.Tax || input.type === entryTypeEnums.Expense) && !colorService.isDarkMode(),
                               'negative-dark': (input.type === entryTypeEnums.Tax || input.type === entryTypeEnums.Expense) && colorService.isDarkMode()
                             }">
-                              {{ isFormatBigNumbers ? formatBigNumbersTemplate(input.value) : input.value | currency: currencyService.getSelectedCurrency() }}
+                              <span data-sensitive-data>{{ isFormatBigNumbers ? formatBigNumbersTemplate(input.value) : input.value | currency: currencyService.getSelectedCurrency() }}</span>
                             </span>
                           </p>
                         </li>

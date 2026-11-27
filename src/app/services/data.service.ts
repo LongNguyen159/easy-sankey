@@ -6,7 +6,7 @@ import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
 import { inject, Injectable, signal, EventEmitter } from '@angular/core';
-import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
+import { BudgetEnvelope, EntryType, isCashOutflow, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -552,7 +552,7 @@ export class DataService {
             .map(envelope => envelope.id));
         const pasted = entries.map(({ source, type, target, value, isFixCost, envelopeId }) => {
             let parent: string | undefined;
-            if (type === EntryType.Expense && source) {
+            if (isCashOutflow(type) && source) {
                 parent = definitions.has(source) ? source : pastedNames.get(normalize(source));
                 parent ??= remainingNames.get(normalize(source));
             }
@@ -563,7 +563,7 @@ export class DataService {
         });
         const links = [...remaining, ...pasted];
 
-        const parents = new Map(links.filter(entry => entry.type === EntryType.Expense)
+        const parents = new Map(links.filter(entry => isCashOutflow(entry.type))
             .map(entry => [normalize(entry.target), entry.source && !definitions.has(entry.source) ? normalize(entry.source) : undefined]));
         const checked = new Set<string>();
         for (const target of parents.keys()) {
@@ -575,17 +575,17 @@ export class DataService {
             for (const node of path) checked.add(node);
         }
 
-        const data = this.calculateMonth(links, month, new Date(), id => definitions.has(id), localEnvelopes);
+        const lastUpdated = new Date().toISOString();
         const addedCategories = definitions.size > currentCategories.length;
         const saved = (await this.database.command(() => this.database.api.months.save({
-            month, entries: links, envelopes: localEnvelopes, lastUpdated: new Date(data.lastUpdated).toISOString(),
+            month, entries: links, envelopes: localEnvelopes, lastUpdated,
             expectedRevision: destination?.revision ?? null, categories: addedCategories ? [...definitions.values()] : undefined,
         }))).value;
         this.sources.set(month, saved);
 
         if (addedCategories) await this.categories.reload();
         await this.logService.reload();
-        this.publishMonthTransfer(month, data);
+        this.publishMonthTransfer(month, this.project(saved));
 
         return async () => {
             if (!await this.flushEdits()) return false;
@@ -620,14 +620,9 @@ export class DataService {
         this.dataSaved$.next(true);
     }
 
-    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string, allowSameMonth: boolean) {
+    storeCopiedEnvelopes(envelopes: BudgetEnvelope[], sourceMonth: string) {
         this.sessionStore.write('copiedEnvelopes', envelopes);
         this.sessionStore.write('copiedSourceMonth', sourceMonth);
-        this.sessionStore.write('copiedAllowSameMonth', allowSameMonth);
-    }
-
-    copiedEntriesAllowSameMonth(): boolean {
-        return this.sessionStore.read('copiedAllowSameMonth') === true;
     }
 
     retrieveCopiedSourceMonth(): string | undefined {
@@ -646,8 +641,10 @@ export class DataService {
 
 
     retrieveFixCostsLinks(): UserDefinedLink[] {
-        const fixedLinks = this.fixedCosts.list()
-        return fixedLinks ? this.categories.clearMissingSources(fixedLinks) : [];
+        const budgetIds = new Set(this.globalEnvelopes().map(budget => budget.id));
+        const fixedLinks = this.fixedCosts.list().map(link =>
+            link.envelopeId && !budgetIds.has(link.envelopeId) ? { ...link, envelopeId: null } : link);
+        return this.categories.clearMissingSources(fixedLinks);
     }
 
     //#endregion

@@ -1,8 +1,10 @@
-<app-navbar class="navbar" [backLink]="RoutePath.MainPage" backLabel="Main" [showLogo]="false">
-  <h1 class="font-bold text-lg m-0!" [class]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">
-    Finance Manager
-  </h1>
-</app-navbar>
-<div class="p-4">
+<div #navbar class="navbar" [class.navbar-hidden]="navbarHidden">
+  <app-navbar [backLink]="RoutePath.MainPage" backLabel="Main" [showLogo]="false">
+    <h1 class="font-bold text-lg m-0!" [class]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">
+      Finance Manager
+    </h1>
+  </app-navbar>
+</div>
+<div class="finance-content p-4" [style.--finance-navbar-height.px]="navbar.offsetHeight">
   <app-storage-manager></app-storage-manager>
 </div>

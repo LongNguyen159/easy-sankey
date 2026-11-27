@@ -5,7 +5,6 @@ interface SessionSchema {
     copiedLinks: UserDefinedLink[];
     copiedEnvelopes: BudgetEnvelope[];
     copiedSourceMonth: string;
-    copiedAllowSameMonth: boolean;
     isFormatBigNumbers: boolean;
 }
 @Injectable({ providedIn: 'root' })

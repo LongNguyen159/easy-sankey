@@ -20,7 +20,7 @@
           <mat-icon fontSet="material-symbols-outlined">drag_indicator</mat-icon>
         </button>
         <mat-icon fontSet="material-symbols-outlined" [style.color]="colorService.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-        <span class="category-name">{{ category.label }}</span>
+        <span class="category-name"><span data-sensitive-data>{{ category.label }}</span></span>
         <button mat-icon-button type="button" [attr.aria-label]="'Edit ' + category.label" (click)="openEditor(category)">
           <mat-icon fontSet="material-symbols-outlined">edit</mat-icon>
         </button>

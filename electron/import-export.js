@@ -6,10 +6,11 @@ const collections = { expenseCategories: 'value', fixCosts: 'id' };
 const keys = new Set(['monthlyData', 'globalEnvelopes', ...Object.keys(collections), ...textKeys,
   'trackedCategories','essentialCategories','logs','themeSettings']);
 function fail(message) { throw new Error(message); }
+const isCashOutflow = type => type === 'expense' || type === 'investment';
 function entry(value) {
-  if (!object(value) || typeof value.id !== 'string' || !value.id || !['income','expense','tax'].includes(value.type)
+  if (!object(value) || typeof value.id !== 'string' || !value.id || !['income','expense','investment','tax'].includes(value.type)
     || typeof value.target !== 'string' || !value.target.trim() || !Number.isFinite(value.value) || value.value < 0
-    || (value.envelopeId != null && (typeof value.envelopeId !== 'string' || !value.envelopeId || value.type !== 'expense'))
+    || (value.envelopeId != null && (typeof value.envelopeId !== 'string' || !value.envelopeId || !isCashOutflow(value.type)))
     || (value.source != null && typeof value.source !== 'string')
     || (value.lastEditedAt != null && (!Number.isFinite(value.lastEditedAt) || value.lastEditedAt < 0))
     || ['isFixCost','demo'].some(key => value[key] != null && typeof value[key] !== 'boolean')) fail('Invalid entry.');
@@ -24,7 +25,7 @@ function entries(values) {
     if (ids.has(value.id) || names.has(name)) fail('Duplicate entry identity or name.');
     ids.add(value.id); names.add(name);
   }
-  const parents = new Map(values.filter(v => v.type === 'expense').map(v => [v.target,v.source]));
+  const parents = new Map(values.filter(v => isCashOutflow(v.type)).map(v => [v.target,v.source]));
   for (const name of parents.keys()) {
     const seen = new Set();
     for (let current = name; parents.has(current); current = parents.get(current)) {
@@ -112,6 +113,7 @@ function sourceData(data) {
   }
   const globals = result.globalEnvelopes ?? [];
   envelopes(globals);
+  validateTemplateBudgets(result.fixCosts ?? [], globals);
   for (const record of Object.values(result.monthlyData ?? {})) {
     const available = [...globals, ...(record.envelopes ?? [])];
     if (new Set(available.map(item => item.id)).size !== available.length) fail('Duplicate envelope identity.');
@@ -135,7 +137,7 @@ function legacyData(legacy) {
     const names = new Set(items.map(item => item.target.trim().toLowerCase()));
     return items.map(item => {
       const { source, ...uncategorized } = item;
-      if (source !== "-- None --" && (item.type !== "expense" || !source
+      if (source !== "-- None --" && (!isCashOutflow(item.type) || !source
         || categories.has(source) || names.has(source.trim().toLowerCase()))) return item;
       // The old selector used "-- None --" for direct expenses. Legacy storage
       // could also retain references to removed parents or categories.
@@ -168,10 +170,15 @@ function entryDto(row) {
         typeof row[column] === "bigint" ? Number(row[column]) : row[column];
   return item;
 }
-function entryColumns(item, template = false) {
+function validateTemplateBudgets(items, globals) {
+  const ids = new Set(globals.map(item => item.id));
+  if (items.some(item => item.envelopeId && !ids.has(item.envelopeId)))
+    fail('You can only assign global budgets to recurring amounts.');
+}
+function entryColumns(item) {
   return {
     id: item.id,
-    ...(!template ? {envelopeId: item.envelopeId ?? null} : {}),
+    envelopeId: item.envelopeId ?? null,
     type: item.type,
     name: item.target,
     normalizedName: item.target.trim().toLowerCase(),
@@ -206,11 +213,12 @@ const preferenceColumns = {
   fixCostSort: "fixedCostSort",
   appVersion: "appVersion",
 };
-module.exports = {canonical, entries, envelopes, keys, textKeys, object,
+module.exports = {canonical, isCashOutflow, entries, envelopes, keys, textKeys, object,
   sourceData,
   legacyData,
   entryDto,
   entryColumns,
+  validateTemplateBudgets,
   categoryDto,
   historyDto,
   preferenceColumns,
