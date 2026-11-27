@@ -27,7 +27,7 @@ describe('TotalSurplusLineChartComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('plots savings with gaps for missing data and forecasts', () => {
+  it('plots a separate savings forecast under the same legend item as actual savings', () => {
     const actual = {
       month: '2026-10', isMissing: false, isPrediction: false, surplus: -500, balance: -500,
       totalNetIncome: 2500, totalExpenses: 3000, categories: [],
@@ -36,12 +36,20 @@ describe('TotalSurplusLineChartComponent', () => {
     component.chartData = [
       actual,
       { ...actual, month: '2026-11', isMissing: true },
-      { ...actual, month: '2026-12', isPrediction: true },
+      {
+        ...actual, month: '2026-12', isPrediction: true,
+        savings: { investments: 200, totalSavings: 400, savingsRate: 16 },
+      },
     ];
     component.updateChart();
 
-    const series = component.mergeOptions.series as Array<{ name: string; data: unknown[] }>;
+    const series = component.mergeOptions.series as Array<{ id: string; name: string; data: unknown[] }>;
     expect(series.some(item => item.name === 'Savings rate')).toBeFalse();
-    expect(series.find(item => item.name === 'Monthly savings')?.data).toEqual([[0, -300], [1, null], [2, null]]);
+    expect(series.find(item => item.id === 'monthly-savings')?.data).toEqual([[0, -300], [1, null], [2, null]]);
+    expect(series.find(item => item.id === 'forecast-monthly-savings')).toEqual(jasmine.objectContaining({
+      name: 'Monthly savings',
+      data: [[0, -300], [2, 400]],
+      lineStyle: jasmine.objectContaining({ type: 'dashed' }),
+    }));
   });
 });

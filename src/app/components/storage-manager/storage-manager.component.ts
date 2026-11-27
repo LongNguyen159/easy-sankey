@@ -535,7 +535,8 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
   
         // Calculate projected surplus
         const investments = investmentData.forecast[0][index] || 0;
-        const surplus = totalNetIncome - totalExpenses - investments;
+        const totalSavings = totalNetIncome - totalExpenses;
+        const surplus = totalSavings - investments;
   
         return {
           month,
@@ -545,6 +546,7 @@ export class StorageManagerComponent extends BasePageComponent implements OnInit
           isMissing: false,
           balance: 0, // Placeholder value
           surplus,
+          savings: { investments, totalSavings, savingsRate: savingsRate(totalSavings, totalNetIncome) },
           categories: Array.from(categoryTotals, ([name, totals]) => ({
             name,
             value: (historicalExpenses ? totalExpenses * totals.expenses / historicalExpenses : 0)

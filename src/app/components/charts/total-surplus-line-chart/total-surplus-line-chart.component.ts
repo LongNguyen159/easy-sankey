@@ -26,7 +26,6 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
   private legendSelection: Record<string, boolean> = {
     Invested: false,
     'Cumulative cash surplus': false,
-    'Forecasted cumulative cash surplus': false,
   };
 
   chartOptions: EChartsOption = this.getBaseOption()
@@ -83,33 +82,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           inactiveWidth: 8,
           cap: 'round',
         },
-        data: [
-          { name: 'Monthly savings' },
-          {
-            name: 'Cash surplus',
-          },
-          { name: 'Invested' },
-          {
-            name: 'Cumulative cash surplus',
-          }, 
-          {
-            name: 'Forecasted cash surplus',
-            lineStyle: {
-              opacity: 1,
-              width: 4,
-              color: 'inherit',
-            }
-          }, 
-          
-          {
-            name: 'Forecasted cumulative cash surplus',
-            lineStyle: {
-              opacity: 1,
-              width: 4,
-              color: 'inherit',
-            }
-          }, 
-        ].filter(item => this.chartData.some(entry => entry.isPrediction) || !item.name.startsWith('Forecasted'))
+        data: ['Monthly savings', 'Cash surplus', 'Invested', 'Cumulative cash surplus'],
       },
       grid: { top: 84, containLabel: true },
       xAxis: {
@@ -152,7 +125,13 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
 
   getCustomTooltip(params: any): string {
     const order = ['Monthly savings', 'Cash surplus', 'Invested'];
-    const rows = params.filter((item: any) => item.value?.[1] != null);
+    const rows = params
+      .filter((item: any) => item.value?.[1] != null)
+      .filter((item: any) => !item.seriesId.startsWith('forecast-') || this.chartData[item.value[0]]?.isPrediction)
+      .map((item: any) => ({
+        ...item,
+        seriesName: item.seriesId.startsWith('forecast-') ? `Forecasted ${item.seriesName.toLowerCase()}` : item.seriesName,
+      }));
     const index = rows[0]?.value[0];
     const month = this.chartData[index];
     if (month?.savings && !month.isMissing && !month.isPrediction &&
@@ -252,6 +231,20 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
       xAxis: months[i],
     }))
 
+    const predictedSavingsValues: [number, number][] = this.chartData.flatMap(
+      (month, index): [number, number][] =>
+        month.isPrediction && month.savings ? [[index, month.savings.totalSavings]] : []
+    );
+    if (predictedSavingsValues.length) {
+      for (let index = predictedSavingsValues[0][0] - 1; index >= 0; index--) {
+        const month = this.chartData[index];
+        if (!month.isPrediction && !month.isMissing && month.savings) {
+          predictedSavingsValues.unshift([index, month.savings.totalSavings]);
+          break;
+        }
+      }
+    }
+
     this.mergeOptions = {
       ...this.getBaseOption(),
       xAxis: {
@@ -266,6 +259,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
       },
       series: [
         {
+          id: 'cash-surplus',
           name: 'Cash surplus',
           type: 'line',
           data: actualSurplusValues.map(([x, y]) => [x, Math.round(y * 100) / 100]),
@@ -294,6 +288,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           }
         },
         {
+          id: 'cumulative-cash-surplus',
           name: 'Cumulative cash surplus',
           type: 'line',
           data: actualBalance.map(([x, y]) => [x, Math.round(y * 100) / 100]),
@@ -307,7 +302,8 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           },
         },
         {
-          name: 'Forecasted cumulative cash surplus',
+          id: 'forecast-cumulative-cash-surplus',
+          name: 'Cumulative cash surplus',
           type: 'line',
           data: predictedBalance.map(([x, y]) => [x, Math.round(y * 100) / 100]),
           showSymbol: false,
@@ -322,7 +318,8 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
         },
 
         {
-          name: 'Forecasted cash surplus',
+          id: 'forecast-cash-surplus',
+          name: 'Cash surplus',
           type: 'line',
           data: predictedSurplusValues.map(([x, y]) => [x, Math.round(y * 100) / 100]),
           showSymbol: false,
@@ -338,10 +335,15 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
             itemStyle: {
               color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)',
             },
-            label: { show: false },
+            label: {
+              show: true,
+              position: 'insideTop',
+              color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+            },
             data: [
               [
                 {
+                  name: 'Forecast',
                   xAxis: months[months.length - (MONTHS_TO_PREDICT + 1)]
                 },
                 {
@@ -355,6 +357,7 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           { name: 'Invested', key: 'investments', color: colors.investments },
           { name: 'Monthly savings', key: 'totalSavings', color: colors.totalSavings },
         ] as const).map(({ name, key, color }) => ({
+          id: key === 'totalSavings' ? 'monthly-savings' : 'invested',
           name,
           itemStyle: { color },
           lineStyle: { color, width: key === 'totalSavings' ? 3 : 2 },
@@ -364,6 +367,16 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           data: this.chartData.map((month, index): [number, number | null] =>
             [index, month.isMissing || month.isPrediction ? null : month.savings?.[key] ?? null]),
         })),
+        {
+          id: 'forecast-monthly-savings',
+          name: 'Monthly savings',
+          type: 'line',
+          data: predictedSavingsValues,
+          showSymbol: false,
+          itemStyle: { color: colors.totalSavings },
+          lineStyle: { color: colors.totalSavings, width: 3, type: 'dashed' },
+          z: 3,
+        },
       ],
     };
   }
