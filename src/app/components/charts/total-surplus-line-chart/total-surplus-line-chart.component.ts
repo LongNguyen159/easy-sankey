@@ -74,8 +74,8 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           cap: 'round',
         },
         data: [
-          { name: 'Investments' },
-          { name: 'Total savings' },
+          { name: 'Invested' },
+          { name: 'Monthly savings' },
           {
             name: 'Cash surplus',
           }, 
@@ -349,8 +349,8 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
           }
         },
         ...([
-          { name: 'Investments', key: 'investments', color: colors.investments },
-          { name: 'Total savings', key: 'totalSavings', color: colors.totalSavings },
+          { name: 'Invested', key: 'investments', color: colors.investments },
+          { name: 'Monthly savings', key: 'totalSavings', color: colors.totalSavings },
         ] as const).map(({ name, key, color }) => ({
           name,
           itemStyle: { color },

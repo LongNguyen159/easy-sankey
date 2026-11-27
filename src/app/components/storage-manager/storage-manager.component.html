@@ -33,7 +33,7 @@
 
   @let savings = periodSavings();
   <div class="mt-5 mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-    <span>Investments <strong>{{ savings.investments | currency: currencyService.getSelectedCurrency() }}</strong></span>
+    <span>Invested <strong>{{ savings.investments | currency: currencyService.getSelectedCurrency() }}</strong></span>
     <span>Total savings <strong>{{ savings.totalSavings | currency: currencyService.getSelectedCurrency() }}</strong></span>
     <span matTooltip="Total savings divided by total net income in the selected period.">
       Savings rate <strong>{{ savings.savingsRate === null ? '—' : (savings.savingsRate / 100 | percent: '1.0-1') }}</strong>

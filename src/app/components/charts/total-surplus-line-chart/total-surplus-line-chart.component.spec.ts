@@ -42,6 +42,6 @@ describe('TotalSurplusLineChartComponent', () => {
 
     const series = component.mergeOptions.series as Array<{ name: string; data: unknown[] }>;
     expect(series.some(item => item.name === 'Savings rate')).toBeFalse();
-    expect(series.find(item => item.name === 'Total savings')?.data).toEqual([[0, -300], [1, null], [2, null]]);
+    expect(series.find(item => item.name === 'Monthly savings')?.data).toEqual([[0, -300], [1, null], [2, null]]);
   });
 });
