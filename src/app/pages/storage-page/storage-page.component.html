@@ -1,5 +1,5 @@
 <div #navbar class="navbar" [class.navbar-hidden]="navbarHidden">
-  <app-navbar class="[&_.fixed]:inset-x-0" [backLink]="RoutePath.MainPage" backLabel="Main" [showLogo]="false">
+  <app-navbar [backLink]="RoutePath.MainPage" backLabel="Main" [showLogo]="false">
     <h1 class="font-bold text-lg m-0!" [class]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'">
       Finance Manager
     </h1>
