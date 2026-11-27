@@ -17,7 +17,7 @@
             </p>
         }
     } @else if (totalExpenses !== -1) {
-        <p class="text-base font-medium">
+        <p class="text-base">
             Total outflows {{ totalExpenses | currency: currencyService.getSelectedCurrency() }} of {{ totalIncome | currency: currencyService.getSelectedCurrency() }}
             @if (totalIncome > 0) {
                 (<span class="font-semibold">{{ ((totalExpenses / totalIncome) * 100).toFixed(2) }}% of your net income</span>)
@@ -33,6 +33,34 @@
          {{ chartDescription }}
     </p>
 </div>
+@if (savings; as summary) {
+    @let currency = currencyService.getSelectedCurrency();
+    <dl class="my-4 flex flex-wrap justify-center gap-3 text-start
+        [&>div]:w-40 [&>div]:max-w-full [&>div]:rounded-2xl [&>div]:bg-(--app-summary-card-background) [&>div]:p-4">
+        <div>
+            <dt class="text-sm font-medium">Total savings</dt>
+            <dd class="text-xl font-bold tabular-nums">{{ summary.totalSavings | currency: currency }}</dd>
+            <dd class="text-xs opacity-75">Cash surplus + investments</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Savings rate</dt>
+            <dd class="text-xl  tabular-nums">
+                {{ summary.savingsRate === null ? '—' : (summary.savingsRate / 100 | percent: '1.0-1') }}
+            </dd>
+            @if (summary.savingsRate !== null) {
+                <dd class="text-xs opacity-75">Of net income</dd>
+            }
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Invested</dt>
+            <dd class="text-xl font-semibold tabular-nums">{{ summary.investments | currency: currency }}</dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium">Cash surplus</dt>
+            <dd class="text-xl font-semibold tabular-nums">{{ (totalIncome - totalExpenses) | currency: currency }}</dd>
+        </div>
+    </dl>
+}
 <div class="chart-view-switcher">
     <div class="chart-view-controls gap-2 pt-2 pb-8">
         <mat-button-toggle-group hideSingleSelectionIndicator

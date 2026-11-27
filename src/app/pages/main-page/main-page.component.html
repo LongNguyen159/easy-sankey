@@ -102,7 +102,7 @@
         <!-- NETTO CHART -->
         <section>
           <app-pie-chart [treeMapData]="treeMapData" [showBreakdown]="true" [regularExpenseTree]="entriesOfOneMonth.regularExpenseTree" [pieChartData]="pieChartDataNetto" [chartTitle]="'Net Income Distribution'"
-            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses"
+            [totalIncome]="totalNetIncome" [totalExpenses]="totalExpenses" [savings]="entriesOfOneMonth.savings"
           >
             <button distribution-action mat-button (click)="dialogService.openDidYouKnowDialog()" class="flex items-center">
               <mat-icon class="mr-1" fontSet="material-symbols-outlined">lightbulb_2</mat-icon>

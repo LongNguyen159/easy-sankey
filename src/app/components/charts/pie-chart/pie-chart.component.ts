@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CurrencyService } from '../../../services/currency.service';
-import { PieData, TreeNode } from '../../models';
+import { PieData, SavingsMetrics, TreeNode } from '../../models';
 import { BaseChartComponent } from '../../../base-components/base-chart/base-chart.component';
 import { TreemapChartComponent } from '../treemap-chart/treemap-chart.component';
 
@@ -31,6 +31,7 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
   @Input() pieChartData: PieData[] = []
   @Input() treeMapData: TreeNode[] = []
   @Input() regularExpenseTree?: TreeNode[];
+  @Input() savings?: SavingsMetrics;
   expenseDistribution = false;
 
   get regularExpenses(): number {
