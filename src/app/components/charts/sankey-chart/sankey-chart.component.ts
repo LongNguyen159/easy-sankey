@@ -183,14 +183,10 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
     return {
       animation: true,
       tooltip: {
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'item',
         position: 'top',
         triggerOn: 'mousemove',
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (params: any) => {
           if (params.dataType === 'node') {
             const nodeName = format.encodeHTML(this.nodeLabel(params.data));

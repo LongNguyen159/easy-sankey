@@ -92,24 +92,13 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
     */
     this._clearSeries()
 
-    const tooltipBackground = this.colorService.isDarkMode()
-      ? this.colorService.darkBackgroundSecondary
-      : this.colorService.lightBackgroundPrimary;
     const finalOptions: EChartsOption = {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
-        renderMode: 'html',
-        extraCssText: 'backdrop-filter: blur(8px);',
-        borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
-        borderWidth: 2,
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'axis',
         axisPointer: {
           type: this.showCategories && this.categoryView !== 'stacked-area' ? 'shadow' : 'line',
-        },
-        backgroundColor: `color-mix(in srgb, ${tooltipBackground} 80%, transparent)`,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
         },
         formatter: (params: any) => {
           if (!params.length) return "";

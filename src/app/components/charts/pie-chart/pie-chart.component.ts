@@ -94,12 +94,8 @@ export class PieChartComponent extends BaseChartComponent implements OnChanges {
     return {
       color: this.colorService.isDarkMode() ? this.colorService.chartColorPaletteDark : this.colorService.chartColorPaletteLight,
       tooltip: {
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'item',
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (params: any) => {
           const value = this.currencyPipe.transform(params.value, this.currencyService.getSelectedCurrency());
           const name = params.data.name ?? params.name;

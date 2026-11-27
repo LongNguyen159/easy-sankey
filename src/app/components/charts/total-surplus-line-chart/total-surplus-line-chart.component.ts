@@ -54,14 +54,8 @@ export class TotalSurplusLineChartComponent extends BaseChartComponent implement
   getBaseOption(): EChartsOption {
     return {
       tooltip: {
-        borderColor: this.colorService.isDarkMode() ? '#484753' : '#E0E6F1',
-        borderWidth: 2,
-        borderRadius: 16,
+        ...this.getTooltipStyle(),
         trigger: 'axis',
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
         formatter: (param: any) => {
           return this.getCustomTooltip(param);
         }

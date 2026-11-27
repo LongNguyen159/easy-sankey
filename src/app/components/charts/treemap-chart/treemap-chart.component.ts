@@ -63,12 +63,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
         ? this.colorService.chartColorPaletteDark 
         : this.colorService.chartColorPaletteLight,
       tooltip: {
-        borderWidth: 2,
-        borderRadius: 16,
-        backgroundColor: this.colorService.isDarkMode() ? this.colorService.darkBackgroundSecondary : this.colorService.lightBackgroundPrimary,
-        textStyle: {
-          color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
-        },
+        ...this.getTooltipStyle(),
         formatter: (info: any) => {
           const value = this.currencyPipe.transform(info.value, this.currencyService.getSelectedCurrency());
           const parent = info.treePathInfo?.at(-2);
