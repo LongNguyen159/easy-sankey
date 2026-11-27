@@ -79,7 +79,7 @@
     "publish": {
       "provider": "github",
       "owner": "LongNguyen159",
-      "repo": "finance-management",
+      "repo": "easy-sankey",
       "private": true
     },
     "files": [
