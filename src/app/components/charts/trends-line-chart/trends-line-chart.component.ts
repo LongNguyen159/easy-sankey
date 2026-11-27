@@ -461,10 +461,15 @@ export class TrendsLineChartComponent extends BaseChartComponent implements OnCh
           itemStyle: {
             color: this.colorService.isDarkMode() ? 'rgba(225, 225, 225, 0.1)' : 'rgba(100, 100, 100, 0.1)', // Adjust color for light mode
           },
-          label: { show: false },
+          label: {
+            show: true,
+            position: 'insideTop',
+            color: this.colorService.isDarkMode() ? this.colorService.darkTextPrimary : this.colorService.lightTextPrimary,
+          },
           data: [
             [
               {
+                name: 'Forecast',
                 xAxis: this.xAxisData[this.xAxisData.length - (MONTHS_TO_PREDICT + 1)]
               },
               {
