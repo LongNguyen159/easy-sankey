@@ -44,6 +44,8 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
   mergeOptions: EChartsOption
 
   currentChartType: 'treemap' | 'sunburst' = 'treemap';
+  private hideTreemapHeaders = false;
+  private fadingTreemapHeaders = false;
 
 
   constructor() {
@@ -101,7 +103,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['chartType'] && this.chartType) {
-      this.currentChartType = this.chartType;
+      this.setChartType(this.chartType);
     }
     if (changes['treeData'] || changes['chartType']) {
       this.updateChart(this.currentChartType === 'treemap' ? this.getTreemapSeries() : this.getSunburstSeries())
@@ -109,7 +111,7 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
   }
 
 
-  private getTreemapSeries(hideUpperLabels: boolean = false): EChartsOption['series'] {
+  private getTreemapSeries(): EChartsOption['series'] {
     return {
       type: 'treemap',
       id: 'treemap-sunburst-transition',
@@ -126,7 +128,8 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
         formatter: params => this.categoryService.label(params.name),
       },
       upperLabel: {
-        show: !hideUpperLabels, // Hide or show the labels based on the argument
+        show: true,
+        opacity: this.hideTreemapHeaders ? 0 : 1,
         formatter: (params: any) => this.categoryService.label(params.name),
         color: this.colorService.isDarkMode()
           ? this.colorService.darkTextPrimary
@@ -181,24 +184,42 @@ export class TreemapChartComponent extends BaseChartComponent implements OnInit,
     }
   }
 
-  toggleChartType() {
-    // Determine the next chart type
-    const isSwitchingToTreemap = this.currentChartType === 'sunburst';
-    const newChartType = isSwitchingToTreemap ? 'treemap' : 'sunburst';
-  
-    // Handle the transition based on the chart type
-    if (isSwitchingToTreemap) {
-      // Hide upper labels, then delay the transition to treemap
-      this.updateChart(this.getTreemapSeries(true));
-  
-      setTimeout(() => {
-        this.currentChartType = newChartType;
-        this.updateChart(this.getTreemapSeries(false));
-      }, 370);
-    } else {
-      // Immediate transition to sunburst
-      this.currentChartType = newChartType;
-      this.updateChart(this.getSunburstSeries());
-    }
+  toggleChartType(): void {
+    this.setChartType(this.currentChartType === 'sunburst' ? 'treemap' : 'sunburst');
+    this.updateChart(this.currentChartType === 'treemap' ? this.getTreemapSeries() : this.getSunburstSeries());
+  }
+
+  onChartFinished(): void {
+    if (!this.hideTreemapHeaders) return;
+
+    const finishedOptions = this.mergeOptions;
+    // ECharts can emit finished synchronously while Angular is applying the options.
+    queueMicrotask(() => {
+      if (this.mergeOptions !== finishedOptions || !this.hideTreemapHeaders) return;
+
+      if (!this.fadingTreemapHeaders) {
+        // Treemap attaches upper labels to rectangles with a separate header layout.
+        this._chartInstance?.getZr().storage.traverse(element => {
+          const label = element.textConfig?.layoutRect && element.getTextContent();
+          if (label && label.style.text && label.style.opacity === 0 && !label.ignore) {
+            this.fadingTreemapHeaders = true;
+            label.animateTo({ style: { opacity: 1 } }, { duration: 180, easing: 'quadraticOut' }, { style: true });
+          }
+        });
+        if (this.fadingTreemapHeaders) return;
+      }
+
+      this.hideTreemapHeaders = false;
+      this.fadingTreemapHeaders = false;
+      this.updateChart(this.getTreemapSeries());
+    });
+  }
+
+  private setChartType(chartType: 'treemap' | 'sunburst'): void {
+    if (chartType === this.currentChartType) return;
+
+    this.fadingTreemapHeaders = false;
+    this.hideTreemapHeaders = this.currentChartType === 'sunburst' && chartType === 'treemap';
+    this.currentChartType = chartType;
   }
 }

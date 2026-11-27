@@ -26,4 +26,23 @@ describe('TreemapChartComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('restores category headers after the treemap transition finishes', async () => {
+    component.toggleChartType();
+    expect(component.mergeOptions.series).toEqual(jasmine.objectContaining({ type: 'sunburst' }));
+
+    component.toggleChartType();
+    expect(component.currentChartType).toBe('treemap');
+    expect(component.mergeOptions.series).toEqual(jasmine.objectContaining({
+      type: 'treemap',
+      upperLabel: jasmine.objectContaining({ show: true, opacity: 0 }),
+    }));
+
+    component.onChartFinished();
+    await Promise.resolve();
+    expect(component.mergeOptions.series).toEqual(jasmine.objectContaining({
+      type: 'treemap',
+      upperLabel: jasmine.objectContaining({ show: true, opacity: 1 }),
+    }));
+  });
 });
