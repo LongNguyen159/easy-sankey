@@ -8,6 +8,7 @@ import { ColorService } from '../../services/color.service';
 import { CommonModule, Location } from '@angular/common';
 import { DialogsService } from '../../services/dialogs.service';
 import { UiService } from '../../services/ui.service';
+import { SensitiveDataVisibilityService } from '../../services/sensitive-data-visibility.service';
 import { RoutePath } from '../models';
 
 @Component({
@@ -34,6 +35,7 @@ export class NavbarComponent {
   @Input() scrollToTop: boolean = false;
 
   RoutePath = RoutePath;
+  protected readonly sensitiveDataVisibility = inject(SensitiveDataVisibilityService);
 
   dataService = inject(DataService)
   colorService = inject(ColorService)

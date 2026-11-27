@@ -67,6 +67,11 @@
         
             <hr class="mx-3 my-1 border-0 border-t border-current opacity-20">
 
+            <button mat-menu-item (click)="sensitiveDataVisibility.toggle()">
+                <mat-icon fontSet="material-symbols-outlined">{{ sensitiveDataVisibility.isHidden() ? 'visibility' : 'visibility_off' }}</mat-icon>
+                <span>{{ sensitiveDataVisibility.isHidden() ? 'Show sensitive data' : 'Hide sensitive data' }}</span>
+            </button>
+
             <!-- Settings link -->
             <button mat-menu-item (click)="dialogService.openSettingsDialog()" class="flex flex-row justify-center items-center gap-2">
                 <mat-icon fontSet="material-symbols-outlined">settings</mat-icon>

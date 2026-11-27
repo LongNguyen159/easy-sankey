@@ -7,7 +7,7 @@
       <span class="selected-category">
         @if (selectedCategory(); as category) {
           <mat-icon class="category-icon" fontSet="material-symbols-outlined" [style.color]="theme.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-          <span class="category-label">{{ category.label }}</span>
+          <span class="category-label" data-sensitive-data>{{ category.label }}</span>
         } @else {
           <span class="category-icon" aria-hidden="true"></span>
           <span class="category-label">Uncategorized</span>
@@ -32,7 +32,7 @@
     @for (category of options(); track category.value) {
       <mat-option [value]="category.value">
         <mat-icon fontSet="material-symbols-outlined" [style.color]="theme.isDarkMode() ? category.colorDark : category.colorLight">{{ category.icon }}</mat-icon>
-        {{ category.label }}
+        <span data-sensitive-data>{{ category.label }}</span>
       </mat-option>
     }
   </mat-select>

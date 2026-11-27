@@ -54,7 +54,7 @@
             @if (entriesOfOneMonth.totalBudgetOverspending !== undefined) {
               <p class="text-center text-sm">
                 <span class="opacity-70">Total overspent</span>
-                <strong class="ml-2">{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
+                <strong class="ml-2" data-sensitive-data>{{ entriesOfOneMonth.totalBudgetOverspending | currency: currency }}</strong>
               </p>
             }
             @if (budgets.length >= 3) {
@@ -68,7 +68,7 @@
                 <li [class.budget-under-limit]="remaining > 0" [class.budget-over-limit]="remaining < 0">
                   <div class="budget-progress-header">
                     <span class="budget-progress-name">
-                      {{ envelope.name }}
+                      <span data-sensitive-data>{{ envelope.name }}</span>
                       @if (!envelope.isGlobal) {
                         <small>• This month</small>
                       }
@@ -77,16 +77,16 @@
                   <div class="budget-progress-detail">
                     <span class="budget-progress-status">
                       @if (remaining < 0) {
-                        {{ -remaining | currency: currency }} over
+                        <span data-sensitive-data>{{ -remaining | currency: currency }}</span> over
                       } @else if (remaining > 0) {
-                        {{ remaining | currency: currency }} left
+                        <span data-sensitive-data>{{ remaining | currency: currency }}</span> left
                       } @else {
                         On budget
                       }
                     </span>
                     <progress max="1" [value]="remaining <= 0 ? 1 : envelope.spent / envelope.budget"
                       [attr.aria-label]="envelope.name" [attr.aria-valuetext]="spent + ' spent of ' + limit"></progress>
-                    <span class="budget-progress-amount text-neutral-400">{{ spent }} / {{ limit }}</span>
+                    <span class="budget-progress-amount text-neutral-400" data-sensitive-data>{{ spent }} / {{ limit }}</span>
                   </div>
                 </li>
               }

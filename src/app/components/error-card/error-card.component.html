@@ -10,7 +10,7 @@
       </mat-card-header>
       <mat-card-content>
         @for (item of errorMessageMultiple; track $index) {
-          <p>{{ item.message }}</p>
+          <p data-sensitive-data>{{ item.message }}</p>
         }
 
         @if (errorMessageMultiple.length == 0) {

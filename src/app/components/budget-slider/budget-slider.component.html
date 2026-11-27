@@ -17,10 +17,10 @@
     
                 <mat-form-field appearance="outline">
                 <mat-label>Average monthly Income</mat-label>
-                <input matInput type="number" formControlName="averageIncome" />
+                <input matInput type="number" data-sensitive-data formControlName="averageIncome" />
                 <span matTextPrefix>{{ currencyService.getCurrencySymbol(currencyService.getSelectedCurrency()) }}&nbsp;</span>
                 <mat-hint>
-                    Approx. {{ formatBigNumbers(averageIncome * 12) }} in year
+                    Approx. <span data-sensitive-data>{{ formatBigNumbers(averageIncome * 12) }}</span> in year
                 </mat-hint>
                 </mat-form-field>
 
@@ -40,7 +40,7 @@
             <ng-template matStepLabel>Essential Categories</ng-template>
             <p class="mt-4">Which spending categories are essential for you?</p>
             @if (essentialSliders) {
-                <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">Selected: {{ essentialSliders.length }}</p>
+                <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">Selected: <span data-sensitive-data>{{ essentialSliders.length }}</span></p>
             }
             <div class="max-h-[60vh] overflow-auto">
                 <mat-selection-list #essentialCategoryList (selectionChange)="onEssentialCategoriesChange($event)">
@@ -52,7 +52,7 @@
                                     [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category)?.colorDark : getCategoriesDetails(category)?.colorLight }"
                                 >{{ getCategoriesDetails(category)?.icon }}</mat-icon>
                                 <span>
-                                    {{ categoryLabel(category) }}
+                                    <span data-sensitive-data>{{ categoryLabel(category) }}</span>
                                 </span>
                             </div>
                         </mat-list-option>
@@ -86,19 +86,19 @@
                                 @if (slider.icon) {
                                     <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                 }
-                                <h3>{{ categoryLabel(slider.name) }}</h3>
+                                <h3><span data-sensitive-data>{{ categoryLabel(slider.name) }}</span></h3>
                             </div>
                             <div class="flex flex-row gap-2 items-center w-full">
                                 <mat-form-field appearance="outline">
                                     <mat-label>Amount</mat-label>
                                     <input 
                                       matInput 
-                                      type="number" 
+                                      type="number" data-sensitive-data
                                       [(ngModel)]="slider.value"
                                       [min]="slider.min || 0"
                                       (input)="adjustSliders(slider.name, slider.value)">
                                     @if (calculationBasis == 'monthly') {
-                                        <mat-hint>{{ formatBigNumbersFrom1K(slider.value * 12) }} in year</mat-hint>
+                                        <mat-hint><span data-sensitive-data>{{ formatBigNumbersFrom1K(slider.value * 12) }}</span> in year</mat-hint>
                                     }
                                 </mat-form-field>
                             </div>
@@ -118,7 +118,7 @@
     
             <p class="mt-4">I want to know how much I can spend on...</p>
             @if (categoriesToInclude) {
-                <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">Selected: {{ categoriesToInclude.length }}</p>
+                <p class="text-base mb-4 mt-2" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">Selected: <span data-sensitive-data>{{ categoriesToInclude.length }}</span></p>
             }
             <div class="max-h-[60vh] overflow-auto">
                 <mat-selection-list #nonEssentialCategoryList (selectionChange)="onNonEssentialCategoriesChange($event)">
@@ -131,13 +131,13 @@
                                         [ngStyle]="{ color: colorService.isDarkMode() ? getCategoriesDetails(category)?.colorDark : getCategoriesDetails(category)?.colorLight }"
                                     >{{ getCategoriesDetails(category)?.icon }}</mat-icon>
                                     <span>
-                                        {{ categoryLabel(category) }}
+                                        <span data-sensitive-data>{{ categoryLabel(category) }}</span>
                                     </span>
                                 </div>
                                 <div [ngClass]="colorService.isDarkMode() ? 'text-neutral-400!' : 'text-gray-500' ">
                                     @if (getTrackedCategory(category)) {
                                         <span>
-                                            Tracking: {{ formatBigNumbersFrom1K((getTrackedCategory(category)?.currentSpending || 0)) }}/{{ formatBigNumbersFrom1K((getTrackedCategory(category)?.targetSpending || 0)) }} ({{ (getTrackedCategory(category)?.percentageSpent || 0).toFixed(2) }}%)
+                                            Tracking: <span data-sensitive-data>{{ formatBigNumbersFrom1K((getTrackedCategory(category)?.currentSpending || 0)) }}</span>/<span data-sensitive-data>{{ formatBigNumbersFrom1K((getTrackedCategory(category)?.targetSpending || 0)) }}</span> (<span data-sensitive-data>{{ (getTrackedCategory(category)?.percentageSpent || 0).toFixed(2) }}</span>%)
                                         </span>
                                     }
                                 </div>
@@ -167,7 +167,7 @@
                         <!-- Target Savings -->
                         <mat-form-field appearance="outline">
                             <mat-label>Saving Goal</mat-label>
-                            <input matInput type="number" [min]="0" formControlName="targetSavings" />
+                            <input matInput type="number" data-sensitive-data [min]="0" formControlName="targetSavings" />
                             @if (form.get('savingsType')?.value === 'relative') {
                                 <span matTextSuffix>%</span>
                             }
@@ -177,12 +177,12 @@
 
                             @if (form.get('savingsType')?.value === 'relative') {
                                 <mat-hint>
-                                    Approx. Savings: {{ formatBigNumbersFrom1K(targetSurplus) }} ({{ formatBigNumbersFrom1K(targetSurplus * 12) }} in year)
+                                    Approx. Savings: <span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus) }}</span> (<span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus * 12) }}</span> in year)
                                 </mat-hint>
                             }
                             @if (form.get('savingsType')?.value == 'absolute') {
                                 <mat-hint>
-                                    {{ formatBigNumbersFrom1K(targetSurplus * 12) }} in year
+                                    <span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus * 12) }}</span> in year
                                 </mat-hint>
                             }
                         </mat-form-field>
@@ -220,17 +220,17 @@
         
                             <mat-form-field appearance="outline">
                               <mat-label>Average monthly Income</mat-label>
-                              <input matInput type="number" formControlName="averageIncome" />
+                              <input matInput type="number" data-sensitive-data formControlName="averageIncome" />
                               <span matTextPrefix>{{ currencyService.getCurrencySymbol(currencyService.getSelectedCurrency()) }}&nbsp;</span>
                               <mat-hint>
-                                Approx. {{ formatBigNumbers(averageIncome * 12) }} in year
+                                Approx. <span data-sensitive-data>{{ formatBigNumbers(averageIncome * 12) }}</span> in year
                             </mat-hint>
                             </mat-form-field>
                               
                             <!-- Target Savings -->
                             <mat-form-field appearance="outline">
                                 <mat-label>Saving Goal</mat-label>
-                                <input matInput type="number" [min]="0" formControlName="targetSavings" />
+                                <input matInput type="number" data-sensitive-data [min]="0" formControlName="targetSavings" />
                                 @if (form.get('savingsType')?.value === 'relative') {
                                     <span matTextSuffix>%</span>
                                 }
@@ -240,12 +240,12 @@
     
                                 @if (form.get('savingsType')?.value === 'relative') {
                                     <mat-hint>
-                                        Approx. Savings: {{ formatBigNumbersFrom1K(targetSurplus) }} ({{ formatBigNumbersFrom1K(targetSurplus * 12) }} in year)
+                                        Approx. Savings: <span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus) }}</span> (<span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus * 12) }}</span> in year)
                                     </mat-hint>
                                 }
                                 @if (form.get('savingsType')?.value == 'absolute') {
                                     <mat-hint>
-                                        {{ formatBigNumbersFrom1K(targetSurplus * 12) }} in year
+                                        <span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus * 12) }}</span> in year
                                     </mat-hint>
                                 }
                             </mat-form-field>
@@ -300,22 +300,22 @@
                             'positive-dark': colorService.isDarkMode() && (averageIncome - totalExpenses >= targetSurplus),
                             'positive-light': !colorService.isDarkMode() && (averageIncome - totalExpenses >= targetSurplus),
                             }">
-                            {{ averageIncome - totalExpenses | currency: currencyService.getSelectedCurrency() }}
+                            <span data-sensitive-data>{{ averageIncome - totalExpenses | currency: currencyService.getSelectedCurrency() }}</span>
                         </span>
                     </div>
                     <div class="text-xs pl-4">
                         <span>
-                            {{ formatBigNumbersFrom1K((averageIncome - totalExpenses) * 12) }} in year
+                            <span data-sensitive-data>{{ formatBigNumbersFrom1K((averageIncome - totalExpenses) * 12) }}</span> in year
                         </span>
                     </div>
                 </div>
                 <div class="flex flex-col items-start gap-1">
                     <div class="py-3 px-6 rounded-2xl border-[2px] border-solid mat-card-background">
-                        Target Savings: <strong>{{ targetSurplus | currency: currencyService.getSelectedCurrency() }}</strong>
+                        Target Savings: <strong><span data-sensitive-data>{{ targetSurplus | currency: currencyService.getSelectedCurrency() }}</span></strong>
                     </div>
                     <div class="text-xs pl-4">
                         <span>
-                            {{ formatBigNumbersFrom1K(targetSurplus * 12) }} in year
+                            <span data-sensitive-data>{{ formatBigNumbersFrom1K(targetSurplus * 12) }}</span> in year
                         </span>
                     </div>
                 </div>
@@ -369,7 +369,7 @@
                                 @if (slider.icon) {
                                     <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                 }
-                                <h3>{{ categoryLabel(slider.name) }}</h3>
+                                <h3><span data-sensitive-data>{{ categoryLabel(slider.name) }}</span></h3>
                             </div>
                             <div class="flex flex-row gap-2 items-center w-full">
                                 <mat-slider
@@ -390,12 +390,12 @@
                                     <!-- <mat-label>Set Value</mat-label> -->
                                     <input 
                                       matInput 
-                                      type="number" 
+                                      type="number" data-sensitive-data
                                       [(ngModel)]="slider.value"
                                       [min]="slider.min || 0"
                                       (input)="adjustSliders(slider.name, slider.value)">
                                     @if (calculationBasis == 'monthly') {
-                                        <mat-hint>{{ formatBigNumbersFrom1K(slider.value * 12) }} in year</mat-hint>
+                                        <mat-hint><span data-sensitive-data>{{ formatBigNumbersFrom1K(slider.value * 12) }}</span> in year</mat-hint>
                                     }
                                 </mat-form-field>
                             </div>
@@ -439,7 +439,7 @@
                                     @if (slider.icon) {
                                         <mat-icon fontSet="material-symbols-outlined" [ngStyle]="{ color: colorService.isDarkMode() ? slider.colorDark : slider.colorLight }">{{ slider.icon }}</mat-icon>
                                     }
-                                    <h3>{{ categoryLabel(slider.name) }}</h3>
+                                    <h3><span data-sensitive-data>{{ categoryLabel(slider.name) }}</span></h3>
                                 </div>
                                 <div class="flex flex-row gap-2 items-center w-full">
                                     <mat-slider
@@ -459,13 +459,13 @@
                                     <mat-form-field appearance="outline" class="w-40!">
                                         <input 
                                             matInput 
-                                            type="number" 
+                                            type="number" data-sensitive-data
                                             [(ngModel)]="slider.value"
                                             [min]="slider.min || 0"
                                             (input)="adjustSliders(slider.name, slider.value)"
                                             >
                                         @if (calculationBasis == 'monthly') {
-                                            <mat-hint>{{ formatBigNumbersFrom1K(slider.value * 12) }} in year</mat-hint>
+                                            <mat-hint><span data-sensitive-data>{{ formatBigNumbersFrom1K(slider.value * 12) }}</span> in year</mat-hint>
                                         }
                                     </mat-form-field>
                                 </div>

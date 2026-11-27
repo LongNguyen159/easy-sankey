@@ -13,24 +13,24 @@
     @if (expenseDistribution) {
         @if (distributionTree.length) {
             <p class="text-base font-medium">
-                Total spending {{ regularExpenses | currency: currencyService.getSelectedCurrency() }}
+                Total spending <span data-sensitive-data>{{ regularExpenses | currency: currencyService.getSelectedCurrency() }}</span>
             </p>
         }
     } @else if (totalExpenses !== -1) {
         <p class="text-base">
-            Total outflows {{ totalExpenses | currency: currencyService.getSelectedCurrency() }} of {{ totalIncome | currency: currencyService.getSelectedCurrency() }}
+            Total outflows <span data-sensitive-data>{{ totalExpenses | currency: currencyService.getSelectedCurrency() }}</span> of <span data-sensitive-data>{{ totalIncome | currency: currencyService.getSelectedCurrency() }}</span>
             @if (totalIncome > 0) {
-                (<span class="font-semibold">{{ ((totalExpenses / totalIncome) * 100).toFixed(2) }}% of your net income</span>)
+                <span class="font-semibold" data-sensitive-data>({{ ((totalExpenses / totalIncome) * 100).toFixed(2) }}% of your net income)</span>
             }
         </p>
     } @else {
         <p class="text-base font-medium">
-            Total income: {{ totalIncome | currency: currencyService.getSelectedCurrency() }}
+            Total income: <span data-sensitive-data>{{ totalIncome | currency: currencyService.getSelectedCurrency() }}</span>
         </p>
     }
     
     <p class="text-sm italic" [ngClass]="colorService.isDarkMode() ? 'text-neutral-400' : 'text-neutral-500'">
-         {{ chartDescription }}
+         <span data-sensitive-data>{{ chartDescription }}</span>
     </p>
 </div>
 @if (savings; as summary) {
@@ -39,13 +39,13 @@
         [&>div]:w-40 [&>div]:max-w-full [&>div]:rounded-2xl [&>div]:bg-(--app-summary-card-background) [&>div]:p-4">
         <div>
             <dt class="text-sm font-medium">Total savings</dt>
-            <dd class="text-xl font-bold tabular-nums">{{ summary.totalSavings | currency: currency }}</dd>
+            <dd class="text-xl font-bold tabular-nums"><span data-sensitive-data>{{ summary.totalSavings | currency: currency }}</span></dd>
             <dd class="text-xs opacity-75">Cash surplus + investments</dd>
         </div>
         <div>
             <dt class="text-sm font-medium">Savings rate</dt>
             <dd class="text-xl  tabular-nums">
-                {{ summary.savingsRate === null ? '—' : (summary.savingsRate / 100 | percent: '1.0-1') }}
+                <span data-sensitive-data>{{ summary.savingsRate === null ? '—' : (summary.savingsRate / 100 | percent: '1.0-1') }}</span>
             </dd>
             @if (summary.savingsRate !== null) {
                 <dd class="text-xs opacity-75">Of net income</dd>
@@ -53,11 +53,11 @@
         </div>
         <div>
             <dt class="text-sm font-medium">Invested</dt>
-            <dd class="text-xl font-semibold tabular-nums">{{ summary.investments | currency: currency }}</dd>
+            <dd class="text-xl font-semibold tabular-nums"><span data-sensitive-data>{{ summary.investments | currency: currency }}</span></dd>
         </div>
         <div>
             <dt class="text-sm font-medium">Cash surplus</dt>
-            <dd class="text-xl font-semibold tabular-nums">{{ (totalIncome - totalExpenses) | currency: currency }}</dd>
+            <dd class="text-xl font-semibold tabular-nums"><span data-sensitive-data>{{ (totalIncome - totalExpenses) | currency: currency }}</span></dd>
         </div>
     </dl>
 }
@@ -106,12 +106,12 @@
                 >
                     <span class="h-3 w-3 rounded-sm" [style.background-color]="item.itemStyle.color"
                         [class.opacity-50]="hiddenBars.has(item.name)" aria-hidden="true"></span>
-                    <span [class.line-through]="hiddenBars.has(item.name)">{{ categoryService.label(item.name) }}</span>
+                    <span [class.line-through]="hiddenBars.has(item.name)"><span data-sensitive-data>{{ categoryService.label(item.name) }}</span></span>
                 </button>
             }
         </div>
         <div
-            echarts
+            echarts [initOpts]="chartInitOptions"
             [options]="barOption"
             [style.height]="chartHeight"
             [style.min-height.px]="visibleBarCount * 28 + 80"
@@ -121,6 +121,6 @@
             <app-treemap-chart class="w-[80%]" [treeData]="distributionTree" [chartType]="chartView" [totalNetIncome]="expenseDistribution ? regularExpenses : totalIncome"></app-treemap-chart>
         </div>
     } @else {
-        <div echarts [options]="pieOption" [merge]="pieMergeOption" [style.height]="chartHeight"></div>
+        <div echarts [initOpts]="chartInitOptions" [options]="pieOption" [merge]="pieMergeOption" [style.height]="chartHeight"></div>
     }
 </div>

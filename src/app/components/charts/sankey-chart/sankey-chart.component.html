@@ -32,12 +32,12 @@
             @for (item of monthInsights; track $index) {
                 <mat-chip disableRipple>
                     <div class="flex flex-row gap-2 items-center justify-center w-full">
-                        <span>{{ categoryLabel(item.name) }}:</span>
+                        <span><span data-sensitive-data>{{ categoryLabel(item.name) }}</span>:</span>
                         @if (item.isPositive === undefined) {
                             <span 
                                 class="font-bold"
                                 [ngClass]="colorService.isDarkMode() ? 'text-darkmode-blue' : 'text-lightmode-blue'"
-                            >{{ item.difference }}</span>
+                            ><span data-sensitive-data>{{ item.difference }}</span></span>
                         } @else {
                             <span
                                 class="font-bold"
@@ -48,7 +48,7 @@
                                     'negative-light': !item.isPositive && !colorService.isDarkMode()
                                 }"
                             
-                            >{{ item.difference }}</span>
+                            ><span data-sensitive-data>{{ item.difference }}</span></span>
                         }
                     </div>
                 </mat-chip>
@@ -74,7 +74,7 @@
 @let rate = savings?.savingsRate;
 <ng-template #savingsRate>
     <span class="mt-2" matTooltip="Share of net income retained as cash surplus or investments.">
-        {{ rate == null ? '—' : (rate / 100 | percent: '1.0-1') }} savings rate
+        <span data-sensitive-data>{{ rate == null ? '—' : (rate / 100 | percent: '1.0-1') }}</span> savings rate
     </span>
 </ng-template>
 
@@ -87,7 +87,7 @@
                 [ngClass]="cashSurplus < 0
                     ? (darkMode ? 'text-red-400' : 'text-red-700')
                     : cashSurplus > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : ''">
-                {{ cashSurplus | currency: currency }}
+                <span data-sensitive-data>{{ cashSurplus | currency: currency }}</span>
             </span>
             <p class="text-sm opacity-75">
                 <!-- After expenses{{ hasInvestments ? ' and investments' : '' }} -->
@@ -104,10 +104,10 @@
                 [ngClass]="savings.totalSavings < 0
                     ? (darkMode ? 'text-red-400' : 'text-red-700')
                     : savings.totalSavings > 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : ''">
-                    {{ savings.totalSavings | currency: currency }}
+                    <span data-sensitive-data>{{ savings.totalSavings | currency: currency }}</span>
                 </span>
                 <p class="text-sm opacity-75">
-                    {{ savings.investments | currency: currency }} invested
+                    <span data-sensitive-data>{{ savings.investments | currency: currency }}</span> invested
                     <span aria-hidden="true"> · </span><ng-container [ngTemplateOutlet]="savingsRate"></ng-container>
                 </p>
             </div>
@@ -118,10 +118,10 @@
 <ng-template #budgetSummary>
     @if (surplusAfterBudgets !== undefined) {
         <span matTooltip="Current cash surplus minus the amount left in your budgets.">Cash surplus after using your remaining budgets</span>
-        <strong class="tabular-nums">{{ surplusAfterBudgets | currency: currency }}</strong>
+        <strong class="tabular-nums"><span data-sensitive-data>{{ surplusAfterBudgets | currency: currency }}</span></strong>
     } @else if (totalBudgetOverspending !== undefined) {
         <span>Over budget by</span>
-        <strong class="tabular-nums">{{ totalBudgetOverspending | currency: currency }}</strong>
+        <strong class="tabular-nums"><span data-sensitive-data>{{ totalBudgetOverspending | currency: currency }}</span></strong>
     }
 </ng-template>
 
@@ -130,7 +130,7 @@
         [style.--chart-height]="chartHeight" [style.--fit-height]="fitChartHeight + 'px'"
         [style.--minimum-height]="minimumChartHeight + 'px'" [style.height.px]="manualChartHeight">
         <div
-            echarts
+            echarts [initOpts]="chartInitOptions"
             class="sankey-canvas"
             [options]="sankeyOption"
             [merge]="sankeyMerge"
@@ -163,11 +163,11 @@
             @if (surplusAtBudgetLimits !== undefined) {
                 <p matTooltip="Cash surplus if you had spent exactly the limit in each budget you’ve used.">
                     Theoretical cash surplus at budget limits
-                    <strong class="ml-1 tabular-nums">{{ surplusAtBudgetLimits | currency: currency }}</strong>
+                    <strong class="ml-1 tabular-nums"><span data-sensitive-data>{{ surplusAtBudgetLimits | currency: currency }}</span></strong>
                 </p>
             }
             @if (surplusAfterBudgets !== undefined && totalBudgetOverspending !== undefined) {
-                <p>Total overspent <strong class="ml-1 tabular-nums">{{ totalBudgetOverspending | currency: currency }}</strong></p>
+                <p>Total overspent <strong class="ml-1 tabular-nums"><span data-sensitive-data>{{ totalBudgetOverspending | currency: currency }}</span></strong></p>
             }
         </div>
     </details>

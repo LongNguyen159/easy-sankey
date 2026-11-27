@@ -231,3 +231,10 @@ html {
   background-color: var(--app-form-field-background);
   border-radius: 12px;
 }
+
+// Keep sensitive values in their form controls while masking their displayed value.
+.app-hide-sensitive-data {
+  :is(input, textarea)[data-sensitive-data] {
+    -webkit-text-security: disc;
+  }
+}

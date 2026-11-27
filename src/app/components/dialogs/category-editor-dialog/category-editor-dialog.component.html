@@ -5,7 +5,7 @@
       <span class="preview-icon" [style.background-color]="previewBackground()">
         <mat-icon fontSet="material-symbols-outlined">{{ icon }}</mat-icon>
       </span>
-      <span class="preview-name">{{ label.trim() || 'Category preview' }}</span>
+      <span class="preview-name"><span data-sensitive-data>{{ label.trim() || 'Category preview' }}</span></span>
     </div>
 
     <mat-form-field class="name-field" appearance="outline" subscriptSizing="dynamic">
@@ -13,7 +13,7 @@
       <input matInput name="label" [(ngModel)]="label" (ngModelChange)="error = ''" required maxlength="60" cdkFocusInitial>
     </mat-form-field>
     @if (error) {
-      <p class="name-error" role="alert">{{ error }}</p>
+      <p class="name-error" role="alert"><span data-sensitive-data>{{ error }}</span></p>
     }
 
     <fieldset>

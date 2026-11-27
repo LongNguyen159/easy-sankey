@@ -22,7 +22,7 @@ export type EnvelopeDialogData =
   selector: 'app-envelope-dialog',
   imports: [NgTemplateOutlet, MatSelectModule, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatDividerModule],
   template: `
-    <h2 mat-dialog-title>{{ globalDraft ? 'New monthly budget' : data.createEnvelope ? 'New budget' : 'Budgets for ' + monthLabel }}</h2>
+    <h2 mat-dialog-title>{{ globalDraft ? 'New monthly budget' : data.createEnvelope ? 'New budget' : 'Budgets' }} @if (!globalDraft && !data.createEnvelope) { <span data-sensitive-data>for {{ monthLabel }}</span> }</h2>
     <mat-dialog-content>
       @if (data.createEnvelope) {
         @for (row of rows.controls; track row) {
@@ -52,7 +52,7 @@ export type EnvelopeDialogData =
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Amount</mat-label>
-              <input matInput type="number" formControlName="budget" min="0.01" step="0.01">
+              <input matInput data-sensitive-data type="number" formControlName="budget" min="0.01" step="0.01">
             </mat-form-field>
             @if (!data.createEnvelope) {
               <button mat-icon-button type="button" class="app-button-warn" [disabled]="saving" (click)="remove(row)"
@@ -77,7 +77,7 @@ export type EnvelopeDialogData =
           <mat-icon fontSet="material-symbols-outlined">add</mat-icon>Add budget
         </button>
       }
-      @if (error) { <p role="alert">{{ error }}</p> }
+      @if (error) { <p role="alert" data-sensitive-data>{{ error }}</p> }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close [disabled]="saving">Cancel</button>

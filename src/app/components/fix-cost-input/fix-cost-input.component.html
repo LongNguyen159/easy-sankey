@@ -39,7 +39,7 @@
     <mat-tab-nav-panel #recurringPanel>
       @let rows = visibleEntries();
       @if (section() === 'investments') {
-        <p class="mb-4">Planned monthly contributions <strong class="ml-2 tabular-nums">{{ investmentTotal(rows) | currency: currencyService.getSelectedCurrency() }}</strong></p>
+        <p class="mb-4">Planned monthly contributions <strong class="ml-2 tabular-nums"><span data-sensitive-data>{{ investmentTotal(rows) | currency: currencyService.getSelectedCurrency() }}</span></strong></p>
       }
       @if (!rows.length) {
         <p class="py-12 text-center">
@@ -61,7 +61,7 @@
                 } @else {
                   <mat-icon fontSet="material-symbols-outlined">label_off</mat-icon>
                 }
-                <span class="category-section-label">{{ group.label }}</span>
+                <span class="category-section-label"><span data-sensitive-data>{{ group.label }}</span></span>
                 <mat-icon class="category-section-chevron" fontSet="material-symbols-outlined">{{ collapsedGroups.has(group.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_up' }}</mat-icon>
               </button>
             </h3>
@@ -142,7 +142,7 @@
         <!-- Value -->
         <mat-form-field appearance="outline">
           <mat-label>Amount</mat-label>
-          <input matInput formControlName="value" type="number" placeholder="Value"
+          <input matInput data-sensitive-data formControlName="value" type="number" placeholder="Value"
             (focus)="startAmountEdit(linkGroup)" (blur)="finishAmountEdit()" />
           @if (linkGroup.get('value')?.hasError('min')) {
             <mat-error>
@@ -163,7 +163,7 @@
         </button>
         <mat-menu #entryMenu="matMenu">
           <button mat-menu-item type="button" [disabled]="!canAssignBudget" [matMenuTriggerFor]="budgetMenu">
-            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon>{{ assignedBudget || 'Add to budget' }}
+            <mat-icon fontSet="material-symbols-outlined">savings</mat-icon><span data-sensitive-data>{{ assignedBudget || 'Add to budget' }}</span>
           </button>
           @if (canAssignBudget && assignedBudget) {
             <button mat-menu-item type="button" (click)="setBudget(linkGroup, null)">
@@ -179,7 +179,7 @@
             <button mat-menu-item type="button" (click)="setBudget(linkGroup, budget.id)"
               [attr.aria-current]="budgetId === budget.id ? 'true' : null">
               <mat-icon fontSet="material-symbols-outlined">{{ budgetId === budget.id ? 'check' : 'savings' }}</mat-icon>
-              {{ budget.name }}
+              <span data-sensitive-data>{{ budget.name }}</span>
             </button>
           } @empty {
             <button mat-menu-item type="button" disabled>No global budgets</button>

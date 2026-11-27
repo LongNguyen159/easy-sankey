@@ -10,7 +10,7 @@ import { CurrencyService } from '../../../services/currency.service';
   imports: [NgxEchartsDirective],
   providers: [provideAppEcharts()],
   template: `
-    <div echarts [options]="options()" class="budget-radar"
+    <div echarts [initOpts]="chartInitOptions" [options]="options()" class="budget-radar"
       role="img" aria-label="Radar chart comparing budget and actual spending. Exact amounts are listed below.">
     </div>
   `,

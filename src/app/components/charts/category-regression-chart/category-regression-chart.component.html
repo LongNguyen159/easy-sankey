@@ -6,7 +6,7 @@
     </div>
 }
 <div
-    echarts
+    echarts [initOpts]="chartInitOptions"
     [options]="chartOption"
     [merge]="mergeOption"
     style="height: 400px; width: 100%;"
@@ -27,12 +27,12 @@
                     'negative-dark': colorService.isDarkMode() && chartData.details.trend === 'upward',
                     'negative-light': !colorService.isDarkMode() && chartData.details.trend === 'upward'
                 }">
-                    {{ trendDescription }}
+                    <span data-sensitive-data>{{ trendDescription }}</span>
                 </span>
             </mat-chip>
     
             <mat-chip>
-                Intensity: {{ chartData.details.strength }}
+                Intensity: <span data-sensitive-data>{{ chartData.details.strength }}</span>
             </mat-chip>
     
             <mat-chip>
@@ -43,7 +43,7 @@
                     'negative-dark': colorService.isDarkMode() && chartData.details.trend === 'upward',
                     'negative-light': !colorService.isDarkMode() && chartData.details.trend === 'upward'
                 }">
-                    {{ chartData.details.growthRate.toFixed(2) }}%
+                    <span data-sensitive-data>{{ chartData.details.growthRate.toFixed(2) }}</span>%
                 </span>
             </mat-chip>
         </mat-chip-set>
@@ -51,13 +51,13 @@
     
     <div class="flex flex-row w-full justify-center text-base">
         <p>
-            {{ insights }}
+            <span data-sensitive-data>{{ insights }}</span>
         </p>
     </div>
 } @else {
     <div class="flex flex-row w-full justify-center text-base">
         <p>
-            No trend & forecasts available. {{chartData.categoryName}} has only one occurrence.
+            No trend & forecasts available. <span data-sensitive-data>{{chartData.categoryName}}</span> has only one occurrence.
         </p>
     </div>
 }
