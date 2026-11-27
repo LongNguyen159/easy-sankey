@@ -239,7 +239,7 @@ export class CategoryService {
     return darkMode ? category?.colorDark : category?.colorLight;
   }
 
-  async save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string, classification: CategoryClassification = this.get(id ?? '')?.classification ?? 'EXPENSE'): Promise<ExpenseCategoryDetails> {
+  async save(label: string, icon: string, color: typeof CATEGORY_COLORS[number], id?: string, classification: CategoryClassification = this.get(id ?? '')?.classification ?? CategoryClassification.Expense): Promise<ExpenseCategoryDetails> {
     const category = {
       label: label.trim(),
       value: id ?? `${uuid()}@${SYSTEM_PREFIX}`,

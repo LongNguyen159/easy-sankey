@@ -113,6 +113,7 @@ function sourceData(data) {
   }
   const globals = result.globalEnvelopes ?? [];
   envelopes(globals);
+  validateTemplateBudgets(result.fixCosts ?? [], globals);
   for (const record of Object.values(result.monthlyData ?? {})) {
     const available = [...globals, ...(record.envelopes ?? [])];
     if (new Set(available.map(item => item.id)).size !== available.length) fail('Duplicate envelope identity.');
@@ -169,10 +170,15 @@ function entryDto(row) {
         typeof row[column] === "bigint" ? Number(row[column]) : row[column];
   return item;
 }
-function entryColumns(item, template = false) {
+function validateTemplateBudgets(items, globals) {
+  const ids = new Set(globals.map(item => item.id));
+  if (items.some(item => item.envelopeId && !ids.has(item.envelopeId)))
+    fail('You can only assign global budgets to recurring amounts.');
+}
+function entryColumns(item) {
   return {
     id: item.id,
-    ...(!template ? {envelopeId: item.envelopeId ?? null} : {}),
+    envelopeId: item.envelopeId ?? null,
     type: item.type,
     name: item.target,
     normalizedName: item.target.trim().toLowerCase(),
@@ -213,6 +219,7 @@ module.exports = {canonical, entries, envelopes, keys, textKeys, object,
   legacyData,
   entryDto,
   entryColumns,
+  validateTemplateBudgets,
   categoryDto,
   historyDto,
   preferenceColumns,

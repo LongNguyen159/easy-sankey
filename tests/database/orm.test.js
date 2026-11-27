@@ -582,3 +582,26 @@ test("classification migration preserves existing categories and their entry ref
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("fixed cost templates keep global budget assignments through backup and clear them on deletion", () =>
+  fixture(async ({ store }) => {
+    const global = { id: "housing", name: "Housing", budget: 1000, isGlobal: true };
+    const local = { id: "local", name: "Local", budget: 1000 };
+    await store.crud.envelopes.replaceGlobal({ items: [global], base: [] });
+    await store.crud.months.save({ month: "2026-11", entries: [], envelopes: [local], lastUpdated: "-" });
+    const template = {
+      id: "rent-template", target: "Rent", type: "expense", value: 800,
+      isFixCost: true, envelopeId: global.id,
+    };
+    await assert.rejects(store.crud.fixedCosts.replace({
+      items: [{ ...template, envelopeId: local.id }],
+    }), /You can only assign global budgets to recurring amounts/);
+    await store.crud.fixedCosts.replace({ items: [template] });
+    const backup = await store.exportBackup();
+    await store.restore(backup, (await store.crud.status()).revision);
+    assert.equal((await store.crud.fixedCosts.get({ id: template.id })).envelopeId, global.id);
+    await store.crud.envelopes.replaceGlobal({ items: [], base: [global] });
+    const saved = await store.crud.fixedCosts.get({ id: template.id });
+    assert.equal(saved.envelopeId, undefined);
+    assert.equal(saved.value, 800);
+  }));

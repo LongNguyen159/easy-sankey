@@ -123,7 +123,7 @@ export class SettingsDialogComponent implements OnInit{
 
       const confirmed = await firstValueFrom(this.uiService.openConfirmDialog({
         title: 'Replace all app data?',
-        message: 'Importing this backup will overwrite all your current months, budgets, categories, fixed costs, and settings. This cannot be undone. Are you sure?',
+        message: 'Importing this backup will overwrite all your current months, budgets, categories, recurring amounts, and settings. This cannot be undone. Are you sure?',
         confirmLabel: 'Replace all data',
         confirmColor: 'warn',
         cancelLabel: 'Cancel'

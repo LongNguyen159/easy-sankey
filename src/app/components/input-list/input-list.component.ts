@@ -932,7 +932,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
 
   async pasteFixCosts() {
     if (this.fixedLinks.length == 0) {
-      this.uiService.showSnackBar('No fix costs found', 'Dismiss');
+      this.uiService.showSnackBar('No recurring amounts set up', 'Dismiss');
       return;
     }
   
@@ -968,7 +968,7 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
   
       await this.dataService.saveMonthDraft(this.linkForm.value.links, this.dataMonth);
       this.hasChanges = true;
-      this.uiService.showSnackBar('Fix costs updated!', 'Ok');
+      this.uiService.showSnackBar('Recurring amounts updated!', 'Ok');
     }
   }
   //#endregion
@@ -1161,7 +1161,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     const controls = [...this.linkArray.controls].sort((a, b) => editTime(b) - editTime(a));
     this.linkArray.clear({ emitEvent: false });
     this.linkArray.push(controls, { emitEvent: false });
-    this.updateSavedFormValuesOnFormChanges();
     await this.saveEntryOrder();
     this.uiService.showSnackBar('Entries arranged by most recently edited.');
     void this.announcer.announce('Entries sorted by most recently edited. You can continue reordering them.');
@@ -1172,7 +1171,8 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     if (!collapsed.delete(id)) collapsed.add(id);
   }
 
-  private async saveEntryOrder(): Promise<void> {
+  protected async saveEntryOrder(): Promise<void> {
+    this.updateSavedFormValuesOnFormChanges();
     if (!this.linkForm.valid) return;
     // Persist without rebuilding the editor, preserving focus and draft row state.
     await this.dataService.saveMonthDraft(this.savedFormValues, this.dataMonth, { emitObservable: false });
@@ -1255,7 +1255,6 @@ export class InputListComponent extends BasePageComponent implements OnInit, OnD
     slots.forEach((slot, index) => controls[slot] = reordered[index]);
     this.linkArray.clear({ emitEvent: false });
     this.linkArray.push(controls, { emitEvent: false });
-    this.updateSavedFormValuesOnFormChanges();
     const name = reordered[to].get('target')?.value || 'New entry';
     await this.saveEntryOrder();
     void this.announcer.announce(`${name} moved to position ${to + 1} of ${rows.length}.`);

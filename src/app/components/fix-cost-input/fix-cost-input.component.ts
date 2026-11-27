@@ -1,8 +1,8 @@
 import {FixedCostService} from '../../services/fixed-cost.service';
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
 import { CdkDrag, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { InputListComponent } from '../input-list/input-list.component';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +12,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { CategorySelectComponent } from '../category-select/category-select.component';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
-import { UserDefinedLink } from '../models';
+import { MatTabsModule } from '@angular/material/tabs';
+import { RouterLink } from '@angular/router';
+import { CategoryClassification, EntryType, RoutePath, UserDefinedLink } from '../models';
 import { debounceTime, takeUntil, tap } from 'rxjs';
 import { ErrorCardComponent } from "../error-card/error-card.component";
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -34,6 +36,8 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
         MatTooltipModule,
         MatDividerModule,
         MatMenuModule,
+        MatTabsModule,
+        RouterLink,
         CdkDrag,
         CdkDragHandle,
         CdkDropList,
@@ -44,18 +48,27 @@ import { AmountSort, resolveAmountSort, sortByAmount } from '../../utils/amount-
     styleUrl: './fix-cost-input.component.scss'
 })
 export class FixCostInputComponent extends InputListComponent {
+  protected readonly CategoryClassification = CategoryClassification;
   private fixedCosts=inject(FixedCostService);
+  protected readonly globalBudgets = this.dataService.globalEnvelopes;
   protected readonly saveStatus = signal<'Saving…' | 'Saved' | ''>('');
+  protected readonly section = signal<'fixed' | 'investments'>('fixed');
+  protected readonly investmentCategories = computed(() =>
+    this.categoryService.categories().filter(category => category.classification === CategoryClassification.Investment)
+  );
+  protected readonly categoriesPage = RoutePath.CategoriesPage;
+  private readonly investmentDrafts = new WeakSet<FormGroup>();
   private saveVersion = 0;
   protected sortOrder = resolveAmountSort(this.preferences.read('fixCostSort'));
   protected editingAmount?: { row: FormGroup; value: number };
-  fixCostsInfoTooltip = 'If you change your Fix Costs defined here, you will have to click "Update Fix Costs" in your "Edit Input" dialog to apply the changes.'
+  fixCostsInfoTooltip = 'Use "Apply Monthly Recurring" or "Update Monthly Recurring" in Edit Input to apply these templates to a month.'
 
   constructor(fb: FormBuilder) {
     super(fb); // Pass FormBuilder to the parent constructor
   }
 
   override ngOnInit() {
+    if (this.entryView === 'budget') this.entryView = 'costType';
     this.initialFormState = [...this.linkArray.value]; // Store the initial form state
 
 
@@ -83,12 +96,37 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   override addLink(): void {
+    const investment = this.section() === 'investments';
+    const categories = this.investmentCategories();
+    if (investment && !categories.length) return;
+
     super.addLink();
-    this.newEntries.delete(this.linkArray.at(-1));
+    const row = this.linkArray.at(-1);
+    this.newEntries.delete(row);
+    if (investment) {
+      const source = categories.length === 1 ? categories[0].value : '';
+      const category = this.categoryControl(row);
+      this.investmentDrafts.add(row);
+      category.addValidators(Validators.required);
+      row.patchValue({ type: EntryType.Expense, source });
+      this.collapsedGroups.delete(source);
+    }
+  }
+
+  protected override async saveEntryOrder(): Promise<void> {
+    await this.saveTemplates();
   }
 
   protected override async updateSavedFormValuesOnFormChanges(): Promise<void> {
     await this.saveTemplates();
+  }
+
+  protected budgetName(id: string | null): string | undefined {
+    return this.globalBudgets().find(budget => budget.id === id)?.name;
+  }
+
+  protected setBudget(row: FormGroup, id: string | null): void {
+    row.get('envelopeId')?.setValue(id);
   }
 
   protected async setSort(order: AmountSort): Promise<void> {
@@ -97,9 +135,23 @@ export class FixCostInputComponent extends InputListComponent {
   }
 
   protected override visibleEntries(isFixCost?: boolean): FormGroup[] {
-    return sortByAmount(super.visibleEntries(isFixCost), this.sortOrder, row =>
+    const investment = this.section() === 'investments';
+    const rows = super.visibleEntries(isFixCost).filter(row => this.isInvestment(row) === investment);
+    return sortByAmount(rows, this.sortOrder, row =>
       row === this.editingAmount?.row ? this.editingAmount.value : Number(row.get('value')?.value) || 0
     );
+  }
+
+  private isInvestment(row: FormGroup): boolean {
+    const source = row.get('source')?.value;
+    return row.get('type')?.value === EntryType.Expense
+      && (source
+        ? this.categoryService.get(source)?.classification === CategoryClassification.Investment
+        : this.investmentDrafts.has(row));
+  }
+
+  protected investmentTotal(rows: FormGroup[]): number {
+    return rows.reduce((total, row) => total + (Number(row.get('value')?.value) || 0), 0);
   }
 
   protected startAmountEdit(row: FormGroup): void {

@@ -11,7 +11,7 @@ import { CategoryService } from '../../services/category.service';
 import { ColorService } from '../../services/color.service';
 import { CategoryEditorDialogComponent } from '../dialogs/category-editor-dialog/category-editor-dialog.component';
 import { ManageCategoriesDialogComponent } from '../dialogs/manage-categories-dialog/manage-categories-dialog.component';
-import { ExpenseCategoryDetails } from '../models';
+import { CategoryClassification, ExpenseCategoryDetails } from '../models';
 
 @Component({
   selector: 'app-category-select',
@@ -21,7 +21,9 @@ import { ExpenseCategoryDetails } from '../models';
   changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class CategorySelectComponent {
+  protected readonly CategoryClassification = CategoryClassification;
   readonly control = input.required<FormControl<string>>();
+  readonly classification = input<CategoryClassification>();
   readonly categoryChange = output<void>();
 
   private readonly categories = inject(CategoryService);
@@ -38,8 +40,16 @@ export class CategorySelectComponent {
   private readonly query = toSignal(this.search.valueChanges, { initialValue: '' });
   protected readonly options = computed(() => {
     const query = this.query().trim().toLowerCase();
-    return this.categories.categories().filter(category => category.label.toLowerCase().includes(query));
+    return this.categories.categories().filter(category => {
+      const label = category.classification === CategoryClassification.Investment ? category.label + ' Investment' : category.label;
+      return this.matchesClassification(category) && label.toLowerCase().includes(query);
+    });
   });
+
+  private matchesClassification(category: ExpenseCategoryDetails): boolean {
+    const classification = this.classification();
+    return !classification || (category.classification ?? CategoryClassification.Expense) === classification;
+  }
 
   protected selectedCategory(): ExpenseCategoryDetails | undefined {
     return this.categories.get(this.control().value);
@@ -73,7 +83,7 @@ export class CategorySelectComponent {
     this.dialog.open<CategoryEditorDialogComponent, null, ExpenseCategoryDetails>(
       CategoryEditorDialogComponent, { data: null, width: '500px' },
     ).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(saved => {
-      if (saved && control === this.control() && control.enabled) {
+      if (saved && this.matchesClassification(saved) && control === this.control() && control.enabled) {
         control.markAsDirty();
         control.setValue(saved.value);
         this.categoryChange.emit();

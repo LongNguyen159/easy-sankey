@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DatePipe } from '@angular/common';
 import { provideRouter } from '@angular/router';
@@ -9,7 +10,7 @@ import { By } from '@angular/platform-browser';
 import { FixCostInputComponent } from './fix-cost-input.component';
 import { AmountSortComponent } from '../amount-sort/amount-sort.component';
 import { DataService } from '../../services/data.service';
-import { EntryType } from '../models';
+import { EntryType, ExpenseCategory } from '../models';
 
 describe('FixCostInputComponent', () => {
   let component: FixCostInputComponent;
@@ -26,11 +27,13 @@ describe('FixCostInputComponent', () => {
           provide: DataService,
           useValue: {
             demoLinks: [],
+            globalEnvelopes: signal([]),
             isDemo: () => false,
             nonAllowedNames: [],
             retrieveFixCostsLinks: () => [
               { id: 'rent', target: 'Rent', type: EntryType.Expense, value: 900 },
               { id: 'internet', target: 'Internet', type: EntryType.Expense, value: 40 },
+              { id: 'etf', target: 'ETF', type: EntryType.Expense, source: ExpenseCategory.Savings, value: 200 },
             ],
           },
         },
@@ -51,6 +54,23 @@ describe('FixCostInputComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('shows classified investments in their own tab and adds investment drafts there', () => {
+    const names = () => fixture.debugElement.queryAll(By.css('input[formControlName="target"]'))
+      .map(input => (input.nativeElement as HTMLInputElement).value);
+    expect(names()).toEqual(['Rent', 'Internet']);
+
+    const investmentTab = fixture.debugElement.queryAll(By.css('button[mat-tab-link]'))[1];
+    investmentTab.nativeElement.click();
+    fixture.detectChanges();
+    expect(names()).toEqual(['ETF']);
+    expect(fixture.nativeElement.textContent).toContain('Planned monthly contributions');
+
+    component.addLink();
+    fixture.detectChanges();
+    expect(names()).toEqual(['ETF', '']);
+    expect(component.linkArray.at(-1).get('source')?.value).toBe(ExpenseCategory.Savings);
   });
 
   it('sorts the displayed costs while keeping the manual order available', () => {

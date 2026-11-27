@@ -6,7 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CategoryEditorDialogComponent } from '../dialogs/category-editor-dialog/category-editor-dialog.component';
-import { ExpenseCategoryDetails } from '../models';
+import { CategoryClassification, ExpenseCategoryDetails } from '../models';
 import { CategoryService } from '../../services/category.service';
 import { ColorService } from '../../services/color.service';
 import { DataService } from '../../services/data.service';
@@ -19,6 +19,7 @@ import { UiService } from '../../services/ui.service';
   styleUrl: './category-manager.component.scss',
 })
 export class CategoryManagerComponent {
+  protected readonly CategoryClassification = CategoryClassification;
   readonly showHeading = input(true);
 
   private readonly injector = inject(Injector);

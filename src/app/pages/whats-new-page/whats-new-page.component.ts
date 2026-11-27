@@ -27,8 +27,8 @@ export class WhatsNewPageComponent {
 
   protected readonly features: readonly FeaturePreview[] = [
     {
-      title: 'Track Investments and Savings',
-      description: 'Mark a category as an investment contribution to see how much you invested, how much cash is left, and how much you saved overall. Open Finance Manager to see how your savings and savings rate change over time.',
+      title: 'Calculate Total Savings',
+      description: 'Total savings adds the money you have left after expenses and investments (your cash surplus) to the amount you invested. Mark a category as an investment contribution to include those entries in the calculation.',
     },
     {
       title: 'Resize the Sankey Chart',

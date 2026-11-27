@@ -109,6 +109,7 @@ const iconKeywords: Record<string, string> = {
   styleUrl: './category-editor-dialog.component.scss',
 })
 export class CategoryEditorDialogComponent {
+  protected readonly CategoryClassification = CategoryClassification;
   protected readonly category = inject<ExpenseCategoryDetails | null>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject<MatDialogRef<CategoryEditorDialogComponent, ExpenseCategoryDetails>>(MatDialogRef);
   private readonly categories = inject(CategoryService);
@@ -129,7 +130,7 @@ export class CategoryEditorDialogComponent {
     })).filter(group => group.icons.length);
   });
   protected label = this.category?.label ?? '';
-  protected classification: CategoryClassification = this.category?.classification ?? 'EXPENSE';
+  protected classification: CategoryClassification = this.category?.classification ?? CategoryClassification.Expense;
   protected icon = this.category?.icon ?? 'category';
   protected color = this.initialColor();
   protected readonly colors = CATEGORY_COLORS.includes(this.color)

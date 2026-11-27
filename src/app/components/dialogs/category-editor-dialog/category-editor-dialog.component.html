@@ -19,11 +19,11 @@
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Classification</mat-label>
       <mat-select name="classification" [(ngModel)]="classification">
-        <mat-option value="EXPENSE">Regular expense</mat-option>
-        <mat-option value="INVESTMENT">Investment contribution</mat-option>
+        <mat-option [value]="CategoryClassification.Expense">Regular expense</mat-option>
+        <mat-option [value]="CategoryClassification.Investment">Investment contribution</mat-option>
       </mat-select>
     </mat-form-field>
-    @if (classification === 'INVESTMENT') {
+    @if (classification === CategoryClassification.Investment) {
       <p class="text-sm opacity-75">Investment contributions reduce your cash surplus and count toward total savings. Changes apply to past months too.</p>
     }
 

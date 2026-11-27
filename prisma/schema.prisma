@@ -69,6 +69,8 @@ model FixedCostTemplate {
   amount         Float
   position       Int
   categoryId     String? @map("category_id")
+  envelopeId     String? @map("envelope_id")
+  envelope       Envelope? @relation(fields: [envelopeId], references: [id], onDelete: SetNull)
   parentId       String? @map("parent_template_id")
   isFixedCost    Boolean? @map("is_fixed_cost")
   demo           Boolean?
@@ -141,6 +143,7 @@ model Envelope {
   position Int
   month    Month? @relation(fields: [monthId], references: [id], onDelete: Cascade)
   entries  Entry[]
+  templates FixedCostTemplate[]
   @@index([monthId, position])
   @@map("envelopes")
 }

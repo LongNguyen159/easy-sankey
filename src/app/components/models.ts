@@ -89,7 +89,10 @@ export enum ExpenseCategory {
   Occasions = `Special Occasions@${SYSTEM_PREFIX}`,
 }
 
-export type CategoryClassification = 'EXPENSE' | 'INVESTMENT';
+export enum CategoryClassification {
+  Expense = 'EXPENSE',
+  Investment = 'INVESTMENT',
+}
 
 export interface ExpenseCategoryDetails {
   classification?: CategoryClassification;

@@ -6,7 +6,7 @@ import { SessionStore } from '../services/session.service';
 import {StoredMonth,HistoryItem} from '../data/database';
 
 import { effect, inject, Injectable, signal, EventEmitter, untracked } from '@angular/core';
-import { BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
+import { CategoryClassification, BudgetEnvelope, EntryType, ExpenseCategory, SankeyData, TreeNode, UserDefinedLink } from '../components/models';
 import { BehaviorSubject } from 'rxjs';
 import { UiService } from './ui.service';
 import { formatDateToYYYYMM } from '../utils/utils';
@@ -129,7 +129,7 @@ export class DataService {
 
     constructor() {
         const investmentIds = () => new Set(this.categories.categories()
-            .filter(category => category.classification === 'INVESTMENT')
+            .filter(category => category.classification === CategoryClassification.Investment)
             .map(category => category.value));
         let previousInvestments = investmentIds();
         effect(() => {
@@ -369,7 +369,7 @@ export class DataService {
         hasCategory = (id: string) => !!this.categories.get(id), envelopes: BudgetEnvelope[] = []): SingleMonthData {
         const locals = envelopes.filter(envelope => !envelope.isGlobal);
         return calculateMonth(entries, month, lastUpdated, hasCategory, [...this.globalEnvelopes(), ...locals],
-            id => this.categories.get(id)?.classification === 'INVESTMENT');
+            id => this.categories.get(id)?.classification === CategoryClassification.Investment);
     }
 
     async saveEnvelopes(month: string, envelopes: BudgetEnvelope[], globals?: BudgetEnvelope[], expectedGlobals?: BudgetEnvelope[]): Promise<void> {
@@ -667,8 +667,10 @@ export class DataService {
 
 
     retrieveFixCostsLinks(): UserDefinedLink[] {
-        const fixedLinks = this.fixedCosts.list()
-        return fixedLinks ? this.categories.clearMissingSources(fixedLinks) : [];
+        const budgetIds = new Set(this.globalEnvelopes().map(budget => budget.id));
+        const fixedLinks = this.fixedCosts.list().map(link =>
+            link.envelopeId && !budgetIds.has(link.envelopeId) ? { ...link, envelopeId: null } : link);
+        return this.categories.clearMissingSources(fixedLinks);
     }
 
     //#endregion

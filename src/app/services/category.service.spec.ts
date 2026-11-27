@@ -4,7 +4,7 @@ import {testDatabase} from '../testing/database';
 import {CategoryService,CATEGORY_COLORS} from './category.service';
 import {DataService} from './data.service';
 import {UiService} from './ui.service';
-import {EntryType,ExpenseCategory} from '../components/models';
+import { CategoryClassification, EntryType, ExpenseCategory } from '../components/models';
 
 describe('database-backed expense categories',()=>{
  let fake:ReturnType<typeof testDatabase>;let data:DataService;let categories:CategoryService;
@@ -25,7 +25,7 @@ describe('database-backed expense categories',()=>{
   let activeSavings = 0;
   const subscription = data.getSingleMonthData().subscribe(month => activeSavings = month.savings?.investments ?? 0);
 
-  await categories.save('Investments', 'trending_up', CATEGORY_COLORS[0], ExpenseCategory.Groceries, 'INVESTMENT');
+  await categories.save('Investments', 'trending_up', CATEGORY_COLORS[0], ExpenseCategory.Groceries, CategoryClassification.Investment);
   TestBed.tick();
   expect(activeSavings).toBe(80);
   expect(data.monthlyData['2025-04'].savings?.totalSavings).toBe(1000);
@@ -33,7 +33,7 @@ describe('database-backed expense categories',()=>{
 
   await data.importMonth('2025-06', { entries: entries(), categories: [categories.get(ExpenseCategory.Groceries)!] });
   expect(data.monthlyData['2025-06'].savings?.investments).toBe(80);
-  await categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries, 'EXPENSE');
+  await categories.save('Supplies', 'build', CATEGORY_COLORS[0], ExpenseCategory.Groceries, CategoryClassification.Expense);
   TestBed.tick();
   expect(activeSavings).toBe(0);
   expect(data.monthlyData['2025-06'].savings?.totalSavings).toBe(920);

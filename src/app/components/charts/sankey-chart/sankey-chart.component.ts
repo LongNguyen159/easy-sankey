@@ -3,7 +3,7 @@ import { Component, effect, inject, Input, OnChanges, SimpleChanges, ChangeDetec
 import { EChartsOption, EChartsType, format } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { provideAppEcharts } from '../../../base-components/base-chart/echarts.provider';
-import { DifferenceItem, SankeyData, SankeyNode, SavingsMetrics } from '../../models';
+import { CategoryClassification, DifferenceItem, SankeyData, SankeyNode, SavingsMetrics } from '../../models';
 import { DataService } from '../../../services/data.service';
 import { ColorService } from '../../../services/color.service';
 import { CommonModule, CurrencyPipe } from '@angular/common';
@@ -197,7 +197,7 @@ export class SankeyChartComponent extends BaseChartComponent implements OnChange
             if (params.data.envelopeId) {
               return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.spent, this.currencyService.getSelectedCurrency())} / ${this.currencyPipe.transform(params.data.budget, this.currencyService.getSelectedCurrency())}</strong><br>Allowance shown for planning; Cash surplus uses actual spending.`;
             }
-            const investment = this.categoryService.get(params.data.categoryId ?? params.data.name)?.classification === 'INVESTMENT';
+            const investment = this.categoryService.get(params.data.categoryId ?? params.data.name)?.classification === CategoryClassification.Investment;
             return `${nodeName}: <strong>${this.currencyPipe.transform(params.data.value, this.currencyService.getSelectedCurrency())}</strong>${investment ? '<br>Investment contribution' : ''}`;
           } else {
             const label = (name: string) => {

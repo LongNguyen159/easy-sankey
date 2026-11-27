@@ -138,25 +138,25 @@
     <mat-divider class="mb-4!" [ngClass]="colorService.isDarkMode() ? 'border-gray-700!' : 'border-gray-300!'"></mat-divider>
     <div class="entry-cost-header" [class.entry-cost-header-compact]="groupedEntries">
       @if (!groupedEntries) {
-        <button mat-icon-button type="button" class="mr-2" aria-label="Fix Costs"
+        <button mat-icon-button type="button" class="mr-2" aria-label="Monthly Recurring"
           [attr.aria-expanded]="isFixCostsExpanded || isSearching" (click)="isFixCostsExpanded = !isFixCostsExpanded">
           <mat-icon fontSet="material-symbols-outlined">{{ isFixCostsExpanded || isSearching ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
         <p class="font-bold text-2xl m-0! cursor-pointer" (click)="isFixCostsExpanded = !isFixCostsExpanded">
-          Fix Costs ({{ fixCosts.length }})
+          Monthly Recurring ({{ fixCosts.length }})
         </p>
       }
 
-      <div class="entry-fix-cost-actions" role="group" aria-label="Fix Costs actions">
+      <div class="entry-fix-cost-actions" role="group" aria-label="Monthly Recurring actions">
         <button mat-button type="button" (click)="navigateToFixCosts()">
           <mat-icon fontSet="material-symbols-outlined">open_in_new</mat-icon>
-          Edit Fix Costs
+          Edit Monthly Recurring
         </button>
         @if (!groupedEntries || fixedLinks.length > 0) {
           <button [matButton]="groupedEntries ? 'text' : 'outlined'" type="button"
             (click)="pasteFixCosts()" [disabled]="fixedLinks.length === 0">
             <mat-icon fontSet="material-symbols-outlined">{{ fixCosts.length ? 'update' : 'content_paste' }}</mat-icon>
-            {{ fixCosts.length ? 'Update Fix Costs' : fixedLinks.length ? 'Paste Fix Costs' : 'No Fix costs defined' }}
+            {{ fixCosts.length ? 'Update Monthly Recurring' : fixedLinks.length ? 'Apply Monthly Recurring' : 'No recurring amounts set up' }}
           </button>
         }
       </div>
@@ -204,7 +204,7 @@
         @if (isFixCostsExpanded || isSearching) {
           <mat-card-content>
             @if (!fixCosts.length && !isSearching) {
-              <p class="text-center">No fix costs pasted. Click "Paste Fix Costs", or start by "Edit Fix Costs" if you haven't defined any.</p>
+              <p class="text-center">Use "Apply Monthly Recurring" to add them to this month. Use "Edit Monthly Recurring" to set them up.</p>
             }
             <ng-container *ngTemplateOutlet="entryList; context: { $implicit: visibleEntries(true) }"></ng-container>
           </mat-card-content>
@@ -264,7 +264,7 @@
         <mat-form-field appearance="outline">
           <mat-label>Name</mat-label>
           @if (groupedEntries && linkGroup.get('isFixCost')?.value) {
-            <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Fixed cost" aria-label="Fixed cost">event_repeat</mat-icon>
+            <mat-icon matPrefix fontSet="material-symbols-outlined" matTooltip="Repeats monthly" aria-label="Repeats monthly">event_repeat</mat-icon>
           }
           <input #entryName matInput [attr.data-entry-id]="linkGroup.get('id')?.value" formControlName="target" placeholder="Entry name" />
           @if (linkGroup.get('target')?.hasError('restrictedNodeName')) {
